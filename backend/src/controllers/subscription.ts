@@ -19,15 +19,18 @@ export class SubscriptionController {
       // 1. Fetch the plan details from Supabase
       const plan = await SubscriptionService.getPlanById(planId);
 
-      // 2. Dynamically create a plan in Razorpay for this checkout
-      // In a real-world scenario, you might pre-create these plans and store their Razorpay IDs.
-      // Doing it dynamically here makes it seamless to test.
-      const razorpayPlanId = await RazorpayService.createRazorpayPlan(
-        plan.name,
-        plan.price,
-        plan.billing_interval,
-        plan.description || ''
-      );
+      // 2. Check if a Razorpay Plan ID is already cached, otherwise create and cache it
+      let razorpayPlanId = plan.razorpay_plan_id;
+      if (!razorpayPlanId) {
+        razorpayPlanId = await RazorpayService.createRazorpayPlan(
+          plan.name,
+          plan.price,
+          plan.billing_interval,
+          plan.description || ''
+        );
+        // Cache it in our database so we reuse it for the next subscriber
+        await SubscriptionService.updatePlanRazorpayId(plan.id, razorpayPlanId);
+      }
 
       // 3. Create the subscription on Razorpay
       const razorpaySub = await RazorpayService.createSubscription(razorpayPlanId, user.email);

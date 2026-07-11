@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS public.plans (
     description TEXT,
     price NUMERIC NOT NULL,
     billing_interval TEXT NOT NULL CHECK (billing_interval IN ('month', 'year')),
+    razorpay_plan_id TEXT UNIQUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
