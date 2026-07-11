@@ -105,6 +105,16 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+
+    // Redirect C++ build staging to bypass Windows 260-character path limit
+    externalNativeBuild {
+        cmake {
+            buildStagingDirectory = file("C:/tmp/cxx/${project.name}")
+        }
+    }
+
+    // Redirect Gradle build outputs
+    buildDir = "C:/tmp/build/${project.name}"
 }
 
 dependencies {
