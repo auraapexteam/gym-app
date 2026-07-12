@@ -3,3 +3,5 @@ declare module '@env' {
   export const SUPABASE_ANON_KEY: string;
   export const API_BASE_URL: string;
 }
+
+declare module 'react-native-razorpay';

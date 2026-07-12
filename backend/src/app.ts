@@ -10,8 +10,21 @@ import webhookRoutes from './routes/webhook';
 
 const app = express();
 
-// Middlewares
-app.use(cors());
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['*'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like native mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+}));
 
 // Webhook endpoint needs the RAW string body to verify the signature.
 // By placing it BEFORE express.json(), we can parse the body as text.
