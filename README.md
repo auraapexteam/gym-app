@@ -122,13 +122,18 @@ Before starting, ensure you have the following installed:
    ```bash
    cd frontend
    ```
-2. Create/edit the configuration file `frontend/src/config.ts` and set your API base and Supabase credentials:
-   ```typescript
-   export const API_BASE_URL = 'http://localhost:5000'; // Port-forwarded backend endpoint
-   export const SUPABASE_URL = 'https://your-project.supabase.co';
-   export const SUPABASE_ANON_KEY = 'your-supabase-anon-key';
+2. Create a `.env` file containing your local keys (this file is git-ignored):
+   ```env
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_ANON_KEY=your-supabase-anon-key
+   API_BASE_URL=http://localhost:5000
    ```
-3. Install frontend dependencies:
+3. Run the config builder script to compile the `.env` values into `src/config.ts`:
+   ```bash
+   node generate-config.js
+   ```
+   *(Note: `frontend/src/config.ts` is configured with `git update-index --assume-unchanged` so your local credentials are never tracked or committed back to GitHub).*
+4. Install frontend dependencies:
    ```bash
    npm install
    ```
