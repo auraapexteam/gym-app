@@ -128,15 +128,11 @@ Before starting, ensure you have the following installed:
    SUPABASE_ANON_KEY=your-supabase-anon-key
    API_BASE_URL=http://localhost:5000
    ```
-3. Run the config builder script to compile the `.env` values into `src/config.ts`:
-   ```bash
-   node generate-config.js
-   ```
-   *(Note: `frontend/src/config.ts` is configured with `git update-index --assume-unchanged` so your local credentials are never tracked or committed back to GitHub).*
-4. Install frontend dependencies:
+3. Install frontend dependencies:
    ```bash
    npm install
    ```
+   *(Note: The application uses `react-native-dotenv` to dynamically read configuration values directly from `frontend/.env` during build, so no keys ever reside in the tracked codebase).*
 
 ---
 
