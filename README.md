@@ -1,7 +1,8 @@
-# Subscription Management System (Prototype Monorepo)
+# Gym Management Mobile Application (Monorepo Foundation)
 
-> **Status:** 🧪 Prototype / Proof of Concept (POC)  
-> **Purpose:** A prototype application demonstrating a secure, production-grade subscription management architecture using **React Native CLI (Frontend)**, **Express.js (Backend)**, **Supabase (PostgreSQL Database & Auth)**, and **Razorpay Subscriptions & Webhooks**.
+> **Status:** 🏗️ Foundational Phase (Core Architecture, Auth, Database Design & RBAC Complete)  
+> **Feature Modules Status:** ⏸️ Paused (QR Attendance, Digital Pass, Notifications, and Analytics are paused awaiting final business SRS)  
+> **Tech Stack:** React Native CLI, Express.js (TypeScript), Supabase (PostgreSQL + Auth), Upstash Redis, Razorpay, Pino Logger, Zod Validation.
 
 ---
 
@@ -10,7 +11,7 @@
 2. [Folder Structure](#2-folder-structure)
 3. [Prerequisites](#3-prerequisites)
 4. [Step-by-Step Setup Guide](#4-step-by-step-setup-guide)
-   - [Database Setup (Supabase)](#step-41-database-setup-supabase)
+   - [Database Migrations (Supabase CLI)](#step-41-database-migrations-supabase-cli)
    - [Backend Configuration](#step-42-backend-configuration)
    - [Frontend Configuration](#step-43-frontend-configuration)
 5. [Running the Application](#5-running-the-application)
@@ -18,14 +19,17 @@
    - [Configuring USB Debugging & Port Forwarding](#step-52-configuring-usb-debugging--port-forwarding)
    - [Starting the Metro Packager](#step-53-starting-the-metro-packager)
    - [Running on Android Device](#step-54-running-on-android-device)
-6. [Testing Razorpay Webhooks Locally](#6-testing-razorpay-webhooks-locally)
+6. [Core Architectural Features](#6-core-architectural-features)
+   - [Role-Based Access Control (RBAC)](#role-based-access-control-rbac)
+   - [Structured Logging (Pino)](#structured-logging-pino)
+   - [Global Validation & Errors](#global-validation--errors)
 7. [Troubleshooting (Windows-Specific Fixes)](#7-troubleshooting-windows-specific-fixes)
 
 ---
 
 ## 1. Project Overview & Architecture
 
-This prototype handles the subscription lifecycle securely using a decoupled client-server architecture:
+This monorepo houses the foundational backend and mobile client for our Gym Management Application:
 
 ```mermaid
 sequenceDiagram
@@ -48,27 +52,40 @@ sequenceDiagram
 ```
 
 * **Frontend:** React Native CLI, TypeScript, Zustand (State), Axios (API client), and React Native Razorpay SDK.
-* **Backend:** Express.js, TypeScript, Supabase JS Client, and Razorpay Node SDK.
-* **Database & Auth:** Supabase Auth (JWT generation and user sessions) and PostgreSQL for relational plan, subscription, and transaction schemas.
+* **Backend:** Express.js, TypeScript, Supabase JS Client, Pino Logger, Zod Validation, and Razorpay Node SDK.
+* **Database & Auth:** Supabase Auth (JWT user sessions) and PostgreSQL for relational plan, profiles (linked via sync triggers), gym members (role hierarchy), subscriptions, payments, and check-in logs.
 
 ---
 
 ## 2. Folder Structure
 
-The project uses a monorepo structure separating the client, API, and project documentation:
+The project uses a monorepo structure separating the client, API, database migrations, and project documentation:
 
 ```text
-Subscription-Management-React-Cli/
+Gym-Management-App/
 ├── backend/                  # Node.js + Express.js API Server
-│   ├── src/                  # TypeScript source files (controllers, routes, etc.)
-│   └── package.json          # Backend npm package definition
+│   ├── src/                  # TypeScript source files
+│   │   ├── controllers/      # Route controllers (webhook, subscription)
+│   │   ├── middlewares/      # auth, role-checking, validate, and errors
+│   │   ├── routes/           # API routes definitions
+│   │   ├── services/         # business layer (Razorpay, Subscription)
+│   │   ├── utils/            # Pino logger, AppError helpers
+│   │   └── validations/      # Zod validation schemas
+│   └── package.json          # Backend dependencies
 ├── frontend/                 # React Native CLI Mobile Application
 │   ├── android/              # Native Android wrapper and Gradle settings
 │   ├── ios/                  # Native iOS wrapper and CocoaPods configurations
-│   ├── src/                  # React Native TypeScript components and State
-│   └── package.json          # Frontend npm package definition
-├── SYSTEM_DESIGN.md          # Database schemas, API routes, and design choices
-├── schema.sql                # SQL initialization queries for PostgreSQL/Supabase
+│   ├── src/                  # React Native source files
+│   │   ├── api/              # Supabase Client and Axios instance
+│   │   ├── navigation/       # Role-Based navigation stack router
+│   │   ├── screens/          # Customer and Owner screens
+│   │   ├── store/            # Zustand global state (Auth, Profiles)
+│   │   └── types/            # TypeScript environment and library declarations
+│   └── package.json          # Frontend dependencies
+├── supabase/                 # Version-controlled database migrations
+│   ├── migrations/           # SQL migration scripts
+│   └── config.toml           # Supabase CLI project configuration
+├── schema.sql                # Complete updated PostgreSQL relational schema
 └── README.md                 # Project running guide (This file)
 ```
 
@@ -79,22 +96,28 @@ Subscription-Management-React-Cli/
 Before starting, ensure you have the following installed:
 * **Node.js** (LTS version >= 22.11.0)
 * **Java Development Kit (JDK)** (version 17, recommended for React Native 0.74+)
-* **Android Studio & SDK** (installed and configured with `ANDROID_HOME` environment variables)
-* **Git**
+* **Android Studio & SDK** (configured with `ANDROID_HOME` environment variables)
+* **Supabase CLI** (installed for managing database schemas and triggers)
 * A physical Android device with **USB Debugging** enabled, or an active Android Virtual Device (AVD).
 
 ---
 
 ## 4. Step-by-Step Setup Guide
 
-### Step 4.1: Database Setup (Supabase)
-1. Go to [Supabase](https://supabase.com) and create a free project.
-2. In the Supabase Dashboard, go to **SQL Editor**.
-3. Copy the SQL queries from [schema.sql](file:///c:/Users/baodh/OneDrive/Desktop/Projects/Subscription-Management-React-Cli/schema.sql) and run them to create the `plans`, `subscriptions`, and `payments` tables and enable Row-Level Security (RLS).
-4. Note your **Project URL** and **Anon Key** from **Project Settings > API**.
+### Step 4.1: Database Migrations (Supabase CLI)
+To set up your database, you can run the version-controlled migrations locally or link them directly to a remote Supabase instance:
+1. Copy the full SQL queries from [schema.sql](file:///c:/Users/baodh/OneDrive/Desktop/Projects/Subscription-Management-React-Cli/schema.sql) to set up your tables, enums, triggers, and RLS policies manually in your Supabase SQL editor.
+2. Alternatively, to apply migrations remotely using the Supabase CLI:
+   ```bash
+   # Link to your remote Supabase project
+   supabase link --project-ref your-project-reference-id
+   
+   # Push migrations
+   supabase db push
+   ```
 
 ### Step 4.2: Backend Configuration
-1. Go to the `backend/` folder:
+1. Navigate to the `backend/` folder:
    ```bash
    cd backend
    ```
@@ -111,6 +134,7 @@ Before starting, ensure you have the following installed:
    RAZORPAY_KEY_ID=rzp_test_yourKeyId
    RAZORPAY_KEY_SECRET=yourRazorpaySecret
    RAZORPAY_WEBHOOK_SECRET=yourWebhookSecret # Set this when configuring Razorpay webhooks
+   ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5000 # Comma-separated whitelist for CORS (supports '*' in dev)
    ```
 4. Install dependencies:
    ```bash
@@ -118,7 +142,7 @@ Before starting, ensure you have the following installed:
    ```
 
 ### Step 4.3: Frontend Configuration
-1. Go to the `frontend/` folder:
+1. Navigate to the `frontend/` folder:
    ```bash
    cd frontend
    ```
@@ -132,13 +156,11 @@ Before starting, ensure you have the following installed:
    ```bash
    npm install
    ```
-   *(Note: The application uses `react-native-dotenv` to dynamically read configuration values directly from `frontend/.env` during build, so no keys ever reside in the tracked codebase).*
+   *(Note: The application uses `react-native-dotenv` to dynamically read configuration values directly from `frontend/.env` during build).*
 
 ---
 
 ## 5. Running the Application
-
-Follow these steps in separate terminal windows to launch both systems simultaneously.
 
 ### Step 5.1: Starting the Backend
 Open a terminal in the root directory and run:
@@ -146,7 +168,7 @@ Open a terminal in the root directory and run:
 cd backend
 npm run dev
 ```
-*This launches the API server on `http://localhost:5000`.*
+*This launches the API server on `http://localhost:5000` with hot-reloading.*
 
 ### Step 5.2: Configuring USB Debugging & Port Forwarding
 1. Connect your physical Android phone to your PC via USB.
@@ -173,26 +195,21 @@ Open a third terminal in the root directory and deploy the app:
 cd frontend
 npx react-native run-android --no-packager
 ```
-*The `--no-packager` option prevents compiling scripts from opening a duplicate terminal.*
 
 ---
 
-## 6. Testing Razorpay Webhooks Locally
+## 6. Core Architectural Features
 
-Since Razorpay's checkout is performed via their cloud service, Razorpay needs to send transaction updates (like `subscription.charged` or `payment.captured`) to a public URL.
+### Role-Based Access Control (RBAC)
+* **Backend Middleware:** The `checkRole` middleware in [auth.ts](file:///c:/Users/baodh/OneDrive/Desktop/Projects/Subscription-Management-React-Cli/backend/src/middlewares/auth.ts) restrict endpoints based on profile roles (`customer`, `owner`, `admin`).
+* **Frontend Routing:** The [AppNavigator.tsx](file:///c:/Users/baodh/OneDrive/Desktop/Projects/Subscription-Management-React-Cli/frontend/src/navigation/AppNavigator.tsx) separates stacks based on the authenticated user's role. Customers see the dashboard and membership options, while owners are redirected to the dedicated `OwnerDashboard`.
 
-To test this on your local machine:
-1. Run localtunnel to generate a public proxy endpoint pointing to your Express server:
-   ```bash
-   npx localtunnel --port 5000
-   ```
-2. Copy the generated URL (e.g., `https://three-tools-tap.loca.lt`).
-3. Go to the **Razorpay Dashboard > Settings > Webhooks**.
-4. Click **Add New Webhook** and fill in details:
-   - **Webhook URL:** `https://your-localtunnel-url.loca.lt/api/webhooks/razorpay`
-   - **Secret:** Use the same secret defined as `RAZORPAY_WEBHOOK_SECRET` in your backend `.env`.
-   - **Active Events:** Choose `subscription.charged`, `subscription.activated`, and `subscription.halted`.
-5. Trigger a subscription checkout in test mode inside the app. The backend will receive the transaction confirmation hook automatically and update your plan!
+### Structured Logging (Pino)
+* **structured logging:** The application utilizes Pino in [logger.ts](file:///c:/Users/baodh/OneDrive/Desktop/Projects/Subscription-Management-React-Cli/backend/src/utils/logger.ts) to produce high-performance, structured JSON logging in production and readable colorized logs in development.
+
+### Global Validation & Errors
+* **Payload Validation:** Leverages Zod schemas with Express middlewares to automatically validate client body, query, and path parameters, returning descriptive validation errors to clients.
+* **AppError Exception Handler:** Includes a custom `AppError` class that tags expected failures, filtering out database stack traces from clients during unexpected runtime server errors.
 
 ---
 
