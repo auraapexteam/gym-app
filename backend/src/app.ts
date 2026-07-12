@@ -29,13 +29,26 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 
+import { AppError } from './utils/appError';
+
 // Centralized Error Handling Middleware
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  console.error(err.stack);
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || 'Internal Server Error',
-  });
+  const statusCode = err.statusCode || 500;
+  const isOperational = err.isOperational || false;
+
+  if (process.env.NODE_ENV !== 'production' || isOperational) {
+    res.status(statusCode).json({
+      success: false,
+      message: err.message || 'Internal Server Error',
+    });
+  } else {
+    // Log unexpected errors
+    console.error('Unhandled Developer Error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Something went wrong on the server',
+    });
+  }
 });
 
 export default app;
