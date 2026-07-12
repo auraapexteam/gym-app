@@ -2,9 +2,10 @@
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.profiles (id, full_name, avatar_url, role)
+    INSERT INTO public.profiles (id, email, full_name, avatar_url, role)
     VALUES (
         new.id,
+        new.email,
         COALESCE(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', 'New Member'),
         COALESCE(new.raw_user_meta_data->>'avatar_url', ''),
         'customer'::public.user_role

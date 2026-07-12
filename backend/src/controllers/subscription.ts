@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { SubscriptionService } from '../services/subscription';
 import { RazorpayService } from '../services/razorpay';
+import { logger } from '../utils/logger';
 
 export class SubscriptionController {
   /**
@@ -49,7 +50,7 @@ export class SubscriptionController {
         },
       });
     } catch (error: any) {
-      console.error('Subscription creation error:', error);
+      logger.error(error, 'Subscription creation error');
       return res.status(500).json({
         success: false,
         message: error.message || 'Failed to create subscription',

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import crypto from 'crypto';
 import { SubscriptionService } from '../services/subscription';
-import { supabase } from '../config/supabase';
+import { logger } from '../utils/logger';
 
 export class WebhookController {
   static async handleRazorpayWebhook(req: Request, res: Response) {
@@ -10,7 +10,7 @@ export class WebhookController {
       const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
       if (!signature || !secret) {
-        console.warn('Webhook warning: Missing signature or webhook secret.');
+        logger.warn('Webhook warning: Missing signature or webhook secret.');
         return res.status(400).json({ success: false, message: 'Invalid signature configuration' });
       }
 
@@ -24,13 +24,13 @@ export class WebhookController {
         .digest('hex');
 
       if (expectedSignature !== signature) {
-        console.error('Webhook signature verification failed!');
+        logger.error('Webhook signature verification failed!');
         return res.status(400).json({ success: false, message: 'Signature verification failed' });
       }
 
       const eventData = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       const event = eventData.event;
-      console.log(`Razorpay Webhook Event received: ${event}`);
+      logger.info({ event }, 'Razorpay Webhook Event received');
 
       switch (event) {
         case 'subscription.charged': {
@@ -59,7 +59,7 @@ export class WebhookController {
             new Date(paymentPayload.created_at * 1000)
           );
 
-          console.log(`Successfully processed subscription.charged for ${razorpaySubscriptionId}`);
+          logger.info({ razorpaySubscriptionId }, 'Successfully processed subscription.charged');
           break;
         }
 
@@ -73,25 +73,23 @@ export class WebhookController {
             event === 'subscription.cancelled' ? 'cancelled' : 'expired'
           );
 
-          console.log(`Processed ${event} for subscription ${razorpaySubscriptionId}`);
+          logger.info({ event, razorpaySubscriptionId }, 'Processed subscription cancel/halt event');
           break;
         }
 
         case 'payment.failed': {
           const paymentPayload = eventData.payload.payment.entity;
-          const razorpaySubscriptionId = paymentPayload.order_id; // Check if order_id or notes contain sub ID
-
-          console.warn(`Payment failed for order: ${paymentPayload.order_id || paymentPayload.id}`);
+          logger.warn({ orderId: paymentPayload.order_id, paymentId: paymentPayload.id }, 'Payment failed for order');
           break;
         }
 
         default:
-          console.log(`Unhandled webhook event type: ${event}`);
+          logger.info({ event }, 'Unhandled webhook event type');
       }
 
       return res.status(200).json({ success: true });
     } catch (error: any) {
-      console.error('Webhook error:', error);
+      logger.error(error, 'Webhook error');
       return res.status(500).json({ success: false, message: error.message || 'Webhook processing failed' });
     }
   }

@@ -10,11 +10,12 @@ import { LoginScreen } from '../screens/LoginScreen';
 import { SignupScreen } from '../screens/SignupScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { PlansScreen } from '../screens/PlansScreen';
+import { OwnerDashboardScreen } from '../screens/OwnerDashboardScreen';
 
 const Stack = createNativeStackNavigator();
 
 export function AppNavigator() {
-  const { accessToken, setSession, loading } = useAuthStore();
+  const { accessToken, userProfile, setSession, loading } = useAuthStore();
 
   useEffect(() => {
     // 1. Check active session once on mount
@@ -40,15 +41,28 @@ export function AppNavigator() {
     );
   }
 
+  // Determine user role
+  const isStaff = userProfile?.role === 'owner' || userProfile?.role === 'admin';
+
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: true }}>
         {accessToken ? (
           // App Stack (Authenticated Users)
-          <>
-            <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Dashboard' }} />
-            <Stack.Screen name="Plans" component={PlansScreen} options={{ title: 'Subscription Plans' }} />
-          </>
+          isStaff ? (
+            // Staff / Gym Owner Stack
+            <Stack.Screen 
+              name="OwnerDashboard" 
+              component={OwnerDashboardScreen} 
+              options={{ title: 'Owner Dashboard', headerShown: false }} 
+            />
+          ) : (
+            // Customer / Member Stack
+            <>
+              <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Customer Dashboard' }} />
+              <Stack.Screen name="Plans" component={PlansScreen} options={{ title: 'Subscription Plans' }} />
+            </>
+          )
         ) : (
           // Auth Stack (Unauthenticated Users)
           <>

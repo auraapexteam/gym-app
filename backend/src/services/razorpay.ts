@@ -1,5 +1,6 @@
 import Razorpay from 'razorpay';
 import dotenv from 'dotenv';
+import { logger } from '../utils/logger';
 
 dotenv.config();
 
@@ -33,7 +34,7 @@ export class RazorpayService {
       });
       return plan.id;
     } catch (error: any) {
-      console.error('Error creating Razorpay plan:', error);
+      logger.error(error, 'Error creating Razorpay plan');
       throw new Error(`Razorpay plan creation failed: ${error.message}`);
     }
   }
@@ -55,7 +56,7 @@ export class RazorpayService {
       });
       return subscription;
     } catch (error: any) {
-      console.error('Error creating Razorpay subscription:', error);
+      logger.error(error, 'Error creating Razorpay subscription');
       throw new Error(`Razorpay subscription creation failed: ${error.message}`);
     }
   }

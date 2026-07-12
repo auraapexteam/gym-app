@@ -30,6 +30,7 @@ app.get('/health', (req: Request, res: Response) => {
 
 
 import { AppError } from './utils/appError';
+import { logger } from './utils/logger';
 
 // Centralized Error Handling Middleware
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
@@ -43,7 +44,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     });
   } else {
     // Log unexpected errors
-    console.error('Unhandled Developer Error:', err);
+    logger.error(err, 'Unhandled Developer Error');
     res.status(500).json({
       success: false,
       message: 'Something went wrong on the server',
