@@ -1,11 +1,5 @@
-import { Platform } from 'react-native';
+import { SUPABASE_URL as envUrl, SUPABASE_ANON_KEY as envKey, API_BASE_URL as envApi } from '@env';
 
-export const SUPABASE_URL = 'https://nlhbhvafzpnagxfyhekc.supabase.co';
-
-// Put your Supabase public Anon key here
-export const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
-
-// If you are using a physical device with USB debugging, run:
-// adb reverse tcp:5000 tcp:5000
-// to route localhost:5000 requests from your device to your computer.
-export const API_BASE_URL = 'http://localhost:5000';
+export const SUPABASE_URL = envUrl;
+export const SUPABASE_ANON_KEY = envKey;
+export const API_BASE_URL = envApi;
