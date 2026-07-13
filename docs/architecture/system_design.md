@@ -1,8 +1,9 @@
-# Aura Apex
-# System Design
-Version: 1.0
+# System Design Overview
 
-Author: Aura Apex Team
+- **Purpose**: Provides a high-level overview of the Aura Apex SaaS gym platform design, applications, and roles.
+- **Scope**: Entire platform architecture and product scope.
+- **Related Documents**: [Architecture Rules](../standards/architecture_rules.md), [Folder Structure](./folder_structure.md)
+- **Last Updated**: 2026-07-13
 
 ---
 
@@ -615,86 +616,6 @@ Attendance insights
 
 ---
 
-# 9. QR Attendance Flow
-
-Owner
-
-↓
-
-Generate QR
-
-↓
-
-Print QR
-
-↓
-
-Stick inside gym
-
-↓
-
-Customer opens mobile app
-
-↓
-
-Scans QR
-
-↓
-
-Backend validates
-
-↓
-
-Attendance stored
-
-↓
-
-Analytics updated
-
-Important rules
-
-QR codes are revocable.
-
-Owners may generate new QR codes at any time.
-
-Old QR codes immediately become invalid.
-
-Attendance is always validated server-side.
-
-Client-side attendance is never trusted.
-
----
-
-# 10. Image Storage
-
-Images are optional.
-
-Supported image types
-
-Gym
-
-Trainer
-
-Equipment
-
-Profile
-
-Images stored in object storage.
-
-Database stores only metadata.
-
-Images should support
-
-Compression
-
-Lazy loading
-
-Caching
-
-Future CDN support
-
----
-
 # 11. Analytics Philosophy
 
 Analytics never owns data.
@@ -728,76 +649,6 @@ Equipment health
 Trainer performance
 
 No analytics data should become the source of truth.
-
----
-
-# 12. Scalability Principles
-
-The system must support
-
-10 gyms
-
-100 gyms
-
-1,000 gyms
-
-10,000 gyms
-
-without redesign.
-
-Rules
-
-Every feature isolated.
-
-Feature-first architecture.
-
-Independent modules.
-
-Service layer.
-
-Repository layer.
-
-No shared mutable state.
-
-Transactions for financial operations.
-
-Background jobs for expensive tasks.
-
-Images never stored in database.
-
-Large queries paginated.
-
-Indexes on searchable fields.
-
-Soft delete where appropriate.
-
-No business logic inside controllers.
-
----
-
-# 13. Security Principles
-
-Role-based authorization.
-
-Tenant isolation.
-
-JWT authentication.
-
-Input validation.
-
-Rate limiting.
-
-Audit logs.
-
-Secure file uploads.
-
-Server-side payment verification.
-
-No secrets inside frontend.
-
-HTTPS only.
-
-Every request authenticated except public endpoints.
 
 ---
 
@@ -979,64 +830,6 @@ Recovery plan documented.
 
 ---
 
-# 17. Development Principles
-
-The project follows these principles.
-
-Single Responsibility Principle
-
-SOLID
-
-Clean Architecture
-
-Feature-first organization
-
-Repository Pattern
-
-Service Layer
-
-Dependency Injection where beneficial
-
-DTOs
-
-Strict TypeScript
-
-Centralized error handling
-
-API Versioning
-
-Reusable components
-
-Reusable hooks
-
-Shared validation
-
-Atomic commits
-
-Comprehensive documentation
-
-No breaking API changes
-
----
-
-# 18. Project Standards
-
-Backend implementation must comply with:
-
-API_CONTRACTS.md
-
-Frontend implementation must comply with:
-
-UI_SYSTEM.md
-
-These documents define the coding standards, API contracts, UI consistency, naming conventions, validation rules, and design language for the entire platform.
-
-This document only defines the overall system architecture.
-
-Implementation details belong in their respective design documents.
-
----
-
 # 19. Success Criteria
 
 Aura Apex is considered architecturally successful when
@@ -1056,3 +849,325 @@ Aura Apex is considered architecturally successful when
 • The system can scale from one gym to thousands with minimal infrastructure changes.
 
 • Every component follows a modular, maintainable, production-grade architecture suitable for long-term SaaS growth.
+
+# 123. Gym Module
+
+Purpose
+
+Represents a Gym (Tenant).
+
+Responsibilities
+
+Gym Profile
+
+Timings
+
+Weekly Off Days
+
+Contact Information
+
+Gallery
+
+Settings
+
+QR Configuration
+
+Owner Assignment
+
+Dependencies
+
+Authentication
+
+Storage
+
+Notifications
+
+Gym owns
+
+Everything belonging to one tenant.
+
+---
+
+# 124. Member Module
+
+Purpose
+
+Manage gym customers.
+
+Responsibilities
+
+Create Member
+
+Update Profile
+
+Membership Status
+
+Attendance History
+
+Plan History
+
+Profile
+
+Dependencies
+
+Gym
+
+Plans
+
+Attendance
+
+Payments
+
+Notifications
+
+Member module does NOT process payments.
+
+---
+
+# 125. Plan Module
+
+Purpose
+
+Manage membership plans.
+
+Responsibilities
+
+Create Plan
+
+Update Plan
+
+Activate
+
+Deactivate
+
+Pricing
+
+Duration
+
+Visibility
+
+Dependencies
+
+Gym
+
+Plans never activate memberships directly.
+
+---
+
+# 126. Subscription Module
+
+Purpose
+
+Manage active memberships.
+
+Responsibilities
+
+Purchase
+
+Renewal
+
+Expiry
+
+Auto Renew
+
+Cancellation
+
+Status
+
+Dependencies
+
+Plans
+
+Payments
+
+Notifications
+
+Attendance
+
+Subscription owns membership lifecycle.
+
+---
+
+# 130. Trainer Module
+
+Purpose
+
+Manage trainers.
+
+Responsibilities
+
+Trainer Profile
+
+Images
+
+Specialization
+
+Status
+
+Availability
+
+Assignments (future)
+
+Dependencies
+
+Gym
+
+Gallery
+
+Trainer module never owns customers.
+
+---
+
+# 131. Equipment Module
+
+Purpose
+
+Manage gym equipment.
+
+Responsibilities
+
+Equipment
+
+Category
+
+Status
+
+Maintenance
+
+Images
+
+Purchase Details
+
+Dependencies
+
+Gym
+
+Gallery
+
+Future
+
+Maintenance reminders.
+
+---
+
+# 132. Gallery Module
+
+Purpose
+
+Manage images.
+
+Responsibilities
+
+Upload
+
+Delete
+
+Compression
+
+Optimization
+
+Metadata
+
+Dependencies
+
+Supabase Storage
+
+Gallery never knows
+
+Gym
+
+Trainer
+
+Equipment
+
+It only manages images.
+
+Business modules decide how images are used.
+
+---
+
+# 133. Analytics Module
+
+Purpose
+
+Business intelligence.
+
+Consumes
+
+Attendance
+
+Payments
+
+Subscriptions
+
+Plans
+
+Members
+
+Equipment
+
+Produces
+
+Charts
+
+KPIs
+
+Revenue
+
+Growth
+
+Retention
+
+Analytics never modifies business data.
+
+Read-only module.
+
+---
+
+# 134. Notification Module
+
+Purpose
+
+Deliver notifications.
+
+Channels
+
+Push
+
+Email (future)
+
+SMS (future)
+
+WhatsApp (future)
+
+Notifications should be event-driven.
+
+Never tightly coupled.
+
+---
+
+# 135. Admin Module
+
+Purpose
+
+Platform administration.
+
+Responsibilities
+
+Owner Onboarding
+
+Gym Approval
+
+Gym Suspension
+
+Platform Analytics
+
+Platform Settings
+
+Subscription Monitoring
+
+Support
+
+Admin module bypasses tenant isolation.
+
+---

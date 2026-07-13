@@ -1,5 +1,14 @@
 # Gym Management Mobile Application (Monorepo Foundation)
 
+> [!IMPORTANT]
+> **MANDATORY RULES FOR ALL DEVELOPERS AND AI AGENTS:**
+> 1. **Read this file first** before examining or editing any part of the codebase.
+> 2. **Read the referenced documents in order** (see the [Engineering Handbook](docs/README.md) onboarding sequence).
+> 3. **Never violate the architecture rules** defined in the [Architecture Constitution](docs/standards/architecture_rules.md).
+> 4. **If implementation conflicts with documentation, stop and ask** instead of making assumptions.
+>
+> 📖 **Engineering Handbook & Documentation**: The complete system architecture, backend/frontend engineering handbook, standards, and ADRs are now organized in the [docs/README.md](docs/README.md) entry point.
+
 > **Status:** 🏗️ Foundational Phase (Core Architecture, Auth, Database Design & RBAC Complete)  
 > **Feature Modules Status:** ⏸️ Paused (QR Attendance, Digital Pass, Notifications, and Analytics are paused awaiting final business SRS)  
 > **Tech Stack:** React Native CLI, Express.js (TypeScript), Supabase (PostgreSQL + Auth), Upstash Redis, Razorpay, Pino Logger, Zod Validation.
