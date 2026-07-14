@@ -345,6 +345,16 @@ CREATE TABLE IF NOT EXISTS public.platform_settings (
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
 );
 
+CREATE TABLE IF NOT EXISTS public.gym_join_requests (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    gym_id        UUID NOT NULL REFERENCES public.gyms(id) ON DELETE CASCADE,
+    profile_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    CONSTRAINT uq_gym_join_request UNIQUE (gym_id, profile_id)
+);
+
 -- ============================================================================
 --  7. INDEXES  (index every frequently-queried / tenant column)
 -- ============================================================================
@@ -385,6 +395,9 @@ CREATE INDEX IF NOT EXISTS idx_equipment_gym         ON public.equipment (gym_id
 CREATE INDEX IF NOT EXISTS idx_gallery_gym           ON public.gallery_images (gym_id);
 CREATE INDEX IF NOT EXISTS idx_gallery_entity        ON public.gallery_images (gym_id, entity_type, entity_id);
 
+CREATE INDEX IF NOT EXISTS idx_gym_join_requests_gym   ON public.gym_join_requests (gym_id);
+CREATE INDEX IF NOT EXISTS idx_gym_join_requests_profile ON public.gym_join_requests (profile_id);
+
 CREATE INDEX IF NOT EXISTS idx_notifications_recipient ON public.notifications (recipient_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_gym          ON public.audit_logs (gym_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_actor        ON public.audit_logs (actor_id);
@@ -398,7 +411,7 @@ DECLARE
     t TEXT;
     tables TEXT[] := ARRAY[
         'gyms', 'profiles', 'gym_staff', 'members', 'plans', 'subscriptions',
-        'payments', 'qr_codes', 'trainers', 'equipment', 'gallery_images'
+        'payments', 'qr_codes', 'trainers', 'equipment', 'gallery_images', 'gym_join_requests'
     ];
 BEGIN
     FOREACH t IN ARRAY tables LOOP
@@ -643,6 +656,7 @@ ALTER TABLE public.equipment       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gallery_images  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.gym_join_requests ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: a user reads/updates their own profile; super admin sees all.
 DROP POLICY IF EXISTS "profiles_self_read" ON public.profiles;
@@ -676,6 +690,23 @@ CREATE POLICY "attendances_tenant_read" ON public.attendances
 DROP POLICY IF EXISTS "notifications_self_read" ON public.notifications;
 CREATE POLICY "notifications_self_read" ON public.notifications
     FOR SELECT TO authenticated USING (recipient_id = auth.uid());
+
+-- Gym Join Requests: read for self, owner of gym, or super admin.
+DROP POLICY IF EXISTS "requests_read" ON public.gym_join_requests;
+CREATE POLICY "requests_read" ON public.gym_join_requests
+    FOR SELECT TO authenticated USING (auth.uid() = profile_id OR gym_id = public.current_gym_id() OR public.is_super_admin());
+
+DROP POLICY IF EXISTS "requests_insert" ON public.gym_join_requests;
+CREATE POLICY "requests_insert" ON public.gym_join_requests
+    FOR INSERT TO authenticated WITH CHECK (auth.uid() = profile_id);
+
+DROP POLICY IF EXISTS "requests_delete" ON public.gym_join_requests;
+CREATE POLICY "requests_delete" ON public.gym_join_requests
+    FOR DELETE TO authenticated USING (auth.uid() = profile_id OR gym_id = public.current_gym_id() OR public.is_super_admin());
+
+DROP POLICY IF EXISTS "requests_update" ON public.gym_join_requests;
+CREATE POLICY "requests_update" ON public.gym_join_requests
+    FOR UPDATE TO authenticated USING (gym_id = public.current_gym_id() OR public.is_super_admin()) WITH CHECK (gym_id = public.current_gym_id() OR public.is_super_admin());
 
 -- ============================================================================
 --  13. OPTIONAL DEMO SEED  (safe, no auth users required)
