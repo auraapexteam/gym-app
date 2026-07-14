@@ -4,50 +4,50 @@
 
 @theme {
   /* Surfaces elevation system */
-  --color-surface-dim: #0e0e13;
-  --color-surface: #0e0e13;
-  --color-surface-container-low: #131319;
-  --color-surface-container: #19191f;
-  --color-surface-container-high: #1f1f26;
-  --color-surface-container-highest: #25252d;
-  --color-surface-bright: #2c2b33;
+  --color-surface-dim: #08080a;
+  --color-surface: #08080a;
+  --color-surface-container-low: #0c0c0f;
+  --color-surface-container: #111215;
+  --color-surface-container-high: #17181c;
+  --color-surface-container-highest: #1f2025;
+  --color-surface-bright: #292a30;
 
   /* On surfaces colors */
-  --color-on-surface: #f9f5fd;
-  --color-on-surface-variant: #acaab1;
-  --color-outline: #76747b;
-  --color-outline-variant: #48474d;
+  --color-on-surface: #f4f4f5;
+  --color-on-surface-variant: #a1a1aa;
+  --color-outline: #52525b;
+  --color-outline-variant: #27272a;
 
-  /* Primary colors */
-  --color-primary: #ff8d8a;
-  --color-primary-dim: #ff706f;
-  --color-primary-fixed: #ff7574;
-  --color-primary-fixed-dim: #f56364;
-  --color-primary-container: #ff7574;
-  --color-on-primary: #64000e;
+  /* Primary colors (Volt Green) */
+  --color-primary: #a3e635;
+  --color-primary-dim: #84cc16;
+  --color-primary-fixed: #a3e635;
+  --color-primary-fixed-dim: #84cc16;
+  --color-primary-container: #1a2e05;
+  --color-on-primary: #000000;
 
-  /* Secondary colors */
-  --color-secondary: #a88cfb;
-  --color-secondary-dim: #a88cfb;
-  --color-secondary-fixed: #d8caff;
-  --color-secondary-fixed-dim: #ccbaff;
-  --color-secondary-container: #4f319c;
-  --color-on-secondary: #260069;
-  --color-on-secondary-fixed: #3c1989;
-  --color-on-secondary-container: #d7c8ff;
+  /* Secondary colors (Lime-Gray accents) */
+  --color-secondary: #d9f99d;
+  --color-secondary-dim: #bdf55d;
+  --color-secondary-fixed: #d9f99d;
+  --color-secondary-fixed-dim: #c5f276;
+  --color-secondary-container: #21340e;
+  --color-on-secondary: #000000;
+  --color-on-secondary-fixed: #132304;
+  --color-on-secondary-container: #ecfccb;
 
   /* Tertiary colors */
-  --color-tertiary: #ff794b;
-  --color-tertiary-dim: #ff7344;
-  --color-tertiary-container: #fa622c;
-  --color-on-tertiary: #461000;
+  --color-tertiary: #bef264;
+  --color-tertiary-dim: #a3e635;
+  --color-tertiary-container: #2d4a0f;
+  --color-on-tertiary: #000000;
 
   /* Error colors */
-  --color-error: #ff7351;
-  --color-error-dim: #d53d18;
-  --color-error-container: #b92902;
-  --color-on-error: #450900;
-  --color-on-error-container: #ffd2c8;
+  --color-error: #ef4444;
+  --color-error-dim: #dc2626;
+  --color-error-container: #450a0a;
+  --color-on-error: #ffffff;
+  --color-on-error-container: #fecaca;
 
   /* Typography */
   --font-headline: "Plus Jakarta Sans", system-ui, sans-serif;
@@ -55,37 +55,38 @@
   --font-label: "Inter", system-ui, sans-serif;
 
   /* Border radius */
-  --radius-sm: 0.5rem;
-  --radius: 1rem;
-  --radius-lg: 2rem;
-  --radius-xl: 3rem;
+  --radius-sm: 0.375rem;
+  --radius: 0.75rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 2rem;
   --radius-full: 9999px;
 }
 
 @utility glass-card {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(20, 21, 25, 0.7);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-@utility glass-subtle {
-  background: rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
+@utility glass-subtle {
+  background: rgba(20, 21, 25, 0.4);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.02);
+}
+
 @utility glass-elevated {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(25, 26, 32, 0.85);
   backdrop-filter: blur(40px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
 }
 
 body {
   margin: 0;
-  background-color: #0e0e13;
-  color: #f9f5fd;
+  background-color: #08080a;
+  color: #f4f4f5;
   font-family: "Inter", system-ui, sans-serif;
   min-height: 100vh;
 }
+

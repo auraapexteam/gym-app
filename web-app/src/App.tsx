@@ -53,6 +53,9 @@ export default function App() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [regFullName, setRegFullName] = useState("");
+  const [regPhone, setRegPhone] = useState("");
 
   // Global Toast Notification Helper
   const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
@@ -117,6 +120,33 @@ export default function App() {
     }
   };
 
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password || !regFullName) {
+      return showToast("Please fill in all required fields", "error");
+    }
+
+    setAuthLoading(true);
+    try {
+      const res = await api.post("/auth/register", {
+        email,
+        password,
+        fullName: regFullName,
+        phone: regPhone || undefined
+      });
+      const { session, profile } = res.data.data;
+      localStorage.setItem("auth_token", session.accessToken);
+      setToken(session.accessToken);
+      setUser(profile);
+      showToast("Account created successfully!", "success");
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || "Registration failed. Try again.";
+      showToast(errorMsg, "error");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       if (token) await api.post("/auth/logout");
@@ -152,15 +182,48 @@ export default function App() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-gradient-to-br from-secondary/8 to-transparent blur-[120px] pointer-events-none -z-10" />
 
         <div className="w-full max-w-[450px] glass-card rounded-lg p-8 shadow-2xl relative">
-          <div className="flex flex-col items-center mb-8">
+          <div className="flex flex-col items-center mb-6">
             <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-tertiary flex items-center justify-center shadow-primary mb-4">
               <Dumbbell className="h-7 w-7 text-on-primary" />
             </div>
             <h1 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface">AURA APEX</h1>
-            <p className="font-body text-sm text-on-surface-variant mt-1">Multi-Tenant Gym Portal</p>
+            <p className="font-body text-sm text-on-surface-variant mt-1">
+              {isSignUp ? "Create a New Account" : "Multi-Tenant Gym Portal"}
+            </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={isSignUp ? handleSignUp : handleLogin} className="space-y-4">
+            {isSignUp && (
+              <>
+                <div>
+                  <label className="block font-label text-[10px] font-extrabold tracking-widest text-primary uppercase mb-2">Full Name</label>
+                  <div className="relative glass-card rounded-lg border border-outline-variant/30 focus-within:ring-2 focus-within:ring-secondary/40 focus-within:border-secondary/60 transition-all duration-200">
+                    <input
+                      type="text"
+                      required
+                      value={regFullName}
+                      onChange={(e) => setRegFullName(e.target.value)}
+                      className="w-full h-12 px-4 bg-transparent border-none font-body text-base text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none"
+                      placeholder="Jack Carter"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-label text-[10px] font-extrabold tracking-widest text-primary uppercase mb-2">Phone Number (Optional)</label>
+                  <div className="relative glass-card rounded-lg border border-outline-variant/30 focus-within:ring-2 focus-within:ring-secondary/40 focus-within:border-secondary/60 transition-all duration-200">
+                    <input
+                      type="tel"
+                      value={regPhone}
+                      onChange={(e) => setRegPhone(e.target.value)}
+                      className="w-full h-12 px-4 bg-transparent border-none font-body text-base text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none"
+                      placeholder="+919876543210"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
             <div>
               <label className="block font-label text-[10px] font-extrabold tracking-widest text-primary uppercase mb-2">Email Address</label>
               <div className="relative glass-card rounded-lg border border-outline-variant/30 focus-within:ring-2 focus-within:ring-secondary/40 focus-within:border-secondary/60 transition-all duration-200">
@@ -169,7 +232,7 @@ export default function App() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full h-14 px-4 bg-transparent border-none font-body text-base text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none"
+                  className="w-full h-12 px-4 bg-transparent border-none font-body text-base text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none"
                   placeholder="name@gym.com"
                 />
               </div>
@@ -183,7 +246,7 @@ export default function App() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-14 px-4 bg-transparent border-none font-body text-base text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none"
+                  className="w-full h-12 px-4 bg-transparent border-none font-body text-base text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none"
                   placeholder="••••••••"
                 />
               </div>
@@ -192,11 +255,20 @@ export default function App() {
             <button
               type="submit"
               disabled={authLoading}
-              className="w-full py-4 bg-gradient-to-br from-primary to-tertiary rounded-full font-headline font-bold text-base text-on-primary shadow-primary transition-transform duration-200 active:scale-98 hover:opacity-90 disabled:opacity-50"
+              className="w-full py-4 bg-gradient-to-br from-primary to-tertiary rounded-full font-headline font-bold text-base text-on-primary shadow-primary transition-transform duration-200 active:scale-98 hover:opacity-90 disabled:opacity-50 mt-2 cursor-pointer"
             >
-              {authLoading ? "Authenticating..." : "Sign In to Portal"}
+              {authLoading ? "Processing..." : isSignUp ? "Create Account & Sign In" : "Sign In to Portal"}
             </button>
           </form>
+
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="font-body text-sm font-semibold text-secondary hover:text-primary transition-colors duration-200 cursor-pointer"
+            >
+              {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
+            </button>
+          </div>
 
           {/* Toast Notification inside Login Box */}
           {notification && (

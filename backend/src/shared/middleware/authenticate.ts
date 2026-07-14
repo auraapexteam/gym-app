@@ -3,6 +3,7 @@ import { asyncHandler } from '@/shared/middleware/async-handler';
 import { UnauthorizedError, ForbiddenError } from '@/shared/errors';
 import { Role, resolvePermissions } from '@/shared/rbac';
 import { AccountStatus, UserContext } from '@/shared/types';
+import { logger } from '@/config/logger';
 
 interface ProfileRow {
   id: string;
@@ -34,22 +35,26 @@ export const authenticate = asyncHandler(async (req, _res, next) => {
   const token = header.slice('Bearer '.length).trim();
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data.user) {
+    logger.warn({ error, token: token.substring(0, 15) + '...' }, 'Auth token verification failed');
     throw new UnauthorizedError('Invalid or expired token', 'INVALID_TOKEN');
   }
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('id, email, role, gym_id, status, gyms(status)')
+    .select('id, email, role, gym_id, status, gyms:gyms!profiles_gym_id_fkey(status)')
     .eq('id', data.user.id)
     .maybeSingle<ProfileRow>();
 
   if (profileError) {
+    logger.error({ error: profileError, userId: data.user.id }, 'Profile database lookup failed');
     throw new UnauthorizedError('Failed to load profile', 'PROFILE_LOOKUP_FAILED');
   }
   if (!profile) {
+    logger.warn({ userId: data.user.id }, 'Profile row not found in database');
     throw new UnauthorizedError('Profile not found', 'PROFILE_NOT_FOUND');
   }
   if (profile.status !== AccountStatus.ACTIVE) {
+    logger.warn({ userId: data.user.id, status: profile.status }, 'User account status is not active');
     throw new ForbiddenError('Account is not active', 'ACCOUNT_INACTIVE');
   }
 
