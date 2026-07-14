@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import {
   Activity,
@@ -256,7 +256,7 @@ export default function App() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full h-12 px-4 bg-transparent border-none font-body text-base text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none"
-                  placeholder="••••••••"
+                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                 />
               </div>
             </div>
@@ -584,7 +584,7 @@ function SuperAdminView({ activeTab, showToast }: { activeTab: string; showToast
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard title="Total Onboarded Gyms" value={stats.totalGyms || "0"} icon={<Activity />} trend="+12% this month" />
             <StatCard title="Active Subscriptions" value={stats.totalSubscriptions || "0"} icon={<Users />} trend="Stable" />
-            <StatCard title="Platform Revenue" value={`₹${stats.totalRevenue || "0"}`} icon={<CreditCard />} trend="+18% growth" />
+            <StatCard title="Platform Revenue" value={`â‚¹${stats.totalRevenue || "0"}`} icon={<CreditCard />} trend="+18% growth" />
             <StatCard title="Registered Members" value={stats.totalMembers || "0"} icon={<UserCheck />} trend="+34% growth" />
           </div>
 
@@ -699,7 +699,7 @@ function SuperAdminView({ activeTab, showToast }: { activeTab: string; showToast
                       value={ownerPassword}
                       onChange={(e) => setOwnerPassword(e.target.value)}
                       className="w-full h-12 px-4 rounded-lg bg-surface-container border border-outline-variant/30 font-body text-base text-on-surface focus:outline-none"
-                      placeholder="•••••••• (Min 8 chars)"
+                      placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢ (Min 8 chars)"
                     />
                   </div>
                 </div>
@@ -1241,7 +1241,7 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard title="Active Gym Members" value={analytics.members?.active || "0"} icon={<Users />} trend="Live Members" />
             <StatCard title="Active Subscriptions" value={analytics.subscriptions?.active || "0"} icon={<CreditCard />} trend="Paid Plans" />
-            <StatCard title="Recent Revenue" value={`₹${analytics.revenue?.total || "0"}`} icon={<TrendingUp />} trend="Total Sales" />
+            <StatCard title="Recent Revenue" value={`â‚¹${analytics.revenue?.total || "0"}`} icon={<TrendingUp />} trend="Total Sales" />
             <StatCard title="Attendance Today" value={analytics.attendance?.today || "0"} icon={<UserCheck />} trend="Member scans" />
           </div>
 
@@ -1299,7 +1299,7 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
                     value={staffPassword}
                     onChange={(e) => setStaffPassword(e.target.value)}
                     className="w-full h-12 px-4 rounded-lg bg-surface-container border border-outline-variant/30 font-body text-base text-on-surface focus:outline-none"
-                    placeholder="••••••••"
+                    placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                   />
                 </div>
 
@@ -1381,7 +1381,7 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
                       value={trainerPassword}
                       onChange={(e) => setTrainerPassword(e.target.value)}
                       className="w-full h-12 px-4 rounded-lg bg-surface-container border border-outline-variant/30 font-body text-base text-on-surface focus:outline-none"
-                      placeholder="••••••••"
+                      placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                     />
                   </div>
                 </div>
@@ -1623,7 +1623,7 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
                               <p className="font-semibold text-on-surface">Cash Subscription</p>
                               <p className="text-[10px] text-on-surface-variant mt-0.5">{new Date(pay.created_at).toLocaleDateString()}</p>
                             </div>
-                            <span className="font-bold text-primary">₹{pay.amount}</span>
+                            <span className="font-bold text-primary">â‚¹{pay.amount}</span>
                           </div>
                         ))}
                       </div>
@@ -1707,7 +1707,7 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
                     <div key={p.id} className="glass-card rounded-lg p-6 border border-outline-variant/20 flex flex-col justify-between">
                       <div>
                         <h4 className="font-headline font-bold text-lg text-on-surface">{p.name}</h4>
-                        <div className="font-headline text-2xl font-extrabold text-primary mt-2">₹{p.price}</div>
+                        <div className="font-headline text-2xl font-extrabold text-primary mt-2">â‚¹{p.price}</div>
                         <p className="font-body text-xs text-on-surface-variant mt-1">Duration: {p.durationDays} Days</p>
                       </div>
                       <div className="mt-6 flex justify-end">
@@ -1756,7 +1756,7 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
                   >
                     <option value="">-- Choose Plan --</option>
                     {plansList.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name} - ₹{p.price}</option>
+                      <option key={p.id} value={p.id}>{p.name} - â‚¹{p.price}</option>
                     ))}
                   </select>
                 </div>
@@ -1791,7 +1791,7 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
                       {paymentsList.map((pay) => (
                         <tr key={pay.id} className="hover:bg-white/5 transition-all">
                           <td className="p-4 font-mono text-xs">{pay.id}</td>
-                          <td className="p-4 font-headline font-bold text-primary">₹{pay.amount}</td>
+                          <td className="p-4 font-headline font-bold text-primary">â‚¹{pay.amount}</td>
                           <td className="p-4 uppercase text-xs">{pay.method}</td>
                           <td className="p-4">
                             <span className="px-2 py-0.5 text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 rounded-full uppercase">
@@ -2588,6 +2588,7 @@ function CustomerView({ user, setUser, showToast, activeTab }: { user: any; setU
     );
   }
 
+
   return (
     <div className="space-y-8">
       <div>
@@ -2595,125 +2596,435 @@ function CustomerView({ user, setUser, showToast, activeTab }: { user: any; setU
           {activeTab === "progress" ? "Progress Logbook" : "Customer Dashboard"}
         </h1>
         <p className="font-body text-base text-on-surface-variant mt-1">
-          {activeTab === "progress" ? "Track your daily fitness metrics and photos" : "Manage your gym link and active memberships"}
+          {activeTab === "progress"
+            ? "Track your daily fitness metrics and photos"
+            : "Manage your gym link and active memberships"}
         </p>
       </div>
 
       {activeTab === "progress" ? (
         <ProgressLogbookView showToast={showToast} />
       ) : (
-      {!user.gym_id ? (
-        <div className="space-y-8">
-          {joinRequest ? (
-            <div className="glass-card rounded-lg p-8 border border-primary/20 bg-primary/5 flex flex-col md:flex-row justify-between items-center gap-6">
-              <div className="space-y-2">
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-primary/20 text-primary border border-primary/30">
-                  Pending Approval
-                </span>
-                <h3 className="font-headline text-xl font-bold text-on-surface">Link Request Sent</h3>
-                <p className="font-body text-sm text-on-surface-variant">
-                  You requested to link with <span className="text-primary font-bold">{joinRequest.gyms?.name || "the gym"}</span> on{" "}
-                  {new Date(joinRequest.created_at).toLocaleDateString()}. Waiting for the Gym Owner's review.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-4">
-                <button
-                  onClick={handleCheckApproval}
-                  className="px-6 py-3 bg-primary text-on-primary rounded-full font-headline font-bold text-sm shadow-primary transition-transform duration-200 active:scale-98 cursor-pointer flex items-center gap-2"
-                >
-                  <RefreshCw className="h-4 w-4" /> Check Approval Status
-                </button>
-                <button
-                  onClick={() => handleCancelRequest(joinRequest.id)}
-                  className="px-6 py-3 bg-error/10 text-error border border-error/30 hover:bg-error/20 rounded-full font-headline font-bold text-sm transition-all duration-200 cursor-pointer"
-                >
-                  Cancel Request
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h2 className="font-headline text-xl font-bold text-on-surface">Select and Link your Gym</h2>
-                <div className="w-full sm:w-80">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search gyms by name or city..."
-                    className="w-full h-11 px-4 rounded-lg bg-surface-container border border-outline-variant/30 font-body text-sm text-on-surface focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {filteredGyms.length === 0 ? (
-                <div className="glass-card rounded-lg p-10 text-center text-on-surface-variant font-body">
-                  No active gyms found. Try adjusting your search query.
+        <>
+          {!user.gym_id ? (
+            <div className="space-y-8">
+              {joinRequest ? (
+                <div className="glass-card rounded-lg p-8 border border-primary/20 bg-primary/5 flex flex-col md:flex-row justify-between items-center gap-6">
+                  <div className="space-y-2">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-primary/20 text-primary border border-primary/30">
+                      Pending Approval
+                    </span>
+                    <h3 className="font-headline text-xl font-bold text-on-surface">Link Request Sent</h3>
+                    <p className="font-body text-sm text-on-surface-variant">
+                      You requested to link with <span className="text-primary font-bold">{joinRequest.gyms?.name || "the gym"}</span> on{" "}
+                      {new Date(joinRequest.created_at).toLocaleDateString()}. Waiting for the Gym Owner's review.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-4">
+                    <button
+                      onClick={handleCheckApproval}
+                      className="px-6 py-3 bg-primary text-on-primary rounded-full font-headline font-bold text-sm shadow-primary transition-transform duration-200 active:scale-98 cursor-pointer flex items-center gap-2"
+                    >
+                      <RefreshCw className="h-4 w-4" /> Check Approval Status
+                    </button>
+                    <button
+                      onClick={() => handleCancelRequest(joinRequest.id)}
+                      className="px-6 py-3 bg-error/10 text-error border border-error/30 hover:bg-error/20 rounded-full font-headline font-bold text-sm transition-all duration-200 cursor-pointer"
+                    >
+                      Cancel Request
+                    </button>
+                  </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredGyms.map((g) => (
-                    <div key={g.id} className="glass-card rounded-lg overflow-hidden border border-outline-variant/20 flex flex-col justify-between p-6 space-y-6">
-                      <div className="flex items-start gap-4">
-                        <div className="w-14 h-14 rounded-lg bg-surface-container border border-outline-variant/30 overflow-hidden flex items-center justify-center shrink-0">
-                          {g.logoUrl ? (
-                            <img src={g.logoUrl} alt="Logo" className="w-full h-full object-cover" />
-                          ) : (
-                            <Dumbbell className="w-6 h-6 text-on-surface-variant" />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="font-headline font-bold text-lg text-on-surface truncate">{g.name}</h3>
-                          <p className="font-body text-xs text-on-surface-variant mt-1 truncate">{g.email || "No email"}</p>
-                          <p className="font-body text-xs text-on-surface-variant truncate">{g.phone || "No phone"}</p>
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="font-label text-[9px] font-extrabold tracking-widest text-primary uppercase">Location</p>
-                        <p className="font-body text-sm text-on-surface-variant line-clamp-2">{g.address || "No address provided."}</p>
-                      </div>
-                      <button
-                        onClick={() => handleLinkGym(g.id)}
-                        disabled={linkingGymId !== null}
-                        className="w-full py-3 bg-primary text-on-primary rounded-full font-headline font-bold text-sm shadow-primary transition-transform duration-200 active:scale-98 disabled:opacity-50 cursor-pointer"
-                      >
-                        {linkingGymId === g.id ? "Linking..." : "Link to Gym"}
-                      </button>
+                <div className="space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <h2 className="font-headline text-xl font-bold text-on-surface">Select and Link your Gym</h2>
+                    <div className="w-full sm:w-80">
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search gyms by name or city..."
+                        className="w-full h-11 px-4 rounded-lg bg-surface-container border border-outline-variant/30 font-body text-sm text-on-surface focus:outline-none"
+                      />
                     </div>
-                  ))}
+                  </div>
+
+                  {filteredGyms.length === 0 ? (
+                    <div className="glass-card rounded-lg p-10 text-center text-on-surface-variant font-body">
+                      No active gyms found. Try adjusting your search query.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {filteredGyms.map((g) => (
+                        <div key={g.id} className="glass-card rounded-lg overflow-hidden border border-outline-variant/20 flex flex-col justify-between p-6 space-y-6">
+                          <div className="flex items-start gap-4">
+                            <div className="w-14 h-14 rounded-lg bg-surface-container border border-outline-variant/30 overflow-hidden flex items-center justify-center shrink-0">
+                              {g.logoUrl ? (
+                                <img src={g.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                              ) : (
+                                <Dumbbell className="w-6 h-6 text-on-surface-variant" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="font-headline font-bold text-lg text-on-surface truncate">{g.name}</h3>
+                              <p className="font-body text-xs text-on-surface-variant mt-1 truncate">{g.email || "No email"}</p>
+                              <p className="font-body text-xs text-on-surface-variant truncate">{g.phone || "No phone"}</p>
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="font-label text-[9px] font-extrabold tracking-widest text-primary uppercase">Location</p>
+                            <p className="font-body text-sm text-on-surface-variant line-clamp-2">{g.address || "No address provided."}</p>
+                          </div>
+                          <button
+                            onClick={() => handleLinkGym(g.id)}
+                            disabled={linkingGymId !== null}
+                            className="w-full py-3 bg-primary text-on-primary rounded-full font-headline font-bold text-sm shadow-primary transition-transform duration-200 active:scale-98 disabled:opacity-50 cursor-pointer"
+                          >
+                            {linkingGymId === g.id ? "Linking..." : "Link to Gym"}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1 glass-card rounded-lg p-6 border border-outline-variant/20 h-fit space-y-6">
-            <div className="flex flex-col items-center text-center space-y-4">
-              <div className="w-20 h-20 rounded-lg bg-surface-container border border-outline-variant/30 overflow-hidden flex items-center justify-center shadow-lg">
-                <Dumbbell className="w-8 h-8 text-on-surface-variant" />
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-1 glass-card rounded-lg p-6 border border-outline-variant/20 h-fit space-y-6">
+                <div className="flex flex-col items-center text-center space-y-4">
+                  <div className="w-20 h-20 rounded-lg bg-surface-container border border-outline-variant/30 overflow-hidden flex items-center justify-center shadow-lg">
+                    <Dumbbell className="w-8 h-8 text-on-surface-variant" />
+                  </div>
+                  <div>
+                    <h3 className="font-headline text-xl font-bold text-on-surface">Linked to Gym</h3>
+                    <span className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">
+                      Member Active
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h3 className="font-headline text-xl font-bold text-on-surface">Linked to Gym</h3>
-                <span className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">
-                  Member Active
-                </span>
+
+              <div className="lg:col-span-2 space-y-6">
+                <h2 className="font-headline text-xl font-bold text-on-surface">Available Membership Plans</h2>
+                {gymPlans.length === 0 ? (
+                  <div className="glass-card rounded-lg p-8 text-center text-on-surface-variant font-body">No plans are currently offered by this gym.</div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    {gymPlans.map((p) => (
+                      <div key={p.id} className="glass-card rounded-lg p-6 border border-outline-variant/20 flex flex-col justify-between space-y-6">
+                        <div>
+                          <h3 className="font-headline font-bold text-lg text-on-surface">{p.name}</h3>
+                          <p className="font-body text-sm text-on-surface-variant mt-2">{p.description || "No description provided."}</p>
+                        </div>
+                        <div className="flex justify-between items-baseline gap-4 pt-4 border-t border-outline-variant/15">
+                          <span className="font-headline font-extrabold text-2xl text-primary">â‚¹{p.price}</span>
+                          <span className="font-body text-xs text-on-surface-variant">for {p.durationDays} Days</span>
+                        </div>
+                        <button
+                          onClick={() => showToast("Please use the Mobile App to complete Razorpay subscription checkouts!", "info")}
+                          className="w-full py-3 bg-gradient-to-br from-primary to-tertiary text-on-primary rounded-full font-headline font-bold text-sm shadow-primary transition-transform duration-200 active:scale-98 cursor-pointer"
+                        >
+                          Subscribe on App
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+//  9. PROGRESS LOGBOOK COMPONENT
+// ============================================================================
+function ProgressLogbookView({ showToast }: { showToast: any }) {
+  const today = new Date();
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth() + 1);
+  const [monthData, setMonthData] = useState<any>({ weightLogs: [], waterLogs: [], proteinLogs: [], imageLogs: [] });
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [loadingMonth, setLoadingMonth] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Log form state
+  const [weight, setWeight] = useState("");
+  const [waterMl, setWaterMl] = useState("");
+  const [proteinG, setProteinG] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetchMonthData();
+  }, [currentYear, currentMonth]);
+
+  useEffect(() => {
+    if (!selectedDate) return;
+    const w = monthData.weightLogs.find((l: any) => l.log_date === selectedDate);
+    const wt = monthData.waterLogs.find((l: any) => l.log_date === selectedDate);
+    const pr = monthData.proteinLogs.find((l: any) => l.log_date === selectedDate);
+    setWeight(w ? String(w.weight) : "");
+    setWaterMl(wt ? String(wt.amount_ml) : "");
+    setProteinG(pr ? String(pr.amount_g) : "");
+    setPhotoFile(null);
+  }, [selectedDate, monthData]);
+
+  const fetchMonthData = async () => {
+    setLoadingMonth(true);
+    try {
+      const res = await api.get(`/progress/month?year=${currentYear}&month=${currentMonth}`);
+      setMonthData(res.data.data || { weightLogs: [], waterLogs: [], proteinLogs: [], imageLogs: [] });
+    } catch (err) {
+      console.error("Failed to load progress data", err);
+    } finally {
+      setLoadingMonth(false);
+    }
+  };
+
+  const loggedDates = new Set([
+    ...monthData.weightLogs.map((l: any) => l.log_date),
+    ...monthData.waterLogs.map((l: any) => l.log_date),
+    ...monthData.proteinLogs.map((l: any) => l.log_date),
+    ...monthData.imageLogs.map((l: any) => l.log_date),
+  ]);
+
+  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+  const firstDayOfWeek = new Date(currentYear, currentMonth - 1, 1).getDay();
+  const monthName = new Date(currentYear, currentMonth - 1, 1).toLocaleString("default", { month: "long" });
+
+  const prevMonth = () => {
+    if (currentMonth === 1) { setCurrentMonth(12); setCurrentYear(y => y - 1); }
+    else setCurrentMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (currentMonth === 12) { setCurrentMonth(1); setCurrentYear(y => y + 1); }
+    else setCurrentMonth(m => m + 1);
+  };
+
+  const formatDate = (day: number) => {
+    const mm = String(currentMonth).padStart(2, "0");
+    const dd = String(day).padStart(2, "0");
+    return `${currentYear}-${mm}-${dd}`;
+  };
+
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  const avgWeight = monthData.weightLogs.length
+    ? (monthData.weightLogs.reduce((s: number, l: any) => s + parseFloat(l.weight), 0) / monthData.weightLogs.length).toFixed(1)
+    : null;
+  const totalWater = monthData.waterLogs.reduce((s: number, l: any) => s + l.amount_ml, 0);
+  const totalProtein = monthData.proteinLogs.reduce((s: number, l: any) => s + l.amount_g, 0);
+
+  const selectedPhoto = selectedDate
+    ? monthData.imageLogs.find((l: any) => l.log_date === selectedDate)?.image_url
+    : null;
+
+  const handleSaveLogs = async () => {
+    if (!selectedDate) return;
+    setSubmitting(true);
+    try {
+      const promises: Promise<any>[] = [];
+      if (weight) promises.push(api.post("/progress/weight", { weight: parseFloat(weight), logDate: selectedDate }));
+      if (waterMl) promises.push(api.post("/progress/water", { amountMl: parseInt(waterMl), logDate: selectedDate }));
+      if (proteinG) promises.push(api.post("/progress/protein", { amountG: parseInt(proteinG), logDate: selectedDate }));
+
+      if (photoFile) {
+        const urlRes = await api.post("/gallery/upload-url", { fileName: photoFile.name, contentType: photoFile.type, folder: "progress" });
+        const { uploadUrl, publicUrl } = urlRes.data.data;
+        await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": photoFile.type }, body: photoFile });
+        promises.push(api.post("/progress/image", { imageUrl: publicUrl, logDate: selectedDate }));
+      }
+
+      await Promise.all(promises);
+      showToast("Progress saved for " + selectedDate + "!", "success");
+      await fetchMonthData();
+      setSelectedDate(null);
+    } catch (err: any) {
+      showToast(err.response?.data?.message || "Failed to save progress", "error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      {/* Month Summary Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="glass-card rounded-lg p-5 border border-outline-variant/20 flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-primary">
+            <Weight className="h-4 w-4" />
+            <span className="font-label text-[9px] font-extrabold tracking-widest uppercase">Avg Weight</span>
+          </div>
+          <p className="font-headline text-2xl font-extrabold">{avgWeight ? `${avgWeight} kg` : "â€”"}</p>
+        </div>
+        <div className="glass-card rounded-lg p-5 border border-outline-variant/20 flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-secondary">
+            <Droplets className="h-4 w-4" />
+            <span className="font-label text-[9px] font-extrabold tracking-widest uppercase">Total Water</span>
+          </div>
+          <p className="font-headline text-2xl font-extrabold">{totalWater > 0 ? `${(totalWater / 1000).toFixed(1)} L` : "â€”"}</p>
+        </div>
+        <div className="glass-card rounded-lg p-5 border border-outline-variant/20 flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-tertiary">
+            <Beef className="h-4 w-4" />
+            <span className="font-label text-[9px] font-extrabold tracking-widest uppercase">Total Protein</span>
+          </div>
+          <p className="font-headline text-2xl font-extrabold">{totalProtein > 0 ? `${totalProtein} g` : "â€”"}</p>
+        </div>
+        <div className="glass-card rounded-lg p-5 border border-outline-variant/20 flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-primary">
+            <Calendar className="h-4 w-4" />
+            <span className="font-label text-[9px] font-extrabold tracking-widest uppercase">Days Logged</span>
+          </div>
+          <p className="font-headline text-2xl font-extrabold">{loggedDates.size}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Calendar Panel */}
+        <div className="glass-card rounded-lg p-6 border border-outline-variant/20">
+          <div className="flex items-center justify-between mb-6">
+            <button onClick={prevMonth} className="p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer">
+              <ChevronLeft className="h-5 w-5 text-on-surface-variant" />
+            </button>
+            <h2 className="font-headline text-xl font-bold text-on-surface">{monthName} {currentYear}</h2>
+            <button onClick={nextMonth} className="p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer">
+              <ChevronRight className="h-5 w-5 text-on-surface-variant" />
+            </button>
           </div>
 
-          <div className="lg:col-span-2 space-y-6">
-            <h2 className="font-headline text-xl font-bold text-on-surface">Available Membership Plans</h2>
-            {gymPlans.length === 0 ? (
-              <div className="glass-card rounded-lg p-8 text-center text-on-surface-variant font-body">No plans are currently offered by this gym.</div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {gymPlans.map((p) => (
-                  <div key={p.id} className="glass-card rounded-lg p-6 border border-outline-variant/20 flex flex-col justify-between space-y-6">
-                    <div>
+          <div className="grid grid-cols-7 mb-2">
+            {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(d => (
+              <div key={d} className="text-center font-label text-[10px] font-bold text-on-surface-variant/50 uppercase tracking-wider py-1">{d}</div>
+            ))}
           </div>
-        )
-      )}
+
+          {loadingMonth ? (
+            <div className="flex items-center justify-center h-48">
+              <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+                <div key={`empty-${i}`} />
+              ))}
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const day = i + 1;
+                const dateStr = formatDate(day);
+                const hasLog = loggedDates.has(dateStr);
+                const isToday = dateStr === todayStr;
+                const isSelected = dateStr === selectedDate;
+                const isFuture = dateStr > todayStr;
+
+                return (
+                  <button
+                    key={day}
+                    onClick={() => !isFuture && setSelectedDate(isSelected ? null : dateStr)}
+                    disabled={isFuture}
+                    className={`relative aspect-square flex flex-col items-center justify-center rounded-lg text-sm font-headline font-bold transition-all duration-150 cursor-pointer
+                      ${isSelected ? "bg-primary text-on-primary shadow-primary" : isToday ? "ring-2 ring-primary/60 bg-primary/10 text-primary" : hasLog ? "bg-surface-container-high text-on-surface" : "hover:bg-white/5 text-on-surface-variant"}
+                      ${isFuture ? "opacity-30 cursor-not-allowed" : ""}
+                    `}
+                  >
+                    {day}
+                    {hasLog && !isSelected && (
+                      <span className="absolute bottom-1 w-1 h-1 rounded-full bg-primary" />
+                    )}
+                    {hasLog && isSelected && (
+                      <span className="absolute bottom-1 w-1 h-1 rounded-full bg-on-primary" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <p className="mt-4 font-body text-xs text-on-surface-variant/60 text-center">Tap a date to log or edit your daily metrics</p>
+        </div>
+
+        {/* Log Entry Panel */}
+        <div className="glass-card rounded-lg p-6 border border-outline-variant/20 flex flex-col min-h-[400px]">
+          {!selectedDate ? (
+            <div className="flex flex-col items-center justify-center flex-1 gap-4 text-center">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <Calendar className="h-8 w-8 text-primary" />
+              </div>
+              <p className="font-headline text-base font-semibold text-on-surface">Select a Date</p>
+              <p className="font-body text-sm text-on-surface-variant">Click on any past or today's date in the calendar to log your progress.</p>
+            </div>
+          ) : (
+            <div className="space-y-5 flex-1 flex flex-col">
+              <div className="flex items-center justify-between">
+                <h3 className="font-headline text-lg font-bold text-on-surface">
+                  {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
+                </h3>
+                <button onClick={() => setSelectedDate(null)} className="p-1 rounded-full hover:bg-white/10 cursor-pointer">
+                  <X className="h-4 w-4 text-on-surface-variant" />
+                </button>
+              </div>
+
+              <div>
+                <label className="mb-2 flex items-center gap-2 font-label text-[10px] font-extrabold tracking-widest text-primary uppercase">
+                  <Weight className="h-3 w-3" /> Body Weight (kg)
+                </label>
+                <input type="number" step="0.1" min="1" value={weight} onChange={e => setWeight(e.target.value)} placeholder="e.g. 72.5"
+                  className="w-full h-11 px-4 rounded-lg bg-surface-container border border-outline-variant/30 font-body text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40" />
+              </div>
+
+              <div>
+                <label className="mb-2 flex items-center gap-2 font-label text-[10px] font-extrabold tracking-widest text-secondary uppercase">
+                  <Droplets className="h-3 w-3" /> Water Intake (ml)
+                </label>
+                <input type="number" min="0" value={waterMl} onChange={e => setWaterMl(e.target.value)} placeholder="e.g. 2500"
+                  className="w-full h-11 px-4 rounded-lg bg-surface-container border border-outline-variant/30 font-body text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40" />
+              </div>
+
+              <div>
+                <label className="mb-2 flex items-center gap-2 font-label text-[10px] font-extrabold tracking-widest text-tertiary uppercase">
+                  <Beef className="h-3 w-3" /> Protein Intake (g)
+                </label>
+                <input type="number" min="0" value={proteinG} onChange={e => setProteinG(e.target.value)} placeholder="e.g. 150"
+                  className="w-full h-11 px-4 rounded-lg bg-surface-container border border-outline-variant/30 font-body text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40" />
+              </div>
+
+              <div>
+                <label className="mb-2 flex items-center gap-2 font-label text-[10px] font-extrabold tracking-widest text-on-surface-variant uppercase">
+                  <Camera className="h-3 w-3" /> Progress Photo
+                </label>
+                {selectedPhoto && !photoFile && (
+                  <div className="mb-3 rounded-lg overflow-hidden border border-outline-variant/30 h-28 bg-surface-container">
+                    <img src={selectedPhoto} alt="Progress" className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full h-20 border-2 border-dashed border-outline-variant/40 rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 cursor-pointer"
+                >
+                  <Camera className="h-5 w-5 text-on-surface-variant" />
+                  <span className="font-body text-xs text-on-surface-variant">
+                    {photoFile ? photoFile.name : (selectedPhoto ? "Replace photo" : "Upload progress photo")}
+                  </span>
+                </div>
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={e => setPhotoFile(e.target.files?.[0] || null)} />
+              </div>
+
+              <button
+                onClick={handleSaveLogs}
+                disabled={submitting || (!weight && !waterMl && !proteinG && !photoFile)}
+                className="w-full py-4 bg-gradient-to-br from-primary to-tertiary text-on-primary rounded-full font-headline font-bold text-sm shadow-primary transition-transform duration-200 active:scale-98 disabled:opacity-40 cursor-pointer mt-auto"
+              >
+                {submitting ? "Saving..." : "Save Progress"}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
