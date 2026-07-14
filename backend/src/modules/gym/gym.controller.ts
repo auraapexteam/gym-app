@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import { GymService } from '@/modules/gym/gym.service';
 import { AuditService } from '@/shared/services';
-import { currentUser, requireGymId, clientIp } from '@/shared/utils';
-import { sendSuccess } from '@/shared/responses';
+import { currentUser, requireGymId, clientIp, parseListQuery, buildPaginationMeta } from '@/shared/utils';
+import { sendSuccess, sendPaginated } from '@/shared/responses';
 
 export class GymController {
   /** Fetch the authenticated user's own gym. */
@@ -82,6 +82,88 @@ export class GymController {
     });
 
     return sendSuccess(res, null, 'Staff member deleted successfully');
+  }
+
+  /** Customer directory of gyms. */
+  static async listPublicDirectory(req: Request, res: Response): Promise<Response> {
+    const query = parseListQuery(req.query);
+    const { items, total } = await GymService.listPublicDirectory(query);
+    return sendPaginated(res, items, buildPaginationMeta(total, query.page, query.limit));
+  }
+
+  /** Submit request to link profile to gym. */
+  static async createJoinRequest(req: Request, res: Response): Promise<Response> {
+    const user = currentUser(req);
+    const { gymId } = req.body;
+    const request = await GymService.createJoinRequest(user.id, gymId);
+
+    await AuditService.record({
+      actorId: user.id,
+      actorRole: user.role,
+      gymId,
+      action: 'gym_join_request.created',
+      resourceType: 'gym_join_requests',
+      resourceId: request.id,
+      ipAddress: clientIp(req),
+    });
+
+    return sendSuccess(res, request, 'Link request submitted successfully', 201);
+  }
+
+  /** Get link status of authenticated customer. */
+  static async getJoinRequestStatus(req: Request, res: Response): Promise<Response> {
+    const user = currentUser(req);
+    const status = await GymService.getJoinRequestStatus(user.id);
+    return sendSuccess(res, status, 'Join request status fetched successfully');
+  }
+
+  /** List pending join requests for the gym. */
+  static async listPendingJoinRequests(req: Request, res: Response): Promise<Response> {
+    const gymId = requireGymId(currentUser(req));
+    const requests = await GymService.listPendingJoinRequests(gymId);
+    return sendSuccess(res, requests, 'Pending join requests fetched successfully');
+  }
+
+  /** Approve a pending join request. */
+  static async approveJoinRequest(req: Request, res: Response): Promise<Response> {
+    const user = currentUser(req);
+    const gymId = requireGymId(user);
+    const { id } = req.params;
+
+    await GymService.approveJoinRequest(gymId, id);
+
+    await AuditService.record({
+      actorId: user.id,
+      actorRole: user.role,
+      gymId,
+      action: 'gym_join_request.approved',
+      resourceType: 'gym_join_requests',
+      resourceId: id,
+      ipAddress: clientIp(req),
+    });
+
+    return sendSuccess(res, null, 'Join request approved successfully');
+  }
+
+  /** Reject a pending join request. */
+  static async rejectJoinRequest(req: Request, res: Response): Promise<Response> {
+    const user = currentUser(req);
+    const gymId = requireGymId(user);
+    const { id } = req.params;
+
+    await GymService.rejectJoinRequest(gymId, id);
+
+    await AuditService.record({
+      actorId: user.id,
+      actorRole: user.role,
+      gymId,
+      action: 'gym_join_request.rejected',
+      resourceType: 'gym_join_requests',
+      resourceId: id,
+      ipAddress: clientIp(req),
+    });
+
+    return sendSuccess(res, null, 'Join request rejected successfully');
   }
 }
 

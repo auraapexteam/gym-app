@@ -344,6 +344,7 @@ export default function App() {
                 <SidebarLink tab="subscriptions" activeTab={activeTab} setActiveTab={setActiveTab} label="Record Sale (Cash)" icon={<Plus />} />
                 <SidebarLink tab="qr" activeTab={activeTab} setActiveTab={setActiveTab} label="Rotate Gym QR" icon={<QrCode />} />
                 <SidebarLink tab="gallery" activeTab={activeTab} setActiveTab={setActiveTab} label="Gym Gallery" icon={<Image className="h-5 w-5" />} />
+                <SidebarLink tab="join-requests" activeTab={activeTab} setActiveTab={setActiveTab} label="Join Requests" icon={<PlusCircle />} />
                 <SidebarLink tab="settings" activeTab={activeTab} setActiveTab={setActiveTab} label="Gym Profile" icon={<Settings />} />
               </>
             )}
@@ -363,6 +364,13 @@ export default function App() {
               <>
                 <SidebarLink tab="dashboard" activeTab={activeTab} setActiveTab={setActiveTab} label="Overview" icon={<Activity />} />
                 <SidebarLink tab="attendance" activeTab={activeTab} setActiveTab={setActiveTab} label="Member Log" icon={<Calendar />} />
+              </>
+            )}
+
+            {/* Customer Dashboard Sidebar */}
+            {user.role === "customer" && (
+              <>
+                <SidebarLink tab="dashboard" activeTab={activeTab} setActiveTab={setActiveTab} label="Overview" icon={<Activity />} />
               </>
             )}
           </nav>
@@ -415,6 +423,14 @@ export default function App() {
           <TrainerView
             activeTab={activeTab}
             gym={gym}
+            showToast={showToast}
+          />
+        )}
+
+        {user.role === "customer" && (
+          <CustomerView
+            user={user}
+            setUser={setUser}
             showToast={showToast}
           />
         )}
@@ -780,6 +796,7 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
   const [logoUploading, setLogoUploading] = useState(false);
   const [galleryCaption, setGalleryCaption] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [joinRequests, setJoinRequests] = useState<any[]>([]);
 
   // Forms
   const [submitting, setSubmitting] = useState(false);
@@ -859,6 +876,9 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
       } else if (activeTab === "gallery") {
         const galRes = await api.get(`/gallery?gymId=${gym.id}`);
         setDataList(galRes.data.data || []);
+      } else if (activeTab === "join-requests") {
+        const requestsRes = await api.get("/gyms/join-requests/pending");
+        setJoinRequests(requestsRes.data.data || []);
       }
     } catch (err) {
       console.error(err);
@@ -968,6 +988,32 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
     } catch (err) {
       console.error(err);
       showToast("Failed to delete image", "error");
+    }
+  };
+
+  // --- Gym Join Requests Operations ---
+  const handleApproveRequest = async (requestId: string) => {
+    try {
+      await api.patch(`/gyms/join-requests/${requestId}/approve`);
+      showToast("Customer request approved successfully!", "success");
+      const requestsRes = await api.get("/gyms/join-requests/pending");
+      setJoinRequests(requestsRes.data.data || []);
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to approve request", "error");
+    }
+  };
+
+  const handleRejectRequest = async (requestId: string) => {
+    if (!window.confirm("Are you sure you want to decline this request?")) return;
+    try {
+      await api.patch(`/gyms/join-requests/${requestId}/reject`);
+      showToast("Customer request declined successfully.", "success");
+      const requestsRes = await api.get("/gyms/join-requests/pending");
+      setJoinRequests(requestsRes.data.data || []);
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to decline request", "error");
     }
   };
 
@@ -1722,7 +1768,67 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
         </div>
       )}
 
-      {/* 4.9 Gym Settings Profile */}
+      {/* 4.9 Join Requests Tab */}
+      {activeTab === "join-requests" && (
+        <div className="space-y-8">
+          <div>
+            <h1 className="font-headline text-3xl font-extrabold tracking-tight">Pending Gym Join Requests</h1>
+            <p className="font-body text-base text-on-surface-variant mt-1">Review and approve customers requesting to link to your gym</p>
+          </div>
+
+          <div className="glass-card border border-outline-variant/20 rounded-lg overflow-hidden">
+            {joinRequests.length === 0 ? (
+              <div className="p-8 text-center text-on-surface-variant font-body">No pending join requests at this time.</div>
+            ) : (
+              <table className="w-full text-left font-body border-collapse">
+                <thead>
+                  <tr className="bg-surface-container-low border-b border-outline-variant/20 text-on-surface-variant text-xs font-bold uppercase tracking-widest">
+                    <th className="p-4">Customer Details</th>
+                    <th className="p-4">Contact</th>
+                    <th className="p-4">Requested On</th>
+                    <th className="p-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/15 text-sm">
+                  {joinRequests.map((req) => (
+                    <tr key={req.id} className="hover:bg-white/5 transition-all">
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center uppercase">
+                            {req.profiles?.fullName?.charAt(0) || "C"}
+                          </div>
+                          <div>
+                            <p className="font-headline font-semibold text-on-surface">{req.profiles?.fullName || "New Member"}</p>
+                            <p className="font-body text-xs text-on-surface-variant">{req.profiles?.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4 font-body text-on-surface-variant">{req.profiles?.phone || "N/A"}</td>
+                      <td className="p-4 text-on-surface-variant text-xs">{new Date(req.created_at).toLocaleString()}</td>
+                      <td className="p-4 text-right space-x-2">
+                        <button
+                          onClick={() => handleApproveRequest(req.id)}
+                          className="px-4 py-2 bg-primary text-on-primary hover:bg-primary-dim rounded-full font-headline font-bold text-xs shadow-primary transition-all duration-200 cursor-pointer"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleRejectRequest(req.id)}
+                          className="px-4 py-2 bg-error/10 text-error hover:bg-error/20 border border-error/30 rounded-full font-headline font-bold text-xs transition-all duration-200 cursor-pointer"
+                        >
+                          Decline
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 4.10 Gym Settings Profile */}
       {activeTab === "settings" && (
         <div className="space-y-8 max-w-[650px] mx-auto glass-card rounded-lg p-6 border border-outline-variant/20">
           <h2 className="font-headline text-xl font-bold mb-6">Edit Gym Profile Settings</h2>
@@ -2227,6 +2333,242 @@ function StatCard({ title, value, icon, trend }: { title: string; value: string;
         <div className="mt-4 flex items-center gap-1 text-[11px] text-primary font-body font-semibold">
           <TrendingUp className="h-3 w-3" />
           <span>{trend}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+//  8. CUSTOMER DASHBOARD VIEW COMPONENT
+// ============================================================================
+function CustomerView({ user, setUser, showToast }: { user: any; setUser: any; showToast: any }) {
+  const [gyms, setGyms] = useState<any[]>([]);
+  const [joinRequest, setJoinRequest] = useState<any>(null);
+  const [gymPlans, setGymPlans] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [linkingGymId, setLinkingGymId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchInitialData();
+  }, [user.gym_id]);
+
+  const fetchInitialData = async () => {
+    setLoading(true);
+    try {
+      if (!user.gym_id) {
+        const gymsRes = await api.get("/gyms/directory?limit=100");
+        setGyms(gymsRes.data.data || []);
+
+        const statusRes = await api.get("/gyms/join-request/status");
+        setJoinRequest(statusRes.data.data || null);
+      } else {
+        const plansRes = await api.get(`/plans?gymId=${user.gym_id}`);
+        setGymPlans(plansRes.data.data || []);
+      }
+    } catch (err) {
+      console.error("Failed to load customer dashboard data", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLinkGym = async (gymId: string) => {
+    setLinkingGymId(gymId);
+    try {
+      const res = await api.post("/gyms/join-request", { gymId });
+      setJoinRequest(res.data.data);
+      showToast("Link request submitted successfully! Waiting for owner approval.", "success");
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.response?.data?.message || "Failed to submit link request", "error");
+    } finally {
+      setLinkingGymId(null);
+    }
+  };
+
+  const handleCancelRequest = async (requestId: string) => {
+    if (!window.confirm("Are you sure you want to cancel this request?")) return;
+    setLoading(true);
+    try {
+      await api.patch(`/gyms/join-requests/${requestId}/reject`);
+      setJoinRequest(null);
+      showToast("Request cancelled successfully.", "success");
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to cancel request", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCheckApproval = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get("/auth/me");
+      setUser(res.data.data);
+      if (res.data.data.gym_id) {
+        showToast("Congratulations! Your link request has been approved!", "success");
+      } else {
+        const statusRes = await api.get("/gyms/join-request/status");
+        setJoinRequest(statusRes.data.data || null);
+        showToast("Request is still pending owner approval.", "info");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredGyms = gyms.filter(g =>
+    g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (g.address && g.address.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  if (loading && gyms.length === 0 && gymPlans.length === 0) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="font-headline text-3xl font-extrabold tracking-tight">Customer Dashboard</h1>
+        <p className="font-body text-base text-on-surface-variant mt-1">Manage your gym link and active memberships</p>
+      </div>
+
+      {!user.gym_id ? (
+        <div className="space-y-8">
+          {joinRequest ? (
+            <div className="glass-card rounded-lg p-8 border border-primary/20 bg-primary/5 flex flex-col md:flex-row justify-between items-center gap-6">
+              <div className="space-y-2">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-primary/20 text-primary border border-primary/30">
+                  Pending Approval
+                </span>
+                <h3 className="font-headline text-xl font-bold text-on-surface">Link Request Sent</h3>
+                <p className="font-body text-sm text-on-surface-variant">
+                  You requested to link with <span className="text-primary font-bold">{joinRequest.gyms?.name || "the gym"}</span> on{" "}
+                  {new Date(joinRequest.created_at).toLocaleDateString()}. Waiting for the Gym Owner's review.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-4">
+                <button
+                  onClick={handleCheckApproval}
+                  className="px-6 py-3 bg-primary text-on-primary rounded-full font-headline font-bold text-sm shadow-primary transition-transform duration-200 active:scale-98 cursor-pointer flex items-center gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" /> Check Approval Status
+                </button>
+                <button
+                  onClick={() => handleCancelRequest(joinRequest.id)}
+                  className="px-6 py-3 bg-error/10 text-error border border-error/30 hover:bg-error/20 rounded-full font-headline font-bold text-sm transition-all duration-200 cursor-pointer"
+                >
+                  Cancel Request
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <h2 className="font-headline text-xl font-bold text-on-surface">Select and Link your Gym</h2>
+                <div className="w-full sm:w-80">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search gyms by name or city..."
+                    className="w-full h-11 px-4 rounded-lg bg-surface-container border border-outline-variant/30 font-body text-sm text-on-surface focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {filteredGyms.length === 0 ? (
+                <div className="glass-card rounded-lg p-10 text-center text-on-surface-variant font-body">
+                  No active gyms found. Try adjusting your search query.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredGyms.map((g) => (
+                    <div key={g.id} className="glass-card rounded-lg overflow-hidden border border-outline-variant/20 flex flex-col justify-between p-6 space-y-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-14 h-14 rounded-lg bg-surface-container border border-outline-variant/30 overflow-hidden flex items-center justify-center shrink-0">
+                          {g.logoUrl ? (
+                            <img src={g.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                          ) : (
+                            <Dumbbell className="w-6 h-6 text-on-surface-variant" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="font-headline font-bold text-lg text-on-surface truncate">{g.name}</h3>
+                          <p className="font-body text-xs text-on-surface-variant mt-1 truncate">{g.email || "No email"}</p>
+                          <p className="font-body text-xs text-on-surface-variant truncate">{g.phone || "No phone"}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-label text-[9px] font-extrabold tracking-widest text-primary uppercase">Location</p>
+                        <p className="font-body text-sm text-on-surface-variant line-clamp-2">{g.address || "No address provided."}</p>
+                      </div>
+                      <button
+                        onClick={() => handleLinkGym(g.id)}
+                        disabled={linkingGymId !== null}
+                        className="w-full py-3 bg-primary text-on-primary rounded-full font-headline font-bold text-sm shadow-primary transition-transform duration-200 active:scale-98 disabled:opacity-50 cursor-pointer"
+                      >
+                        {linkingGymId === g.id ? "Linking..." : "Link to Gym"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-1 glass-card rounded-lg p-6 border border-outline-variant/20 h-fit space-y-6">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-20 h-20 rounded-lg bg-surface-container border border-outline-variant/30 overflow-hidden flex items-center justify-center shadow-lg">
+                <Dumbbell className="w-8 h-8 text-on-surface-variant" />
+              </div>
+              <div>
+                <h3 className="font-headline text-xl font-bold text-on-surface">Linked to Gym</h3>
+                <span className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">
+                  Member Active
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-2 space-y-6">
+            <h2 className="font-headline text-xl font-bold text-on-surface">Available Membership Plans</h2>
+            {gymPlans.length === 0 ? (
+              <div className="glass-card rounded-lg p-8 text-center text-on-surface-variant font-body">No plans are currently offered by this gym.</div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {gymPlans.map((p) => (
+                  <div key={p.id} className="glass-card rounded-lg p-6 border border-outline-variant/20 flex flex-col justify-between space-y-6">
+                    <div>
+                      <h3 className="font-headline font-bold text-lg text-on-surface">{p.name}</h3>
+                      <p className="font-body text-sm text-on-surface-variant mt-2">{p.description || "No description provided."}</p>
+                    </div>
+                    <div className="flex justify-between items-baseline gap-4 pt-4 border-t border-outline-variant/15">
+                      <span className="font-headline font-extrabold text-2xl text-primary">₹{p.price}</span>
+                      <span className="font-body text-xs text-on-surface-variant">for {p.durationDays} Days</span>
+                    </div>
+                    <button
+                      onClick={() => showToast("Please use the Mobile App to complete Razorpay subscription checkouts!", "info")}
+                      className="w-full py-3 bg-gradient-to-br from-primary to-tertiary text-on-primary rounded-full font-headline font-bold text-sm shadow-primary transition-transform duration-200 active:scale-98 cursor-pointer"
+                    >
+                      Subscribe on App
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

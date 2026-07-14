@@ -48,3 +48,15 @@ export const staffIdParamSchema = z.object({
   params: z.object({ id: z.string().uuid() }),
 });
 
+export const createJoinRequestSchema = z.object({
+  body: z.object({
+    gymId: z.string().uuid(),
+  }),
+});
+
+export const joinRequestIdParamSchema = z.object({
+  params: z.object({
+    id: z.string().uuid(),
+  }),
+});
+
