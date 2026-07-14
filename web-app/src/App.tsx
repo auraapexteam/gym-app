@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import {
   Activity,
@@ -584,7 +584,7 @@ function SuperAdminView({ activeTab, showToast }: { activeTab: string; showToast
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard title="Total Onboarded Gyms" value={stats.totalGyms || "0"} icon={<Activity />} trend="+12% this month" />
             <StatCard title="Active Subscriptions" value={stats.totalSubscriptions || "0"} icon={<Users />} trend="Stable" />
-            <StatCard title="Platform Revenue" value={`â‚¹${stats.totalRevenue || "0"}`} icon={<CreditCard />} trend="+18% growth" />
+            <StatCard title="Platform Revenue" value={`₹${stats.totalRevenue || "0"}`} icon={<CreditCard />} trend="+18% growth" />
             <StatCard title="Registered Members" value={stats.totalMembers || "0"} icon={<UserCheck />} trend="+34% growth" />
           </div>
 
@@ -1241,7 +1241,7 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard title="Active Gym Members" value={analytics.members?.active || "0"} icon={<Users />} trend="Live Members" />
             <StatCard title="Active Subscriptions" value={analytics.subscriptions?.active || "0"} icon={<CreditCard />} trend="Paid Plans" />
-            <StatCard title="Recent Revenue" value={`â‚¹${analytics.revenue?.total || "0"}`} icon={<TrendingUp />} trend="Total Sales" />
+            <StatCard title="Recent Revenue" value={`₹${analytics.revenue?.total || "0"}`} icon={<TrendingUp />} trend="Total Sales" />
             <StatCard title="Attendance Today" value={analytics.attendance?.today || "0"} icon={<UserCheck />} trend="Member scans" />
           </div>
 
@@ -2719,7 +2719,7 @@ function CustomerView({ user, setUser, showToast, activeTab }: { user: any; setU
                           <p className="font-body text-sm text-on-surface-variant mt-2">{p.description || "No description provided."}</p>
                         </div>
                         <div className="flex justify-between items-baseline gap-4 pt-4 border-t border-outline-variant/15">
-                          <span className="font-headline font-extrabold text-2xl text-primary">â‚¹{p.price}</span>
+                          <span className="font-headline font-extrabold text-2xl text-primary">₹{p.price}</span>
                           <span className="font-body text-xs text-on-surface-variant">for {p.durationDays} Days</span>
                         </div>
                         <button
