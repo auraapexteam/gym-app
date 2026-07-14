@@ -17,7 +17,8 @@ import {
   UserCheck,
   Dumbbell,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Image
 } from "lucide-react";
 
 // API Base configuration
@@ -342,6 +343,7 @@ export default function App() {
                 <SidebarLink tab="plans" activeTab={activeTab} setActiveTab={setActiveTab} label="Membership Plans" icon={<CreditCard />} />
                 <SidebarLink tab="subscriptions" activeTab={activeTab} setActiveTab={setActiveTab} label="Record Sale (Cash)" icon={<Plus />} />
                 <SidebarLink tab="qr" activeTab={activeTab} setActiveTab={setActiveTab} label="Rotate Gym QR" icon={<QrCode />} />
+                <SidebarLink tab="gallery" activeTab={activeTab} setActiveTab={setActiveTab} label="Gym Gallery" icon={<Image className="h-5 w-5" />} />
                 <SidebarLink tab="settings" activeTab={activeTab} setActiveTab={setActiveTab} label="Gym Profile" icon={<Settings />} />
               </>
             )}
@@ -773,6 +775,12 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
   const [paymentsList, setPaymentsList] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
 
+  // Logo & Gallery Upload States
+  const [gymLogo, setGymLogo] = useState(gym.logoUrl || "");
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [galleryCaption, setGalleryCaption] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+
   // Forms
   const [submitting, setSubmitting] = useState(false);
 
@@ -848,6 +856,9 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
         } catch (e) {
           setActiveQr(null);
         }
+      } else if (activeTab === "gallery") {
+        const galRes = await api.get(`/gallery?gymId=${gym.id}`);
+        setDataList(galRes.data.data || []);
       }
     } catch (err) {
       console.error(err);
@@ -858,6 +869,34 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
   };
 
   // --- Gym Settings Update ---
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLogoUploading(true);
+    try {
+      const res = await api.post("/gallery/upload-url", {
+        fileName: file.name,
+        mimeType: file.type,
+        size: file.size,
+        entityType: "gym"
+      });
+      const { uploadUrl, publicUrl } = res.data.data;
+
+      await axios.put(uploadUrl, file, {
+        headers: { "Content-Type": file.type }
+      });
+
+      setGymLogo(publicUrl);
+      showToast("Logo uploaded successfully! Save profile to commit changes.", "success");
+    } catch (err: any) {
+      console.error(err);
+      showToast("Failed to upload logo", "error");
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
   const handleUpdateGym = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -867,7 +906,8 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
         email: gymEmail,
         phone: gymPhone,
         address: gymAddress,
-        description: gymDesc
+        description: gymDesc,
+        logoUrl: gymLogo
       });
       setGym(res.data.data);
       showToast("Gym Profile updated successfully!", "success");
@@ -875,6 +915,59 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
       showToast("Failed to update profile", "error");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // --- Gym Gallery Operations ---
+  const handleGalleryUpload = async (e: React.FormEvent<HTMLFormElement> & { target: any }) => {
+    e.preventDefault();
+    const file = e.target.elements.galleryFile.files?.[0];
+    if (!file) return showToast("Please select an image file", "error");
+
+    setUploadingImage(true);
+    try {
+      const res = await api.post("/gallery/upload-url", {
+        fileName: file.name,
+        mimeType: file.type,
+        size: file.size,
+        entityType: "gym"
+      });
+      const { uploadUrl, path } = res.data.data;
+
+      await axios.put(uploadUrl, file, {
+        headers: { "Content-Type": file.type }
+      });
+
+      await api.post("/gallery", {
+        path,
+        mimeType: file.type,
+        size: file.size,
+        entityType: "gym",
+        entityId: gym.id,
+        caption: galleryCaption || undefined
+      });
+
+      showToast("Image added to gallery successfully!", "success");
+      setGalleryCaption("");
+      e.target.reset();
+      loadTabDetails();
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.response?.data?.message || "Failed to upload image", "error");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleDeleteGalleryImage = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this image?")) return;
+    try {
+      await api.delete(`/gallery/${id}`);
+      showToast("Image deleted successfully!", "success");
+      loadTabDetails();
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to delete image", "error");
     }
   };
 
@@ -1555,11 +1648,104 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
         </div>
       )}
 
-      {/* 4.8 Gym Settings Profile */}
+      {/* 4.8 Gym Showcase Gallery */}
+      {activeTab === "gallery" && (
+        <div className="space-y-8">
+          <div>
+            <h1 className="font-headline text-3xl font-extrabold tracking-tight">Gym Showcase Gallery</h1>
+            <p className="font-body text-base text-on-surface-variant mt-1">Upload and manage promotional photos for {gym.name}</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Upload form */}
+            <div className="lg:col-span-1 glass-card rounded-lg p-6 border border-outline-variant/20 h-fit space-y-6">
+              <h3 className="font-headline text-lg font-bold text-on-surface">Add New Photo</h3>
+              <form onSubmit={handleGalleryUpload} className="space-y-4">
+                <div>
+                  <label className="block font-label text-[10px] font-extrabold tracking-widest text-primary uppercase mb-2">Select Image</label>
+                  <input
+                    type="file"
+                    name="galleryFile"
+                    required
+                    accept="image/*"
+                    className="block w-full text-xs text-on-surface-variant file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary/20 file:text-primary hover:file:bg-primary/30 file:cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <label className="block font-label text-[10px] font-extrabold tracking-widest text-primary uppercase mb-2">Caption</label>
+                  <input
+                    type="text"
+                    value={galleryCaption}
+                    onChange={(e) => setGalleryCaption(e.target.value)}
+                    placeholder="E.g. Cardio Zone, Heavy Free Weights"
+                    className="w-full h-12 px-4 rounded-lg bg-surface-container border border-outline-variant/30 font-body text-base text-on-surface focus:outline-none"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={uploadingImage}
+                  className="w-full py-3 bg-primary text-on-primary rounded-full font-headline font-bold text-sm shadow-primary transition-transform duration-200 active:scale-98 disabled:opacity-50 cursor-pointer"
+                >
+                  {uploadingImage ? "Uploading..." : "Upload to Gallery"}
+                </button>
+              </form>
+            </div>
+
+            {/* Gallery list */}
+            <div className="lg:col-span-2 space-y-4">
+              <h3 className="font-headline text-lg font-bold text-on-surface">Gallery Directory</h3>
+              {dataList.length === 0 ? (
+                <div className="glass-card rounded-lg p-8 text-center text-on-surface-variant font-body">No images uploaded yet. Upload your first photo!</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {dataList.map((img) => (
+                    <div key={img.id} className="glass-card rounded-lg overflow-hidden border border-outline-variant/20 flex flex-col justify-between">
+                      <div className="w-full h-48 bg-surface-container overflow-hidden">
+                        <img src={img.url} alt={img.caption || "Gallery"} className="w-full h-full object-cover hover:scale-105 transition-all duration-300" />
+                      </div>
+                      <div className="p-4 flex justify-between items-center gap-4">
+                        <p className="font-body text-sm text-on-surface truncate">{img.caption || "No caption"}</p>
+                        <button
+                          onClick={() => handleDeleteGalleryImage(img.id)}
+                          className="p-2 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-all duration-200 cursor-pointer"
+                          title="Delete image"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4.9 Gym Settings Profile */}
       {activeTab === "settings" && (
         <div className="space-y-8 max-w-[650px] mx-auto glass-card rounded-lg p-6 border border-outline-variant/20">
           <h2 className="font-headline text-xl font-bold mb-6">Edit Gym Profile Settings</h2>
           <form onSubmit={handleUpdateGym} className="space-y-6">
+            <div className="flex flex-col sm:flex-row items-center gap-6 p-4 bg-surface-container-low rounded-lg border border-outline-variant/20 mb-6">
+              <div className="w-20 h-20 rounded-lg overflow-hidden bg-surface-container flex items-center justify-center border border-outline-variant/30 shrink-0">
+                {gymLogo ? (
+                  <img src={gymLogo} alt="Logo" className="w-full h-full object-cover" />
+                ) : (
+                  <Dumbbell className="w-8 h-8 text-on-surface-variant" />
+                )}
+              </div>
+              <div className="space-y-2 flex-1">
+                <label className="block font-label text-[10px] font-extrabold tracking-widest text-primary uppercase">Gym Logo Image</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="block w-full text-xs text-on-surface-variant file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary/20 file:text-primary hover:file:bg-primary/30 file:cursor-pointer"
+                />
+                {logoUploading && <p className="text-xs text-secondary animate-pulse mt-1">Uploading logo to storage...</p>}
+              </div>
+            </div>
             <div>
               <label className="block font-label text-[10px] font-extrabold tracking-widest text-primary uppercase mb-2">Gym Name</label>
               <input
