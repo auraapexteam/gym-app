@@ -477,10 +477,10 @@ function SuperAdminView({ activeTab, showToast }: { activeTab: string; showToast
         setStats(statsRes.data.data);
       } else if (activeTab === "gyms") {
         const gymsRes = await api.get("/admin/gyms");
-        setGyms(gymsRes.data.data.items);
+        setGyms(gymsRes.data.data || []);
       } else if (activeTab === "logs") {
         const logsRes = await api.get("/admin/audit-logs");
-        setAuditLogs(logsRes.data.data.items);
+        setAuditLogs(logsRes.data.data || []);
       }
     } catch (err) {
       console.error(err);
@@ -827,20 +827,20 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
         setDataList(staffRes.data.data);
       } else if (activeTab === "trainers") {
         const trainersRes = await api.get("/trainers");
-        setDataList(trainersRes.data.data.items);
+        setDataList(trainersRes.data.data || []);
       } else if (activeTab === "members") {
         const membersRes = await api.get("/members");
-        setDataList(membersRes.data.data.items);
+        setDataList(membersRes.data.data || []);
       } else if (activeTab === "plans") {
         const plansRes = await api.get(`/plans?gymId=${gym.id}`);
-        setDataList(plansRes.data.data.items);
+        setDataList(plansRes.data.data || []);
       } else if (activeTab === "subscriptions") {
         const membersRes = await api.get("/members");
         const plansRes = await api.get(`/plans?gymId=${gym.id}`);
         const payRes = await api.get("/payments");
-        setPlansList(plansRes.data.data.items);
-        setDataList(membersRes.data.data.items);
-        setPaymentsList(payRes.data.data.items);
+        setPlansList(plansRes.data.data || []);
+        setDataList(membersRes.data.data || []);
+        setPaymentsList(payRes.data.data || []);
       } else if (activeTab === "qr") {
         try {
           const qrRes = await api.get("/qr/active");
@@ -1652,12 +1652,12 @@ function StaffView({ activeTab, gym, showToast }: { activeTab: string; gym: any;
         setAttendanceList([statsRes.data.data]);
       } else if (activeTab === "members") {
         const membersRes = await api.get("/members");
-        setDataList(membersRes.data.data.items);
+        setDataList(membersRes.data.data || []);
       } else if (activeTab === "checkin") {
         const membersRes = await api.get("/members");
         const attRes = await api.get("/attendance");
-        setDataList(membersRes.data.data.items);
-        setAttendanceList(attRes.data.data.items);
+        setDataList(membersRes.data.data || []);
+        setAttendanceList(attRes.data.data || []);
       } else if (activeTab === "qr") {
         try {
           const qrRes = await api.get("/qr/active");
@@ -1929,10 +1929,10 @@ function TrainerView({ activeTab, gym, showToast }: { activeTab: string; gym: an
     try {
       if (activeTab === "dashboard") {
         const trainersRes = await api.get("/trainers");
-        setTrainersList(trainersRes.data.data.items);
+        setTrainersList(trainersRes.data.data || []);
       } else if (activeTab === "attendance") {
         const attRes = await api.get("/attendance");
-        setAttendanceList(attRes.data.data.items);
+        setAttendanceList(attRes.data.data || []);
       }
     } catch (err) {
       console.error(err);
