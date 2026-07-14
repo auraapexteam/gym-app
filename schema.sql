@@ -355,6 +355,45 @@ CREATE TABLE IF NOT EXISTS public.gym_join_requests (
     CONSTRAINT uq_gym_join_request UNIQUE (gym_id, profile_id)
 );
 
+CREATE TABLE IF NOT EXISTS public.progress_logs (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    weight        NUMERIC(5,2) NOT NULL CHECK (weight > 0),
+    log_date      DATE NOT NULL,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    CONSTRAINT uq_progress_log UNIQUE (profile_id, log_date)
+);
+
+CREATE TABLE IF NOT EXISTS public.progress_images (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    image_url     TEXT NOT NULL,
+    log_date      DATE NOT NULL,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    CONSTRAINT uq_progress_image UNIQUE (profile_id, log_date)
+);
+
+CREATE TABLE IF NOT EXISTS public.water_logs (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    amount_ml     INTEGER NOT NULL CHECK (amount_ml >= 0),
+    log_date      DATE NOT NULL,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    CONSTRAINT uq_water_log UNIQUE (profile_id, log_date)
+);
+
+CREATE TABLE IF NOT EXISTS public.protein_logs (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    amount_g      INTEGER NOT NULL CHECK (amount_g >= 0),
+    log_date      DATE NOT NULL,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    CONSTRAINT uq_protein_log UNIQUE (profile_id, log_date)
+);
+
 -- ============================================================================
 --  7. INDEXES  (index every frequently-queried / tenant column)
 -- ============================================================================
@@ -398,6 +437,11 @@ CREATE INDEX IF NOT EXISTS idx_gallery_entity        ON public.gallery_images (g
 CREATE INDEX IF NOT EXISTS idx_gym_join_requests_gym   ON public.gym_join_requests (gym_id);
 CREATE INDEX IF NOT EXISTS idx_gym_join_requests_profile ON public.gym_join_requests (profile_id);
 
+CREATE INDEX IF NOT EXISTS idx_progress_logs_profile ON public.progress_logs(profile_id, log_date);
+CREATE INDEX IF NOT EXISTS idx_progress_images_profile ON public.progress_images(profile_id, log_date);
+CREATE INDEX IF NOT EXISTS idx_water_logs_profile ON public.water_logs(profile_id, log_date);
+CREATE INDEX IF NOT EXISTS idx_protein_logs_profile ON public.protein_logs(profile_id, log_date);
+
 CREATE INDEX IF NOT EXISTS idx_notifications_recipient ON public.notifications (recipient_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_gym          ON public.audit_logs (gym_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_actor        ON public.audit_logs (actor_id);
@@ -411,7 +455,8 @@ DECLARE
     t TEXT;
     tables TEXT[] := ARRAY[
         'gyms', 'profiles', 'gym_staff', 'members', 'plans', 'subscriptions',
-        'payments', 'qr_codes', 'trainers', 'equipment', 'gallery_images', 'gym_join_requests'
+        'payments', 'qr_codes', 'trainers', 'equipment', 'gallery_images', 'gym_join_requests',
+        'progress_logs', 'water_logs', 'protein_logs'
     ];
 BEGIN
     FOREACH t IN ARRAY tables LOOP
@@ -657,6 +702,10 @@ ALTER TABLE public.gallery_images  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gym_join_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.progress_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.progress_images ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.water_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.protein_logs ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: a user reads/updates their own profile; super admin sees all.
 DROP POLICY IF EXISTS "profiles_self_read" ON public.profiles;
@@ -707,6 +756,62 @@ CREATE POLICY "requests_delete" ON public.gym_join_requests
 DROP POLICY IF EXISTS "requests_update" ON public.gym_join_requests;
 CREATE POLICY "requests_update" ON public.gym_join_requests
     FOR UPDATE TO authenticated USING (gym_id = public.current_gym_id() OR public.is_super_admin()) WITH CHECK (gym_id = public.current_gym_id() OR public.is_super_admin());
+
+-- 1. Policies for Weight Logs
+CREATE POLICY "progress_logs_read" ON public.progress_logs
+    FOR SELECT TO authenticated
+    USING (
+        auth.uid() = profile_id
+        OR profile_id IN (SELECT id FROM public.profiles WHERE gym_id = public.current_gym_id())
+        OR public.is_super_admin()
+    );
+
+CREATE POLICY "progress_logs_write" ON public.progress_logs
+    FOR ALL TO authenticated
+    USING (auth.uid() = profile_id)
+    WITH CHECK (auth.uid() = profile_id);
+
+-- 2. Policies for Progress Images
+CREATE POLICY "progress_images_read" ON public.progress_images
+    FOR SELECT TO authenticated
+    USING (
+        auth.uid() = profile_id
+        OR profile_id IN (SELECT id FROM public.profiles WHERE gym_id = public.current_gym_id())
+        OR public.is_super_admin()
+    );
+
+CREATE POLICY "progress_images_write" ON public.progress_images
+    FOR ALL TO authenticated
+    USING (auth.uid() = profile_id)
+    WITH CHECK (auth.uid() = profile_id);
+
+-- 3. Policies for Water Logs
+CREATE POLICY "water_logs_read" ON public.water_logs
+    FOR SELECT TO authenticated
+    USING (
+        auth.uid() = profile_id
+        OR profile_id IN (SELECT id FROM public.profiles WHERE gym_id = public.current_gym_id())
+        OR public.is_super_admin()
+    );
+
+CREATE POLICY "water_logs_write" ON public.water_logs
+    FOR ALL TO authenticated
+    USING (auth.uid() = profile_id)
+    WITH CHECK (auth.uid() = profile_id);
+
+-- 4. Policies for Protein Logs
+CREATE POLICY "protein_logs_read" ON public.protein_logs
+    FOR SELECT TO authenticated
+    USING (
+        auth.uid() = profile_id
+        OR profile_id IN (SELECT id FROM public.profiles WHERE gym_id = public.current_gym_id())
+        OR public.is_super_admin()
+    );
+
+CREATE POLICY "protein_logs_write" ON public.protein_logs
+    FOR ALL TO authenticated
+    USING (auth.uid() = profile_id)
+    WITH CHECK (auth.uid() = profile_id);
 
 -- ============================================================================
 --  13. OPTIONAL DEMO SEED  (safe, no auth users required)

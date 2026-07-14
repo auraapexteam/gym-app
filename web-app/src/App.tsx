@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import {
   Activity,
@@ -19,7 +19,14 @@ import {
   AlertCircle,
   RefreshCw,
   Image,
-  X
+  X,
+  BarChart2,
+  Droplets,
+  Beef,
+  Camera,
+  Weight,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 
 // API Base configuration
@@ -372,6 +379,7 @@ export default function App() {
             {user.role === "customer" && (
               <>
                 <SidebarLink tab="dashboard" activeTab={activeTab} setActiveTab={setActiveTab} label="Overview" icon={<Activity />} />
+                <SidebarLink tab="progress" activeTab={activeTab} setActiveTab={setActiveTab} label="Progress Logbook" icon={<BarChart2 />} />
               </>
             )}
           </nav>
@@ -433,6 +441,7 @@ export default function App() {
             user={user}
             setUser={setUser}
             showToast={showToast}
+            activeTab={activeTab}
           />
         )}
       </main>
@@ -2486,7 +2495,7 @@ function StatCard({ title, value, icon, trend }: { title: string; value: string;
 // ============================================================================
 //  8. CUSTOMER DASHBOARD VIEW COMPONENT
 // ============================================================================
-function CustomerView({ user, setUser, showToast }: { user: any; setUser: any; showToast: any }) {
+function CustomerView({ user, setUser, showToast, activeTab }: { user: any; setUser: any; showToast: any; activeTab: string }) {
   const [gyms, setGyms] = useState<any[]>([]);
   const [joinRequest, setJoinRequest] = useState<any>(null);
   const [gymPlans, setGymPlans] = useState<any[]>([]);
@@ -2582,10 +2591,17 @@ function CustomerView({ user, setUser, showToast }: { user: any; setUser: any; s
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="font-headline text-3xl font-extrabold tracking-tight">Customer Dashboard</h1>
-        <p className="font-body text-base text-on-surface-variant mt-1">Manage your gym link and active memberships</p>
+        <h1 className="font-headline text-3xl font-extrabold tracking-tight">
+          {activeTab === "progress" ? "Progress Logbook" : "Customer Dashboard"}
+        </h1>
+        <p className="font-body text-base text-on-surface-variant mt-1">
+          {activeTab === "progress" ? "Track your daily fitness metrics and photos" : "Manage your gym link and active memberships"}
+        </p>
       </div>
 
+      {activeTab === "progress" ? (
+        <ProgressLogbookView showToast={showToast} />
+      ) : (
       {!user.gym_id ? (
         <div className="space-y-8">
           {joinRequest ? (
@@ -2695,25 +2711,8 @@ function CustomerView({ user, setUser, showToast }: { user: any; setUser: any; s
                 {gymPlans.map((p) => (
                   <div key={p.id} className="glass-card rounded-lg p-6 border border-outline-variant/20 flex flex-col justify-between space-y-6">
                     <div>
-                      <h3 className="font-headline font-bold text-lg text-on-surface">{p.name}</h3>
-                      <p className="font-body text-sm text-on-surface-variant mt-2">{p.description || "No description provided."}</p>
-                    </div>
-                    <div className="flex justify-between items-baseline gap-4 pt-4 border-t border-outline-variant/15">
-                      <span className="font-headline font-extrabold text-2xl text-primary">₹{p.price}</span>
-                      <span className="font-body text-xs text-on-surface-variant">for {p.durationDays} Days</span>
-                    </div>
-                    <button
-                      onClick={() => showToast("Please use the Mobile App to complete Razorpay subscription checkouts!", "info")}
-                      className="w-full py-3 bg-gradient-to-br from-primary to-tertiary text-on-primary rounded-full font-headline font-bold text-sm shadow-primary transition-transform duration-200 active:scale-98 cursor-pointer"
-                    >
-                      Subscribe on App
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
-        </div>
+        )
       )}
     </div>
   );

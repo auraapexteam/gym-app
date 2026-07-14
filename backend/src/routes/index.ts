@@ -13,6 +13,7 @@ import { galleryRoutes } from '@/modules/gallery';
 import { analyticsRoutes } from '@/modules/analytics';
 import { notificationRoutes } from '@/modules/notifications';
 import { adminRoutes } from '@/modules/admin';
+import { progressRoutes } from '@/modules/progress';
 
 /**
  * Aggregated versioned API router. Every feature module contributes its own
@@ -35,5 +36,6 @@ apiRouter.use('/gallery', galleryRoutes);
 apiRouter.use('/analytics', analyticsRoutes);
 apiRouter.use('/notifications', notificationRoutes);
 apiRouter.use('/admin', adminRoutes);
+apiRouter.use('/progress', progressRoutes);
 
 export default apiRouter;
