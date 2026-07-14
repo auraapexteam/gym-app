@@ -18,7 +18,8 @@ import {
   Dumbbell,
   AlertCircle,
   RefreshCw,
-  Image
+  Image,
+  X
 } from "lucide-react";
 
 // API Base configuration
@@ -798,6 +799,12 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
   const [uploadingImage, setUploadingImage] = useState(false);
   const [joinRequests, setJoinRequests] = useState<any[]>([]);
 
+  // Member Search and Profile Detail Modal States
+  const [memberSearchQuery, setMemberSearchQuery] = useState("");
+  const [selectedMember, setSelectedMember] = useState<any>(null);
+  const [selectedMemberPayments, setSelectedMemberPayments] = useState<any[]>([]);
+  const [loadingMemberDetails, setLoadingMemberDetails] = useState(false);
+
   // Forms
   const [submitting, setSubmitting] = useState(false);
 
@@ -1014,6 +1021,21 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
     } catch (err) {
       console.error(err);
       showToast("Failed to decline request", "error");
+    }
+  };
+
+  const handleViewMemberDetails = async (member: any) => {
+    setSelectedMember(member);
+    setLoadingMemberDetails(true);
+    try {
+      const payRes = await api.get("/payments");
+      const allPayments = payRes.data.data || [];
+      const memberPayments = allPayments.filter((p: any) => p.memberId === member.id);
+      setSelectedMemberPayments(memberPayments);
+    } catch (err) {
+      console.error("Failed to load member payments history", err);
+    } finally {
+      setLoadingMemberDetails(false);
     }
   };
 
@@ -1462,34 +1484,156 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
             </div>
 
             <div className="w-full lg:w-2/3 space-y-4">
-              <h2 className="font-headline text-xl font-bold mb-4 font-headline">Members Directory</h2>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                <h2 className="font-headline text-xl font-bold font-headline">Members Directory</h2>
+                <div className="w-full sm:w-64">
+                  <input
+                    type="text"
+                    value={memberSearchQuery}
+                    onChange={(e) => setMemberSearchQuery(e.target.value)}
+                    placeholder="Search members..."
+                    className="w-full h-10 px-3 rounded-lg bg-surface-container border border-outline-variant/30 font-body text-sm text-on-surface focus:outline-none"
+                  />
+                </div>
+              </div>
+
               {dataList.length === 0 ? (
                 <div className="glass-card rounded-lg p-6 text-center text-on-surface-variant font-body">No Members registered.</div>
               ) : (
                 <div className="space-y-4">
-                  {dataList.map((m) => (
-                    <div key={m.id} className="glass-card rounded-lg p-4 border border-outline-variant/20 flex justify-between items-center">
-                      <div>
-                        <h4 className="font-headline font-semibold text-on-surface">{m.fullName}</h4>
-                        <p className="font-body text-xs text-on-surface-variant mt-0.5">Email: {m.email || "N/A"} | Phone: {m.phone || "N/A"}</p>
-                        <span className={`mt-2 inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                          m.status === "active" ? "bg-primary/10 text-primary border border-primary/20" : "bg-error/10 text-error border border-error/20"
-                        }`}>
-                          {m.status}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => handleDeleteMember(m.id)}
-                        className="p-2 text-on-surface-variant hover:text-error hover:bg-error/15 rounded-full transition-all duration-200 cursor-pointer"
+                  {dataList
+                    .filter((m) =>
+                      m.fullName?.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
+                      m.email?.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
+                      m.phone?.toLowerCase().includes(memberSearchQuery.toLowerCase())
+                    )
+                    .map((m) => (
+                      <div
+                        key={m.id}
+                        onClick={() => handleViewMemberDetails(m)}
+                        className="glass-card rounded-lg p-4 border border-outline-variant/20 flex justify-between items-center cursor-pointer hover:bg-white/5 hover:border-primary/30 transition-all"
                       >
-                        <Trash2 className="h-5 w-5" />
-                      </button>
-                    </div>
-                  ))}
+                        <div>
+                          <h4 className="font-headline font-semibold text-on-surface">{m.fullName}</h4>
+                          <p className="font-body text-xs text-on-surface-variant mt-0.5">Email: {m.email || "N/A"} | Phone: {m.phone || "N/A"}</p>
+                          <span className={`mt-2 inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                            m.status === "active" ? "bg-primary/10 text-primary border border-primary/20" : "bg-error/10 text-error border border-error/20"
+                          }`}>
+                            {m.status}
+                          </span>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteMember(m.id);
+                          }}
+                          className="p-2 text-on-surface-variant hover:text-error hover:bg-error/15 rounded-full transition-all duration-200 cursor-pointer"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </div>
+                    ))}
+
+                  {dataList.filter((m) =>
+                    m.fullName?.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
+                    m.email?.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
+                    m.phone?.toLowerCase().includes(memberSearchQuery.toLowerCase())
+                  ).length === 0 && (
+                    <div className="glass-card rounded-lg p-6 text-center text-on-surface-variant font-body">No matching members found.</div>
+                  )}
                 </div>
               )}
             </div>
           </div>
+
+          {/* Member Details Modal Popup */}
+          {selectedMember && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <div className="glass-card w-full max-w-lg rounded-xl border border-outline-variant/20 overflow-hidden flex flex-col max-h-[85vh]">
+                {/* Modal Header */}
+                <div className="p-6 border-b border-outline-variant/15 flex justify-between items-center bg-surface-container-low">
+                  <h3 className="font-headline text-xl font-bold text-on-surface">Member Profile Profile</h3>
+                  <button
+                    onClick={() => setSelectedMember(null)}
+                    className="p-1 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-white/10 transition-all cursor-pointer"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+
+                {/* Modal Content */}
+                <div className="p-6 overflow-y-auto space-y-6 flex-1 font-body text-sm">
+                  {/* Basic Info */}
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-primary/20 text-primary font-bold text-2xl flex items-center justify-center uppercase shrink-0">
+                      {selectedMember.fullName?.charAt(0) || "M"}
+                    </div>
+                    <div>
+                      <h4 className="font-headline font-bold text-lg text-on-surface">{selectedMember.fullName}</h4>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mt-1 ${
+                        selectedMember.status === "active" ? "bg-primary/10 text-primary border border-primary/20" : "bg-error/10 text-error border border-error/20"
+                      }`}>
+                        {selectedMember.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="divider border-b border-outline-variant/15" />
+
+                  {/* Contact Details */}
+                  <div className="space-y-3">
+                    <h5 className="font-label text-[10px] font-extrabold tracking-widest text-primary uppercase">Contact Details</h5>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-on-surface-variant text-xs font-semibold">Email</p>
+                        <p className="text-on-surface mt-0.5 font-medium">{selectedMember.email || "N/A"}</p>
+                      </div>
+                      <div>
+                        <p className="text-on-surface-variant text-xs font-semibold">Phone</p>
+                        <p className="text-on-surface mt-0.5 font-medium">{selectedMember.phone || "N/A"}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="divider border-b border-outline-variant/15" />
+
+                  {/* Subscription Details */}
+                  <div className="space-y-4">
+                    <h5 className="font-label text-[10px] font-extrabold tracking-widest text-primary uppercase">Payment & Subscription History</h5>
+                    {loadingMemberDetails ? (
+                      <div className="flex justify-center p-4">
+                        <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+                      </div>
+                    ) : selectedMemberPayments.length === 0 ? (
+                      <p className="text-on-surface-variant text-xs">No recorded subscription or cash sales for this member.</p>
+                    ) : (
+                      <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+                        {selectedMemberPayments.map((pay: any) => (
+                          <div key={pay.id} className="p-3 bg-surface-container rounded-lg border border-outline-variant/20 flex justify-between items-center text-xs">
+                            <div>
+                              <p className="font-semibold text-on-surface">Cash Subscription</p>
+                              <p className="text-[10px] text-on-surface-variant mt-0.5">{new Date(pay.created_at).toLocaleDateString()}</p>
+                            </div>
+                            <span className="font-bold text-primary">₹{pay.amount}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="p-4 bg-surface-container-low border-t border-outline-variant/15 flex justify-end">
+                  <button
+                    onClick={() => setSelectedMember(null)}
+                    className="px-6 py-2.5 bg-surface-container hover:bg-outline-variant/20 rounded-full font-headline font-bold text-xs transition-all duration-200 cursor-pointer"
+                  >
+                    Close Profile
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
