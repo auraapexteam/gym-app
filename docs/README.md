@@ -3,7 +3,7 @@
 - **Purpose**: Unified entry point and architecture guidance index for the Aura Apex platform.
 - **Scope**: Entire codebase (Frontend, Backend, Database, Infrastructure).
 - **Related Documents**: None
-- **Last Updated**: 2026-07-13
+- **Last Updated**: 2026-07-14
 
 ---
 
@@ -32,6 +32,7 @@
 - [Attendance Tracking](backend/attendance.md) - QR scan check-in validations, double check-in prevention, and daily limits.
 - [Deployment & Infrastructure](backend/deployment.md) - Railway, GitHub Actions, env variables, rollbacks, and background jobs.
 - [Testing & Quality Assurance](backend/testing.md) - Testing pyramid, unit, integration, and E2E validation.
+- [Progress Logbook API](backend/progress.md) - Customer-facing endpoints for daily weight, water, protein, and progress photo logging.
 
 ### 3. Frontend Architecture
 - [Frontend Architecture](frontend/frontend_architecture.md) - React Native CLI, React Vite Web, Zustand store, Metro packager setup, and Windows-specific fixes.

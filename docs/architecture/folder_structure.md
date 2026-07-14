@@ -56,7 +56,8 @@ backend/
 │   │   ├── gallery/
 │   │   ├── analytics/
 │   │   ├── notifications/
-│   │   └── admin/
+│   │   ├── admin/
+│   │   └── progress/
 │   │
 │   ├── shared/
 │   │

@@ -9,8 +9,9 @@
 >
 > 📖 **Engineering Handbook & Documentation**: The complete system architecture, backend/frontend engineering handbook, standards, and ADRs are now organized in the [docs/README.md](docs/README.md) entry point.
 
-> **Status:** ✅ Backend Complete — feature-first modular API implementing all documented modules (Auth, Gym, Members, Plans, Subscriptions, Payments, Attendance, QR, Trainers, Equipment, Gallery, Analytics, Notifications, Admin).  
+> **Status:** ✅ Backend Complete — feature-first modular API implementing all documented modules (Auth, Gym, Members, Plans, Subscriptions, Payments, Attendance, QR, Trainers, Equipment, Gallery, Analytics, Notifications, Admin, **Progress Logbook**).  
 > **Frontend Status:** 🏗️ In progress — consumes the backend API described in [`backend/README.md`](backend/README.md).  
+> **Customer Web Portal:** ✅ Available in `web-app/` — includes Gym Directory search, Link-to-Gym request flow, owner approval panel, member search & profiles, and the calendar-based **Progress Logbook** (weight, water, protein, photos).  
 > **Tech Stack:** React Native CLI, Express.js (TypeScript, strict), Supabase (PostgreSQL + Auth + Storage), Razorpay, Pino Logger, Zod Validation.
 
 > 🔌 **Frontend integrators:** the complete API contract — every endpoint, request/response shape, auth model, error codes, RBAC matrix, and the checkout / QR / upload flows — lives in **[`backend/README.md`](backend/README.md)**.
@@ -83,7 +84,8 @@ Gym-Management-App/
 │   │   ├── shared/           # errors, responses, middleware, rbac, base repository, utils
 │   │   └── modules/          # one folder per feature (auth, gym, members, plans,
 │   │   │                     #   subscriptions, payments, attendance, qr, trainers,
-│   │   │                     #   equipment, gallery, analytics, notifications, admin, health)
+│   │   │                     #   equipment, gallery, analytics, notifications, admin,
+│   │   │                     #   **progress** — logbook endpoints for weight/water/protein/photos)
 │   ├── README.md             # ⭐ Full API reference for the frontend team
 │   └── package.json          # Backend dependencies
 ├── frontend/                 # React Native CLI Mobile Application

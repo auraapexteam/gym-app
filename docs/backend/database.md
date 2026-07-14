@@ -880,3 +880,89 @@ Caching
 Future CDN support
 
 ---
+
+# 11. Progress Logbook Tables
+
+The Progress Logbook module uses four customer-owned tables to track daily fitness metrics.
+
+All four tables follow the schema convention: `profile_id + log_date` as a `UNIQUE` composite constraint, enabling safe `UPSERT` (re-logging the same date overwrites the previous entry).
+
+## progress_logs
+
+Stores daily body weight for a customer.
+
+```sql
+id          UUID PRIMARY KEY
+profile_id  UUID REFERENCES profiles(id) ON DELETE CASCADE
+weight      NUMERIC(5,2) CHECK (weight > 0)
+log_date    DATE NOT NULL
+created_at  TIMESTAMPTZ
+updated_at  TIMESTAMPTZ
+UNIQUE (profile_id, log_date)
+```
+
+## progress_images
+
+Stores a pre-signed URL to the customer's daily progress photo in Supabase Storage.
+
+```sql
+id          UUID PRIMARY KEY
+profile_id  UUID REFERENCES profiles(id) ON DELETE CASCADE
+image_url   TEXT NOT NULL
+log_date    DATE NOT NULL
+created_at  TIMESTAMPTZ
+UNIQUE (profile_id, log_date)
+```
+
+Note: binary data is in Supabase Storage; this table stores only the public URL.
+
+## water_logs
+
+Stores daily water intake in millilitres.
+
+```sql
+id          UUID PRIMARY KEY
+profile_id  UUID REFERENCES profiles(id) ON DELETE CASCADE
+amount_ml   INTEGER CHECK (amount_ml >= 0)
+log_date    DATE NOT NULL
+created_at  TIMESTAMPTZ
+updated_at  TIMESTAMPTZ
+UNIQUE (profile_id, log_date)
+```
+
+## protein_logs
+
+Stores daily protein intake in grams.
+
+```sql
+id          UUID PRIMARY KEY
+profile_id  UUID REFERENCES profiles(id) ON DELETE CASCADE
+amount_g    INTEGER CHECK (amount_g >= 0)
+log_date    DATE NOT NULL
+created_at  TIMESTAMPTZ
+updated_at  TIMESTAMPTZ
+UNIQUE (profile_id, log_date)
+```
+
+## RLS Policies
+
+All four tables have Row Level Security enabled.
+
+- **Customers** can read and write only their own rows (`auth.uid() = profile_id`).
+- **Gym owners/staff** can read logs of members who belong to their gym.
+- **Super admins** can read all rows.
+
+## Indexes
+
+```
+idx_progress_logs_profile    ON progress_logs(profile_id, log_date)
+idx_progress_images_profile  ON progress_images(profile_id, log_date)
+idx_water_logs_profile       ON water_logs(profile_id, log_date)
+idx_protein_logs_profile     ON protein_logs(profile_id, log_date)
+```
+
+## Migration
+
+Defined in `supabase/migrations/20260714030000_progress_logbook.sql` and reflected in `schema.sql`.
+
+---

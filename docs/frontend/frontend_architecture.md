@@ -24,21 +24,29 @@ Aura Apex consists of three frontend applications sharing the unified backend AP
   - `MMKV` (High performance key-value local storage)
   - `React Native Razorpay SDK` (Checkout overlay module)
 
-### Owner Dashboard Web Application
-- **Platform**: React SPA with Vite
+### Owner & Customer Web Portal (`web-app/`)
+- **Platform**: React SPA with Vite + TailwindCSS v4
 - **Language**: TypeScript
-- **Target Users**: Gym Owners
-- **Key Packages**:
-  - `React Router` (SPA routes)
-  - `Zustand` / `TanStack Query` (State caching)
-  - `TailwindCSS` & `Shadcn UI` (Styling and premium component systems)
+- **Target Users**: Gym Owners, Staff, Trainers, Customers, Super Admin
+- **Key Features by Role**:
 
-### Super Admin Portal Web Application
-- **Platform**: React SPA with Vite
-- **Language**: TypeScript
-- **Target Users**: Aura Apex Internal Operations
+| Role | Available Tabs |
+|---|---|
+| `super_admin` | Platform Overview, Onboard Gym, Audit Logs |
+| `owner` | Overview, Staff, Trainers, Members (search + profile modal), Plans, Record Sale, Gym QR, Gallery, Join Requests, Gym Profile |
+| `staff` | Front Desk, Members Directory, Manual Checkin, Gym QR |
+| `trainer` | Overview, Member Log |
+| `customer` | Overview (gym search → link request → plan view), **Progress Logbook** |
+
+- **Customer Progress Logbook** (`activeTab === "progress"`):
+  - Month summary stats row (avg weight, total water in L, total protein in g, days logged)
+  - Interactive calendar grid — dots on logged dates, today ring-highlighted, future dates disabled
+  - Click-a-date log panel — weight (kg), water (ml), protein (g), progress photo upload
+  - Pre-fills existing values when reopening a previously logged date
+  - Photo upload reuses the gallery `POST /gallery/upload-url` → binary `PUT` → `POST /progress/image` flow
 
 ---
+
 
 ## Workspace Setup & Dev Scripts
 
