@@ -8,6 +8,9 @@ import {
 } from '@/modules/trainers/trainers.types';
 import { ListQuery, PaginatedResult } from '@/shared/types';
 import { NotFoundError } from '@/shared/errors';
+import { AuthService } from '@/modules/auth/auth.service';
+import { Role } from '@/shared/rbac/roles';
+import { supabase } from '@/config/supabase';
 
 /** Business logic for trainers. Trainers never own customers. */
 export class TrainerService {
@@ -35,9 +38,22 @@ export class TrainerService {
   }
 
   static async create(gymId: string, input: CreateTrainerInput): Promise<TrainerDto> {
+    let profileId = input.profileId ?? null;
+
+    if (input.email && input.password) {
+      const profile = await AuthService.createManagedUser({
+        email: input.email,
+        password: input.password,
+        fullName: input.fullName,
+        role: Role.TRAINER,
+        gymId,
+      });
+      profileId = profile.id;
+    }
+
     const row = await trainerRepository.create({
       gym_id: gymId,
-      profile_id: input.profileId ?? null,
+      profile_id: profileId,
       full_name: input.fullName,
       specialization: input.specialization ?? null,
       bio: input.bio ?? null,
@@ -66,8 +82,12 @@ export class TrainerService {
   }
 
   static async remove(gymId: string, id: string): Promise<void> {
-    await this.getRowOrThrow(gymId, id);
+    const trainer = await this.getRowOrThrow(gymId, id);
     await trainerRepository.remove(id, gymId);
+
+    if (trainer.profile_id) {
+      await supabase.auth.admin.deleteUser(trainer.profile_id);
+    }
   }
 
   private static async getRowOrThrow(gymId: string, id: string): Promise<TrainerRow> {
@@ -76,3 +96,4 @@ export class TrainerService {
     return row;
   }
 }
+

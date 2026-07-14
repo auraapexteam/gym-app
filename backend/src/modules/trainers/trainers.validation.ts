@@ -9,6 +9,7 @@ const trainerBody = {
   email: z.string().email().max(160).optional(),
   imageUrl: z.string().url().max(500).optional(),
   profileId: z.string().uuid().optional(),
+  password: z.string().min(6).max(72).optional(),
 };
 
 export const createTrainerSchema = z.object({ body: z.object(trainerBody) });

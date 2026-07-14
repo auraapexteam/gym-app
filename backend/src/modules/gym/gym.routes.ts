@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { GymController } from '@/modules/gym/gym.controller';
-import { updateGymSchema, gymIdParamSchema } from '@/modules/gym/gym.validation';
+import { updateGymSchema, gymIdParamSchema, createStaffSchema, staffIdParamSchema } from '@/modules/gym/gym.validation';
 import { authenticate, requirePermission, validate, asyncHandler } from '@/shared/middleware';
 import { Permission } from '@/shared/rbac';
 
@@ -17,6 +17,27 @@ router.patch(
   asyncHandler(GymController.updateMine),
 );
 
+// Staff management routes
+router.get(
+  '/me/staff',
+  requirePermission(Permission.STAFF_MANAGE),
+  asyncHandler(GymController.listStaff),
+);
+
+router.post(
+  '/me/staff',
+  requirePermission(Permission.STAFF_MANAGE),
+  validate(createStaffSchema),
+  asyncHandler(GymController.createStaff),
+);
+
+router.delete(
+  '/me/staff/:id',
+  requirePermission(Permission.STAFF_MANAGE),
+  validate(staffIdParamSchema),
+  asyncHandler(GymController.deleteStaff),
+);
+
 router.get(
   '/:id',
   requirePermission(Permission.GYM_READ),
@@ -25,3 +46,4 @@ router.get(
 );
 
 export default router;
+

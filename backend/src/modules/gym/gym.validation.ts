@@ -34,3 +34,17 @@ export const updateGymSchema = z.object({
 export const gymIdParamSchema = z.object({
   params: z.object({ id: z.string().uuid() }),
 });
+
+export const createStaffSchema = z.object({
+  body: z.object({
+    email: z.string().email().max(160),
+    password: z.string().min(6).max(72),
+    fullName: z.string().min(1).max(120),
+    permissions: z.array(z.string()).optional(),
+  }),
+});
+
+export const staffIdParamSchema = z.object({
+  params: z.object({ id: z.string().uuid() }),
+});
+

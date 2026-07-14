@@ -9,7 +9,11 @@ import {
   UpdateGymInput,
 } from '@/modules/gym/gym.types';
 import { ListQuery, PaginatedResult } from '@/shared/types';
-import { NotFoundError } from '@/shared/errors';
+import { NotFoundError, BadRequestError } from '@/shared/errors';
+import { supabase } from '@/config/supabase';
+import { AuthService } from '@/modules/auth/auth.service';
+import { Role } from '@/shared/rbac/roles';
+
 
 /** Business logic for the gym (tenant) profile, timings and settings. */
 export class GymService {
@@ -89,4 +93,76 @@ export class GymService {
     if (!row) throw new NotFoundError('Gym not found', 'GYM_NOT_FOUND');
     return row;
   }
+
+  // --- Staff Management Operations -----------------------------------------
+
+  /** List all staff members assigned to the gym. */
+  static async listStaff(gymId: string): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('gym_staff')
+      .select('id, role, permissions, status, created_at, profiles(id, email, full_name, avatar_url)')
+      .eq('gym_id', gymId);
+
+    if (error) {
+      throw new BadRequestError(error.message, 'STAFF_LIST_FAILED');
+    }
+    return data ?? [];
+  }
+
+  /** Onboard a new staff member (creates authentication user + gym_staff row). */
+  static async createStaff(
+    gymId: string,
+    input: { email: string; password: string; fullName: string; permissions?: string[] },
+  ): Promise<any> {
+    // 1. Create the user in Supabase Auth via Admin client
+    const profile = await AuthService.createManagedUser({
+      email: input.email,
+      password: input.password,
+      fullName: input.fullName,
+      role: Role.STAFF,
+      gymId,
+    });
+
+    // 2. Create the gym_staff entry mapping the profile
+    const { data, error } = await supabase
+      .from('gym_staff')
+      .insert({
+        gym_id: gymId,
+        profile_id: profile.id,
+        role: Role.STAFF,
+        permissions: input.permissions ?? [],
+        status: 'active',
+      })
+      .select()
+      .single();
+
+    if (error) {
+      // Clean up the created auth user on failure
+      await supabase.auth.admin.deleteUser(profile.id);
+      throw new BadRequestError(error.message, 'STAFF_CREATE_FAILED');
+    }
+
+    return { ...data, profile };
+  }
+
+  /** Delete a staff member (deletes the auth user, which cascades to profile & staff). */
+  static async deleteStaff(gymId: string, staffId: string): Promise<void> {
+    const { data: staff, error: fetchErr } = await supabase
+      .from('gym_staff')
+      .select('id, profile_id')
+      .eq('id', staffId)
+      .eq('gym_id', gymId)
+      .maybeSingle();
+
+    if (fetchErr || !staff) {
+      throw new NotFoundError('Staff member not found', 'STAFF_NOT_FOUND');
+    }
+
+    // Deleting the auth user cascades and deletes the profile and gym_staff rows.
+    const { error: deleteUserErr } = await supabase.auth.admin.deleteUser(staff.profile_id);
+    if (deleteUserErr) {
+      throw new BadRequestError(deleteUserErr.message, 'STAFF_DELETE_FAILED');
+    }
+  }
 }
+

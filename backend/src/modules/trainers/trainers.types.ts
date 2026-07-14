@@ -38,6 +38,8 @@ export interface CreateTrainerInput {
   email?: string;
   imageUrl?: string;
   profileId?: string;
+  password?: string;
 }
+
 
 export type UpdateTrainerInput = Partial<CreateTrainerInput> & { status?: TrainerStatus };

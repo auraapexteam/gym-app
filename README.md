@@ -96,6 +96,14 @@ Gym-Management-App/
 │   │   ├── store/            # Zustand global state (Auth, Profiles)
 │   │   └── types/            # TypeScript environment and library declarations
 │   └── package.json          # Frontend dependencies
+├── web-app/                  # React + Vite + TS Premium Web Portal (Owner & Super Admin)
+│   ├── src/
+│   │   ├── App.tsx           # Dashboard routes, login, views (Owner, Staff, Admin, Trainer)
+│   │   ├── index.css         # CSS tokens and styling utilities (UI_SYSTEM.md)
+│   │   └── main.tsx          # Client entrypoint
+│   ├── index.html            # Web template loading Google Fonts
+│   ├── vite.config.ts        # Vite compiler with Tailwind CSS v4 integration
+│   └── package.json          # Portal dependencies
 ├── supabase/                 # Version-controlled database migrations
 │   ├── migrations/           # SQL migration scripts
 │   └── config.toml           # Supabase CLI project configuration
@@ -172,6 +180,20 @@ To set up your database, you can run the version-controlled migrations locally o
    ```
    *(Note: The application uses `react-native-dotenv` to dynamically read configuration values directly from `frontend/.env` during build).*
 
+### Step 4.4: Web Portal Configuration
+1. Navigate to the `web-app/` folder:
+   ```bash
+   cd web-app
+   ```
+2. Create a `.env` file containing the backend host (this file is git-ignored):
+   ```env
+   VITE_API_URL=http://localhost:5000
+   ```
+3. Install web dependencies:
+   ```bash
+   npm install
+   ```
+
 ---
 
 ## 5. Running the Application
@@ -210,7 +232,16 @@ cd frontend
 npx react-native run-android --no-packager
 ```
 
+### Step 5.5: Starting the Web Portal
+Open a new terminal in the root directory and run:
+```bash
+cd web-app
+npm run dev
+```
+*This launches the portal on `http://localhost:5173`. Open it in your web browser.*
+
 ---
+
 
 ## 6. Core Architectural Features
 

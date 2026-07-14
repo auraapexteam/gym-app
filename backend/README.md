@@ -195,9 +195,13 @@ Roles: `customer`, `owner`, `staff`, `trainer`, `super_admin`. Roles do **not** 
 | ------ | ------- | ---- | ----- |
 | GET    | `/me`   | 🔑 `gym.read`   | Caller's own gym (full) |
 | PATCH  | `/me`   | 🔑 `gym.manage` | `{ name?, email?, phone?, address?, description?, logoUrl?, timings?, weeklyOff?, settings? }` |
+| GET    | `/me/staff` | 🔑 `staff.manage` | List all staff members assigned to this gym |
+| POST   | `/me/staff` | 🔑 `staff.manage` | `{ email, password, fullName, permissions? }` — onboard new staff user credentials |
+| DELETE | `/me/staff/:id` | 🔑 `staff.manage` | Delete a staff member (deletes user account) |
 | GET    | `/:id`  | 🔑 `gym.read`   | Public gym profile |
 
 `timings` = `{ "monday": { "open": "06:00", "close": "22:00" }, … }`. `weeklyOff` = `["sunday"]`.
+
 
 ### Members — `/api/v1/members`  (owner/staff)
 
@@ -265,10 +269,11 @@ Roles: `customer`, `owner`, `staff`, `trainer`, `super_admin`. Roles do **not** 
 | Method | Path   | Auth | Notes |
 | ------ | ------ | ---- | ----- |
 | GET    | `/`    | 🔑 `trainer.read`   | `?status` |
-| POST   | `/`    | 🔑 `trainer.manage` | `{ fullName, specialization?, bio?, phone?, email?, imageUrl?, profileId? }` |
+| POST   | `/`    | 🔑 `trainer.manage` | `{ fullName, specialization?, bio?, phone?, email?, imageUrl?, profileId?, password? }` — if email & password are provided, it automatically provisions their managed user login in Supabase Auth |
 | GET    | `/:id` | 🔑 `trainer.read`   | |
 | PATCH  | `/:id` | 🔑 `trainer.manage` | + `status` |
-| DELETE | `/:id` | 🔑 `trainer.manage` | Soft delete |
+| DELETE | `/:id` | 🔑 `trainer.manage` | Soft deletes the trainer record and deletes their auth user account |
+
 
 ### Equipment — `/api/v1/equipment`  (owner/staff)
 
