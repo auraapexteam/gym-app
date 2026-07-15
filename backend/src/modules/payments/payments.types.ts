@@ -67,6 +67,7 @@ export interface VerifyPaymentInput {
 
 /** Minimal shape of the Razorpay webhook payloads we consume. */
 export interface RazorpayWebhookEvent {
+  id?:   string;
   event: string;
   payload?: {
     payment?: { entity?: { id?: string; order_id?: string; method?: string } };
