@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   SafeAreaView,
+  Modal,
 } from 'react-native';
 import RazorpayCheckout from 'react-native-razorpay';
 import { apiClient } from '../api/client';
@@ -28,6 +29,7 @@ export function PlansScreen({ navigation }: any) {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false); // separate from plans loading
   const { user, userProfile, loadSubscription } = useAuthStore();
 
   useEffect(() => {
@@ -86,7 +88,7 @@ export function PlansScreen({ navigation }: any) {
         .then(async (data: any) => {
           // 3. Verify Payment Signature on backend
           try {
-            setLoading(true);
+            setVerifying(true); // show overlay spinner, don't touch plans loading
             const verifyRes = await apiClient.post('/payments/verify', {
               orderId: orderId,
               paymentId: data.razorpay_payment_id,
@@ -94,33 +96,37 @@ export function PlansScreen({ navigation }: any) {
             });
 
             if (verifyRes.data && verifyRes.data.success) {
+              await loadSubscription();
               Alert.alert(
-                'Payment Verified',
-                'Your membership has been activated successfully!',
+                '🎉 Payment Verified',
+                'Your membership has been activated! Welcome to Aura Apex.',
                 [
                   {
-                    text: 'Explore Dashboard',
+                    text: 'Go to Dashboard',
                     onPress: () => {
-                      loadSubscription();
-                      navigation.navigate('Home');
+                      navigation.navigate('HomeTab');
                     },
                   },
                 ]
               );
             }
           } catch (verifyErr: any) {
-            Alert.alert('Verification Failed', 'Unable to confirm payment status.');
+            Alert.alert(
+              'Verification Failed',
+              verifyErr.message || 'Payment was received but we could not confirm it. Contact support.',
+            );
           } finally {
-            setLoading(false);
+            setVerifying(false);
+            setPurchasingId(null);
           }
         })
         .catch((error: any) => {
           console.warn('Razorpay Checkout failed:', error);
           Alert.alert('Checkout Closed', error.description || 'Payment was cancelled.');
+          setPurchasingId(null);
         });
     } catch (error: any) {
       Alert.alert('Checkout Error', error.message || 'An error occurred during order creation.');
-    } finally {
       setPurchasingId(null);
     }
   };
@@ -164,6 +170,17 @@ export function PlansScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Full-screen verify overlay — only shown during payment confirmation */}
+      <Modal visible={verifying} transparent animationType="fade">
+        <View style={styles.verifyOverlay}>
+          <View style={styles.verifyCard}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.verifyText}>Confirming payment...</Text>
+            <Text style={styles.verifySubtext}>Please wait, do not close the app.</Text>
+          </View>
+        </View>
+      </Modal>
+
       <View style={styles.header}>
         <ShieldCheck size={28} color={COLORS.primary} style={styles.headerIcon} />
         <Text style={styles.headerTitle}>Membership Plans</Text>
@@ -291,5 +308,30 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: 40,
     fontSize: 16,
+  },
+  verifyOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  verifyCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    width: '80%',
+  },
+  verifyText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginTop: 16,
+  },
+  verifySubtext: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 6,
+    textAlign: 'center',
   },
 });
