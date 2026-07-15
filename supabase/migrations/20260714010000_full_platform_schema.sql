@@ -518,6 +518,39 @@ BEGIN
 END;
 $$;
 
+-- Create an immediately-active membership + a successful manual (cash) payment
+-- atomically. Used by owners/staff recording an in-person sale.
+CREATE OR REPLACE FUNCTION public.create_manual_membership(
+    p_gym_id         UUID,
+    p_member_id      UUID,
+    p_plan_id        UUID,
+    p_amount         NUMERIC,
+    p_duration_days  INTEGER,
+    p_method         public.payment_method
+)
+RETURNS TABLE (subscription_id UUID, payment_id UUID)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_subscription_id UUID;
+    v_payment_id      UUID;
+    v_start           TIMESTAMPTZ := timezone('utc', now());
+BEGIN
+    INSERT INTO public.subscriptions (gym_id, member_id, plan_id, status, start_date, end_date)
+    VALUES (
+        p_gym_id, p_member_id, p_plan_id, 'active',
+        v_start, v_start + make_interval(days => p_duration_days)
+    )
+    RETURNING id INTO v_subscription_id;
+
+    INSERT INTO public.payments (gym_id, subscription_id, member_id, amount, status, method, paid_at)
+    VALUES (p_gym_id, v_subscription_id, p_member_id, p_amount, 'success', p_method, v_start)
+    RETURNING id INTO v_payment_id;
+
+    RETURN QUERY SELECT v_subscription_id, v_payment_id;
+END;
+$$;
+
 -- ============================================================================
 --  11. ANALYTICS VIEWS  (read-only reporting; never a source of truth)
 -- ============================================================================
