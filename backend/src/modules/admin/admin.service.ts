@@ -1,4 +1,5 @@
 import { adminRepository } from '@/modules/admin/admin.repository';
+import { gymRepository } from '@/modules/gym/gym.repository';
 import { toAuditLogDto } from '@/modules/admin/admin.dto';
 import {
   AuditLogDto,
@@ -27,19 +28,32 @@ export class AdminService {
       status: 'active',
     });
 
-    let owner: ProfileDto | null = null;
-    if (input.owner) {
-      owner = await AuthService.createManagedUser({
-        email: input.owner.email,
-        password: input.owner.password,
-        fullName: input.owner.fullName,
-        role: Role.OWNER,
-        gymId: gym.id,
-      });
-      await GymService.assignOwner(gym.id, owner.id);
-    }
+    try {
+      let owner: ProfileDto | null = null;
+      if (input.owner) {
+        owner = await AuthService.createManagedUser({
+          email: input.owner.email,
+          password: input.owner.password,
+          fullName: input.owner.fullName,
+          role: Role.OWNER,
+          gymId: gym.id,
+        });
 
-    return { gym, owner };
+        try {
+          await GymService.assignOwner(gym.id, owner.id);
+        } catch (err) {
+          // Rollback created user if assignOwner fails
+          await AuthService.removeUser(owner.id);
+          throw err;
+        }
+      }
+
+      return { gym, owner };
+    } catch (err) {
+      // Rollback created gym if owner creation or assignment fails
+      await gymRepository.hardDelete(gym.id);
+      throw err;
+    }
   }
 
   static listGyms(query: ListQuery, status?: string): Promise<PaginatedResult<GymDto>> {
