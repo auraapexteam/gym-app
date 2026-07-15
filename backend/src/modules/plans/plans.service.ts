@@ -2,7 +2,7 @@ import { planRepository } from '@/modules/plans/plans.repository';
 import { toPlanDto } from '@/modules/plans/plans.dto';
 import { CreatePlanInput, PlanDto, PlanRow, UpdatePlanInput } from '@/modules/plans/plans.types';
 import { ListQuery, PaginatedResult } from '@/shared/types';
-import { NotFoundError } from '@/shared/errors';
+import { NotFoundError, BusinessRuleError } from '@/shared/errors';
 
 /** Business logic for membership plans. Plans never activate memberships. */
 export class PlanService {
@@ -32,6 +32,17 @@ export class PlanService {
   /** Internal lookup used by the subscription module (returns the raw row). */
   static async getActiveRow(gymId: string, id: string): Promise<PlanRow> {
     const row = await this.getRowOrThrow(gymId, id);
+    return row;
+  }
+
+  /**
+   * Resolve a purchasable plan by id (tenant derived from the plan itself).
+   * Used by the payment module when a customer initiates a checkout.
+   */
+  static async getPurchasable(planId: string): Promise<PlanRow> {
+    const row = await planRepository.findById(planId);
+    if (!row) throw new NotFoundError('Plan not found', 'PLAN_NOT_FOUND');
+    if (!row.is_active) throw new BusinessRuleError('Plan is not available', 'PLAN_INACTIVE');
     return row;
   }
 

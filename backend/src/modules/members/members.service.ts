@@ -94,6 +94,11 @@ export class MemberService {
     await memberRepository.remove(id, gymId);
   }
 
+  /** Ids of every member record linked to a profile (across all gyms). */
+  static listMemberIdsForProfile(profileId: string): Promise<string[]> {
+    return memberRepository.findIdsByProfile(profileId);
+  }
+
   /**
    * Find or lazily create the member record for an app user in a gym. Used by
    * customer-facing flows (subscriptions, attendance) that operate on a member.
