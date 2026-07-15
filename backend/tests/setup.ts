@@ -215,6 +215,7 @@ vi.mock('@/config/supabase', () => {
       };
     }),
     signOut: vi.fn(async () => ({ error: null })),
+    resetPasswordForEmail: vi.fn(async () => ({ data: {}, error: null })),
     admin: {
       createUser: vi.fn(async (payload: any) => {
         const email = payload?.email;

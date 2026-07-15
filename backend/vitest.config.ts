@@ -7,6 +7,11 @@ export default defineConfig({
     environment: 'node',
     setupFiles: ['./tests/setup.ts'],
     include: ['tests/**/*.test.ts'],
+    env: {
+      // The entire supabase module is mocked in tests; these dummy values
+      // exist only to satisfy the env-schema validation on startup.
+      SUPABASE_ANON_KEY: 'test-anon-key-placeholder',
+    },
   },
   resolve: {
     alias: {

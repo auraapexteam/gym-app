@@ -23,13 +23,14 @@ export const supabase: SupabaseClient = createClient(
 /**
  * Supabase "anon" client.
  *
- * Used for public auth operations (login / signup / password reset). Prefers
- * the anon key; falls back to the service-role key when the anon key is not
- * configured (auth endpoints accept either). Business data is never read here.
+ * Used for public auth operations (login / signup / password reset).
+ * Uses the anon (public) key — NOT the service-role key — to ensure
+ * these operations run at the correct privilege level.
+ * Business data is never read through this client.
  */
 export const supabaseAnon: SupabaseClient = createClient(
   env.SUPABASE_URL,
-  env.SUPABASE_ANON_KEY ?? env.SUPABASE_SERVICE_ROLE_KEY,
+  env.SUPABASE_ANON_KEY,
   {
     auth: {
       persistSession: false,
