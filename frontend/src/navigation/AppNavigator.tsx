@@ -4,12 +4,15 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/useAuthStore';
+import { COLORS } from '../theme/tokens';
 
 // Screens
 import { LoginScreen } from '../screens/LoginScreen';
 import { SignupScreen } from '../screens/SignupScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { PlansScreen } from '../screens/PlansScreen';
+import { QRCheckInScreen } from '../screens/QRCheckInScreen';
+import { ProgressScreen } from '../screens/ProgressScreen';
 import { OwnerDashboardScreen } from '../screens/OwnerDashboardScreen';
 
 const Stack = createNativeStackNavigator();
@@ -36,13 +39,13 @@ export function AppNavigator() {
   if (loading && !accessToken) {
     return (
       <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="#6366F1" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
 
   // Determine user role
-  const isStaff = userProfile?.role === 'owner' || userProfile?.role === 'admin';
+  const isStaff = userProfile?.role === 'owner' || userProfile?.role === 'staff' || userProfile?.role === 'admin';
 
   return (
     <NavigationContainer>
@@ -59,8 +62,10 @@ export function AppNavigator() {
           ) : (
             // Customer / Member Stack
             <>
-              <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Customer Dashboard' }} />
-              <Stack.Screen name="Plans" component={PlansScreen} options={{ title: 'Subscription Plans' }} />
+              <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Aura Apex Customer' }} />
+              <Stack.Screen name="Plans" component={PlansScreen} options={{ title: 'Membership Plans' }} />
+              <Stack.Screen name="QRCheckIn" component={QRCheckInScreen} options={{ title: 'QR Check-in' }} />
+              <Stack.Screen name="Progress" component={ProgressScreen} options={{ title: 'Progress Logbook' }} />
             </>
           )
         ) : (
@@ -80,6 +85,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: COLORS.background,
   },
 });

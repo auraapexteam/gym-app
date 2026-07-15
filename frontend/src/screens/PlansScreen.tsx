@@ -12,14 +12,16 @@ import {
 import RazorpayCheckout from 'react-native-razorpay';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/useAuthStore';
+import { COLORS, SHADOWS } from '../theme/tokens';
+import { Check, ShieldCheck } from 'lucide-react-native';
 
 interface Plan {
   id: string;
   name: string;
   description: string;
   price: number;
-  billing_interval: 'month' | 'year';
-  razorpay_plan_id?: string;
+  durationDays: number;
+  features: string[];
 }
 
 export function PlansScreen({ navigation }: any) {
@@ -37,7 +39,7 @@ export function PlansScreen({ navigation }: any) {
       setLoading(true);
       const response = await apiClient.get('/plans');
       if (response.data && response.data.success) {
-        setPlans(response.data.data);
+        setPlans(response.data.data.items || response.data.data);
       }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to fetch plans');
@@ -50,55 +52,70 @@ export function PlansScreen({ navigation }: any) {
     try {
       setPurchasingId(plan.id);
 
-      // 1. Create a subscription on the backend
-      const response = await apiClient.post('/subscriptions', {
+      // 1. Create a Razorpay Order on the backend
+      const response = await apiClient.post('/payments/orders', {
         planId: plan.id,
       });
 
       if (!response.data || !response.data.success) {
-        throw new Error(response.data.message || 'Failed to initiate subscription');
+        throw new Error(response.data.message || 'Failed to initiate order');
       }
 
-      const { razorpaySubscriptionId, amount } = response.data.data;
+      const { orderId, amountInPaise, currency, razorpayKeyId } = response.data.data;
 
       // 2. Open Razorpay Checkout overlay
       const options = {
         description: plan.description,
-        currency: 'INR',
-        key: 'rzp_test_TCESM9ZshcU5Ul', // Your Razorpay test Key ID
-        subscription_id: razorpaySubscriptionId,
-        name: 'Subscription App',
+        currency: currency,
+        key: razorpayKeyId,
+        order_id: orderId,
+        name: 'Aura Apex Gym',
         prefill: {
           email: user?.email || '',
           contact: '9876543210',
-          name: 'Subscription Customer',
+          name: user?.email?.split('@')[0] || 'Gym Customer',
         },
-        theme: { color: '#6366F1' },
+        theme: { color: COLORS.primary },
       };
 
       RazorpayCheckout.open(options)
         .then(async (data: any) => {
-          Alert.alert(
-            'Payment Successful',
-            'Your payment was processed. Your subscription will be activated shortly once Razorpay webhooks sync!',
-            [
-              {
-                text: 'OK',
-                onPress: () => {
-                  // Reload active subscription in background
-                  loadSubscription();
-                  navigation.navigate('Home');
-                },
-              },
-            ]
-          );
+          // 3. Verify Payment Signature on backend
+          try {
+            setLoading(true);
+            const verifyRes = await apiClient.post('/payments/verify', {
+              orderId: orderId,
+              paymentId: data.razorpay_payment_id,
+              signature: data.razorpay_signature,
+            });
+
+            if (verifyRes.data && verifyRes.data.success) {
+              Alert.alert(
+                'Payment Verified',
+                'Your membership has been activated successfully!',
+                [
+                  {
+                    text: 'Explore Dashboard',
+                    onPress: () => {
+                      loadSubscription();
+                      navigation.navigate('Home');
+                    },
+                  },
+                ]
+              );
+            }
+          } catch (verifyErr: any) {
+            Alert.alert('Verification Failed', 'Unable to confirm payment status.');
+          } finally {
+            setLoading(false);
+          }
         })
         .catch((error: any) => {
           console.warn('Razorpay Checkout failed:', error);
-          Alert.alert('Payment Failed', error.description || 'Checkout closed or failed.');
+          Alert.alert('Checkout Closed', error.description || 'Payment was cancelled.');
         });
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'An error occurred during subscription checkout.');
+      Alert.alert('Checkout Error', error.message || 'An error occurred during order creation.');
     } finally {
       setPurchasingId(null);
     }
@@ -111,8 +128,20 @@ export function PlansScreen({ navigation }: any) {
         <Text style={styles.planName}>{item.name}</Text>
         <Text style={styles.planDescription}>{item.description}</Text>
         <Text style={styles.planPrice}>
-          ₹{item.price} <Text style={styles.planInterval}>/ {item.billing_interval}</Text>
+          ₹{item.price} <Text style={styles.planInterval}>/ {item.durationDays} Days</Text>
         </Text>
+
+        <View style={styles.divider} />
+
+        {/* Features Checklist */}
+        <View style={styles.featuresContainer}>
+          {(item.features || ['Full Access', 'Cardio + Strength Area']).map((feature, idx) => (
+            <View key={idx} style={styles.featureRow}>
+              <Check size={16} color={COLORS.success} style={styles.featureIcon} />
+              <Text style={styles.featureText}>{feature}</Text>
+            </View>
+          ))}
+        </View>
 
         <TouchableOpacity
           style={styles.subscribeButton}
@@ -120,9 +149,9 @@ export function PlansScreen({ navigation }: any) {
           disabled={purchasingId !== null}
         >
           {isProcessing ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={COLORS.surface} />
           ) : (
-            <Text style={styles.subscribeText}>Subscribe Now</Text>
+            <Text style={styles.subscribeText}>Select & Subscribe</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -131,9 +160,15 @@ export function PlansScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {loading ? (
+      <View style={styles.header}>
+        <ShieldCheck size={28} color={COLORS.primary} style={styles.headerIcon} />
+        <Text style={styles.headerTitle}>Membership Plans</Text>
+        <Text style={styles.headerSubtitle}>Select a plan to start your transformation journey</Text>
+      </View>
+
+      {loading && plans.length === 0 ? (
         <View style={styles.loader}>
-          <ActivityIndicator size="large" color="#6366F1" />
+          <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
       ) : (
         <FlatList
@@ -148,12 +183,33 @@ export function PlansScreen({ navigation }: any) {
       )}
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: COLORS.background,
+  },
+  header: {
+    padding: 24,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderColor: COLORS.border,
+  },
+  headerIcon: {
+    marginBottom: 8,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: COLORS.textPrimary,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: 4,
   },
   loader: {
     flex: 1,
@@ -164,55 +220,71 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surface,
     borderRadius: 16,
-    padding: 20,
+    padding: 24,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    ...SHADOWS.medium,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: COLORS.border,
   },
   planName: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#111827',
+    color: COLORS.textPrimary,
   },
   planDescription: {
     fontSize: 14,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
     marginTop: 6,
     lineHeight: 20,
   },
   planPrice: {
     fontSize: 26,
     fontWeight: 'bold',
-    color: '#6366F1',
-    marginTop: 16,
+    color: COLORS.primary,
+    marginTop: 12,
   },
   planInterval: {
     fontSize: 14,
     fontWeight: 'normal',
-    color: '#6B7280',
+    color: COLORS.textSecondary,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 16,
+  },
+  featuresContainer: {
+    marginBottom: 8,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  featureIcon: {
+    marginRight: 8,
+  },
+  featureText: {
+    fontSize: 14,
+    color: COLORS.textPrimary,
   },
   subscribeButton: {
-    backgroundColor: '#6366F1',
+    backgroundColor: COLORS.primary,
     borderRadius: 8,
-    padding: 14,
+    padding: 16,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 12,
   },
   subscribeText: {
-    color: '#FFFFFF',
+    color: COLORS.surface,
     fontSize: 16,
     fontWeight: 'bold',
   },
   emptyText: {
     textAlign: 'center',
-    color: '#6B7280',
+    color: COLORS.textSecondary,
     marginTop: 40,
     fontSize: 16,
   },
