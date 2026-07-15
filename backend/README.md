@@ -2,7 +2,12 @@
 
 Multi-tenant SaaS **Gym Management Platform** API. One backend serves three apps: the **Customer Mobile App** (React Native), the **Owner Dashboard** (React Web), and the **Super Admin Portal** (React Web).
 
-This document is the single reference the frontend teams need to integrate. It covers setup, conventions, the full endpoint catalog, request/response shapes, the end-to-end flows (auth, membership checkout, QR attendance, image upload), enums, and the data model.
+### 📖 Live API Documentation (Swagger)
+The API contract is fully documented and served interactively at:
+* **Interactive UI:** `http://localhost:5000/docs` (Local) or `https://gym-app-xtru.onrender.com/docs` (Production)
+* **Raw OpenAPI Spec:** `http://localhost:5000/docs/openapi.json`
+
+This document is the reference guide for local environment setup, architecture patterns, and conventions.
 
 - **Stack:** Node.js · Express · TypeScript (strict) · Supabase (PostgreSQL + Auth + Storage) · Razorpay · Zod · Pino
 - **Base URL (local):** `http://localhost:5000`
