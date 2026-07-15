@@ -27,9 +27,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user: session.user,
         accessToken: session.access_token || session.token || null,
       });
-      // Load their profile and subscription status
+      // Load user profile first to determine role
       await get().loadUserProfile();
-      await get().loadSubscription();
+
+      // Only load subscription for CUSTOMER role with a linked gym
+      const profile = get().userProfile;
+      const isCustomer = profile?.role === 'customer' || !profile?.role;
+      const hasGym = !!profile?.gym_id;
+      if (isCustomer && hasGym) {
+        await get().loadSubscription();
+      }
     } else {
       set({ user: null, userProfile: null, accessToken: null, subscription: null });
     }
@@ -60,8 +67,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (response.data && response.data.success) {
         set({ subscription: response.data.data });
       }
-    } catch (error) {
-      console.warn('Error loading active subscription status:', error);
+    } catch (error: any) {
+      // 404 = no active subscription, that's normal for new customers
+      if (error?.response?.status !== 404) {
+        console.warn('Error loading subscription:', error?.response?.data?.message || error.message);
+      }
       set({ subscription: null });
     } finally {
       set({ loading: false });

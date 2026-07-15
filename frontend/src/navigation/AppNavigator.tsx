@@ -6,14 +6,16 @@ import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/useAuthStore';
 import { COLORS } from '../theme/tokens';
 
-// Screens
+// Screens & Navigators
 import { LoginScreen } from '../screens/LoginScreen';
 import { SignupScreen } from '../screens/SignupScreen';
-import { HomeScreen } from '../screens/HomeScreen';
-import { PlansScreen } from '../screens/PlansScreen';
-import { QRCheckInScreen } from '../screens/QRCheckInScreen';
-import { ProgressScreen } from '../screens/ProgressScreen';
 import { OwnerDashboardScreen } from '../screens/OwnerDashboardScreen';
+import { CustomerTabNavigator } from './CustomerTabNavigator';
+import { QRCheckInScreen } from '../screens/QRCheckInScreen';
+import { BeginnerGuideScreen } from '../screens/BeginnerGuideScreen';
+import { GymInfoScreen } from '../screens/GymInfoScreen';
+import { SubscriptionHistoryScreen } from '../screens/SubscriptionHistoryScreen';
+import { AttendanceHistoryScreen } from '../screens/AttendanceHistoryScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -21,12 +23,10 @@ export function AppNavigator() {
   const { accessToken, userProfile, setSession, loading } = useAuthStore();
 
   useEffect(() => {
-    // 1. Check active session once on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
 
-    // 2. Listen for auth changes (login, logout, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
@@ -36,7 +36,7 @@ export function AppNavigator() {
     };
   }, [setSession]);
 
-  if (loading && !accessToken) {
+  if (accessToken && !userProfile && loading) {
     return (
       <View style={styles.loaderContainer}>
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -44,32 +44,57 @@ export function AppNavigator() {
     );
   }
 
-  // Determine user role
-  const isStaff = userProfile?.role === 'owner' || userProfile?.role === 'staff' || userProfile?.role === 'admin';
+  const isStaffOrOwner =
+    userProfile?.role === 'owner' ||
+    userProfile?.role === 'staff' ||
+    userProfile?.role === 'admin';
 
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: true }}>
         {accessToken ? (
-          // App Stack (Authenticated Users)
-          isStaff ? (
-            // Staff / Gym Owner Stack
-            <Stack.Screen 
-              name="OwnerDashboard" 
-              component={OwnerDashboardScreen} 
-              options={{ title: 'Owner Dashboard', headerShown: false }} 
+          isStaffOrOwner ? (
+            <Stack.Screen
+              name="OwnerDashboard"
+              component={OwnerDashboardScreen}
+              options={{ headerShown: false }}
             />
           ) : (
-            // Customer / Member Stack
+            // Customer stack
             <>
-              <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Aura Apex Customer' }} />
-              <Stack.Screen name="Plans" component={PlansScreen} options={{ title: 'Membership Plans' }} />
-              <Stack.Screen name="QRCheckIn" component={QRCheckInScreen} options={{ title: 'QR Check-in' }} />
-              <Stack.Screen name="Progress" component={ProgressScreen} options={{ title: 'Progress Logbook' }} />
+              <Stack.Screen
+                name="MainTabs"
+                component={CustomerTabNavigator}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="QRCheckIn"
+                component={QRCheckInScreen}
+                options={{ title: 'QR Check-in' }}
+              />
+              <Stack.Screen
+                name="BeginnerGuide"
+                component={BeginnerGuideScreen}
+                options={{ title: 'Beginner Guide' }}
+              />
+              <Stack.Screen
+                name="GymInfo"
+                component={GymInfoScreen}
+                options={{ title: 'Gym Information' }}
+              />
+              <Stack.Screen
+                name="SubscriptionHistory"
+                component={SubscriptionHistoryScreen}
+                options={{ title: 'Subscription History' }}
+              />
+              <Stack.Screen
+                name="AttendanceHistory"
+                component={AttendanceHistoryScreen}
+                options={{ title: 'Attendance History' }}
+              />
             </>
           )
         ) : (
-          // Auth Stack (Unauthenticated Users)
           <>
             <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Signup" component={SignupScreen} options={{ title: 'Create Account' }} />

@@ -28,7 +28,7 @@ export function PlansScreen({ navigation }: any) {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
-  const { user, loadSubscription } = useAuthStore();
+  const { user, userProfile, loadSubscription } = useAuthStore();
 
   useEffect(() => {
     fetchPlans();
@@ -37,12 +37,16 @@ export function PlansScreen({ navigation }: any) {
   const fetchPlans = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/plans');
+      // Backend API contract: customers MUST pass ?gymId= or get 403
+      const gymId = userProfile?.gym_id;
+      const response = await apiClient.get('/plans', {
+        params: gymId ? { gymId } : undefined,
+      });
       if (response.data && response.data.success) {
         setPlans(response.data.data.items || response.data.data);
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to fetch plans');
+      Alert.alert('Error', error.response?.data?.message || error.message || 'Failed to fetch plans');
     } finally {
       setLoading(false);
     }

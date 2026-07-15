@@ -13,6 +13,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { supabase } from '../api/supabase';
+import { useAuthStore } from '../store/useAuthStore';
 import { COLORS, SHADOWS } from '../theme/tokens';
 import { User, Mail, Phone, KeyRound } from 'lucide-react-native';
 
@@ -61,11 +62,20 @@ export function SignupScreen({ navigation }: any) {
       if (error) {
         Alert.alert('Sign Up Failed', error.message);
       } else {
-        Alert.alert(
-          'Registration Successful',
-          'Account created successfully. You can now login.',
-          [{ text: 'Proceed', onPress: () => navigation.navigate('Login') }]
-        );
+        // Check if user was auto-logged in by checking the auth store session
+        const sessionActive = useAuthStore.getState().accessToken;
+        if (sessionActive) {
+          Alert.alert(
+            'Registration Successful',
+            'Account created and signed in successfully!'
+          );
+        } else {
+          Alert.alert(
+            'Registration Successful',
+            'Account created successfully. You can now login.',
+            [{ text: 'Proceed', onPress: () => navigation.navigate('Login') }]
+          );
+        }
       }
     } catch (err: any) {
       Alert.alert('Error', err.message || 'An unexpected error occurred.');
