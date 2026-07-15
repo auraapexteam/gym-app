@@ -814,6 +814,22 @@ CREATE POLICY "protein_logs_write" ON public.protein_logs
     WITH CHECK (auth.uid() = profile_id);
 
 -- ============================================================================
+--  12.5 PAYMENT EVENTS TABLE (Idempotent Webhook Event Logging)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.payment_events (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id     TEXT UNIQUE NOT NULL,
+    event_type   TEXT NOT NULL,
+    payload      JSONB NOT NULL,
+    status       TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processed', 'failed')),
+    error_msg    TEXT,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    processed_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_payment_events_eid ON public.payment_events (event_id);
+
+-- ============================================================================
 --  13. OPTIONAL DEMO SEED  (safe, no auth users required)
 -- ----------------------------------------------------------------------------
 --  Seeds one demo gym and a few plans so the frontend team can integrate

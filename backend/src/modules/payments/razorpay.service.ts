@@ -77,6 +77,16 @@ export class RazorpayService {
       throw new PaymentError(describeError(error, 'Refund failed'), 'REFUND_FAILED');
     }
   }
+
+  /** Fetch a payment resource from Razorpay to verify status. */
+  static async fetchPayment(paymentId: string): Promise<any> {
+    this.ensureConfigured();
+    try {
+      return await getRazorpayClient().payments.fetch(paymentId);
+    } catch (error) {
+      throw new PaymentError(describeError(error, 'Failed to fetch payment details'), 'PAYMENT_FETCH_FAILED');
+    }
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
