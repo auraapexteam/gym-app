@@ -8,7 +8,7 @@ import {
 } from '@/modules/gallery/gallery.types';
 import { StorageService } from '@/shared/services';
 import { ListQuery, PaginatedResult } from '@/shared/types';
-import { NotFoundError } from '@/shared/errors';
+import { NotFoundError, BadRequestError } from '@/shared/errors';
 import { generateOpaqueToken } from '@/shared/utils';
 
 /**
@@ -40,6 +40,15 @@ export class GalleryService {
     uploadedBy: string,
     input: RegisterImageInput,
   ): Promise<GalleryImageDto> {
+    // Security: the stored path must be under this gym's storage prefix.
+    // This prevents a gym from hijacking objects uploaded by another tenant.
+    if (!input.path.startsWith(`${gymId}/`)) {
+      throw new BadRequestError(
+        'Storage path does not belong to this gym',
+        'INVALID_STORAGE_PATH',
+      );
+    }
+
     const row = await galleryRepository.create({
       gym_id: gymId,
       bucket: StorageService.bucket,

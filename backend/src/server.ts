@@ -14,7 +14,15 @@ const server = createServer(app);
 
 server.listen(env.PORT, () => {
   logger.info(
-    { port: env.PORT, env: env.NODE_ENV, api: API_PREFIX },
+    {
+      event:          'server_started',
+      port:           env.PORT,
+      env:            env.NODE_ENV,
+      api:            API_PREFIX,
+      docs:           `http://localhost:${env.PORT}/docs`,
+      allowedOrigins: env.ALLOWED_ORIGINS,
+      logLevel:       env.LOG_LEVEL,
+    },
     '🚀 Aura Apex API is running',
   );
 });

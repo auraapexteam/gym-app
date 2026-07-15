@@ -172,7 +172,7 @@ describe('Cross-Gym Tenant Isolation Verification', () => {
         .send({
           entityType: 'gym',
           entityId: GYM_B,
-          path: 'gallery/test.png',
+          path: `${GYM_A}/gallery/test.png`,
         });
 
       // GalleryService.register checks requireGymId which maps to GYM_A, and then registers it under OWNER_A's gym (GYM_A) rather than GYM_B
