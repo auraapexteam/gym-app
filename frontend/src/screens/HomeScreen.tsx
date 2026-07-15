@@ -253,7 +253,7 @@ export function HomeScreen({ navigation }: any) {
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.iconBtn}
-            onPress={() => navigation.navigate('Notifications')}
+            onPress={() => navigation.navigate('NotificationsTab')}
           >
             <Bell size={22} color={COLORS.textPrimary} />
             {unreadCount > 0 && (
@@ -289,7 +289,7 @@ export function HomeScreen({ navigation }: any) {
             <Text style={styles.cardLabel}>NO ACTIVE PLAN</Text>
             <Text style={styles.planName}>Start Your Journey</Text>
             <Text style={styles.cardDesc}>Buy a membership plan to unlock full gym access, tracking, and check-ins.</Text>
-            <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('Plans')}>
+            <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('PlansTab')}>
               <CreditCard size={16} color={COLORS.surface} style={{ marginRight: 8 }} />
               <Text style={styles.primaryBtnText}>Browse Plans</Text>
             </TouchableOpacity>
@@ -312,7 +312,7 @@ export function HomeScreen({ navigation }: any) {
         {recentNotification && (
           <TouchableOpacity
             style={styles.notificationPreviewCard}
-            onPress={() => navigation.navigate('Notifications')}
+            onPress={() => navigation.navigate('NotificationsTab')}
           >
             <Info size={16} color={COLORS.primary} style={{ marginRight: 8 }} />
             <View style={{ flex: 1 }}>
@@ -342,7 +342,7 @@ export function HomeScreen({ navigation }: any) {
           <ChevronRight size={16} color={COLORS.textSecondary} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionRow} onPress={() => navigation.navigate('Progress')}>
+        <TouchableOpacity style={styles.actionRow} onPress={() => navigation.navigate('ProgressTab')}>
           <View style={styles.actionLeft}>
             <View style={[styles.actionIcon, { backgroundColor: '#E0F2FE' }]}>
               <Calendar size={20} color="#0284C7" />
