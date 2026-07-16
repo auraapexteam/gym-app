@@ -551,6 +551,39 @@ BEGIN
 END;
 $$;
 
+-- Atomically rotate a gym's QR: revoke the current active code and issue a new
+-- one. Keeps the "one active QR per gym" invariant intact.
+CREATE OR REPLACE FUNCTION public.rotate_gym_qr(
+    p_gym_id      UUID,
+    p_token       TEXT,
+    p_created_by  UUID,
+    p_label       TEXT
+)
+RETURNS UUID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_old UUID;
+    v_new UUID;
+BEGIN
+    SELECT id INTO v_old FROM public.qr_codes
+        WHERE gym_id = p_gym_id AND status = 'active'
+        LIMIT 1;
+
+    IF v_old IS NOT NULL THEN
+        UPDATE public.qr_codes
+            SET status = 'revoked', revoked_at = timezone('utc', now())
+            WHERE id = v_old;
+    END IF;
+
+    INSERT INTO public.qr_codes (gym_id, token, status, label, created_by, rotated_from)
+    VALUES (p_gym_id, p_token, 'active', p_label, p_created_by, v_old)
+    RETURNING id INTO v_new;
+
+    RETURN v_new;
+END;
+$$;
+
 -- ============================================================================
 --  11. ANALYTICS VIEWS  (read-only reporting; never a source of truth)
 -- ============================================================================
