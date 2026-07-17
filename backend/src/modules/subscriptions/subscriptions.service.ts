@@ -5,7 +5,7 @@ import {
   SubscriptionDto,
 } from '@/modules/subscriptions/subscriptions.types';
 import { PlanService } from '@/modules/plans';
-import { memberRepository } from '@/modules/members/members.repository';
+import { MemberService } from '@/modules/members';
 import { ListQuery, PaginatedResult } from '@/shared/types';
 import { NotFoundError, BusinessRuleError } from '@/shared/errors';
 
@@ -42,17 +42,18 @@ export class SubscriptionService {
 
   /** All subscriptions for a customer (across every gym they are a member of). */
   static async listForProfile(profileId: string): Promise<SubscriptionDto[]> {
-    const { items: members } = await memberRepository.findMany({
-      page: 1,
-      limit: 100,
-      offset: 0,
-      sort: 'created_at',
-      order: 'desc',
-      filters: { profile_id: profileId },
-    });
-    const memberIds = members.map((m) => m.id);
+    const memberIds = await MemberService.listMemberIdsForProfile(profileId);
     const rows = await subscriptionRepository.findByMemberIds(memberIds);
     return rows.map(toSubscriptionDto);
+  }
+
+  /**
+   * Whether a member currently holds an active, non-expired membership. This is
+   * the question the attendance module asks — never "has payment succeeded?".
+   */
+  static async hasActiveMembership(gymId: string, memberId: string): Promise<boolean> {
+    const active = await subscriptionRepository.findActiveForMember(gymId, memberId);
+    return active !== null;
   }
 
   /** Cancel a subscription. */
@@ -76,8 +77,8 @@ export class SubscriptionService {
     gymId: string,
     input: CreateManualSubscriptionInput,
   ): Promise<SubscriptionDto> {
-    const member = await memberRepository.findById(input.memberId, gymId);
-    if (!member) throw new NotFoundError('Member not found', 'MEMBER_NOT_FOUND');
+    // Verifies the member exists in this gym (throws 404 otherwise).
+    await MemberService.getById(gymId, input.memberId);
 
     const plan = await PlanService.getActiveRow(gymId, input.planId);
 

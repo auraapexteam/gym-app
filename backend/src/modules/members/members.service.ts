@@ -99,6 +99,12 @@ export class MemberService {
     return memberRepository.findIdsByProfile(profileId);
   }
 
+  /** The member linked to a profile within a gym, or null. */
+  static async findForProfile(gymId: string, profileId: string): Promise<MemberDto | null> {
+    const row = await memberRepository.findByProfile(gymId, profileId);
+    return row ? toMemberDto(row) : null;
+  }
+
   /**
    * Find or lazily create the member record for an app user in a gym. Used by
    * customer-facing flows (subscriptions, attendance) that operate on a member.

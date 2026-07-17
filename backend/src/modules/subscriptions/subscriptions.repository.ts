@@ -63,6 +63,23 @@ export class SubscriptionRepository extends BaseRepository<SubscriptionRow> {
     };
   }
 
+  /** The current active, non-expired subscription for a member, if any. */
+  async findActiveForMember(gymId: string, memberId: string): Promise<SubscriptionRow | null> {
+    const nowIso = new Date().toISOString();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (this.client.from('subscriptions') as any)
+      .select(BASE_COLUMNS)
+      .eq('gym_id', gymId)
+      .eq('member_id', memberId)
+      .eq('status', 'active')
+      .gte('end_date', nowIso)
+      .order('end_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) this.fail('Failed to load active subscription', error);
+    return (data as SubscriptionRow) ?? null;
+  }
+
   /** All subscriptions belonging to the given member ids (across gyms). */
   async findByMemberIds(memberIds: string[]): Promise<SubscriptionDetailRow[]> {
     if (memberIds.length === 0) return [];
