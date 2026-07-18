@@ -35,7 +35,8 @@ const envSchema = z.object({
 
   // Supabase (required — the platform cannot run without a database/auth provider)
   SUPABASE_URL: z.string().url({ message: 'SUPABASE_URL must be a valid URL' }),
-  SUPABASE_ANON_KEY: z.string().min(1, 'SUPABASE_ANON_KEY is required'),
+  // Optional: used for public auth flows. Falls back to the service-role key.
+  SUPABASE_ANON_KEY: z.string().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z
     .string()
     .min(1, 'SUPABASE_SERVICE_ROLE_KEY is required'),
