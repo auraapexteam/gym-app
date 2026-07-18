@@ -57,6 +57,16 @@ export interface PublicGymDto {
   status: GymStatus;
 }
 
+export interface CreateGymInput {
+  name: string;
+  slug?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  description?: string;
+  status?: GymStatus;
+}
+
 export interface UpdateGymInput {
   name?: string;
   email?: string;

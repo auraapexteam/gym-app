@@ -10,6 +10,7 @@ import {
   UpdateProfileInput,
 } from '@/modules/auth/auth.types';
 import { AccountStatus } from '@/shared/types';
+import { Role } from '@/shared/rbac';
 import { normalizeEmail } from '@/shared/utils';
 import {
   BadRequestError,
@@ -98,6 +99,41 @@ export class AuthService {
     if (updateError) {
       throw new BadRequestError('Failed to reset password', 'RESET_FAILED');
     }
+  }
+
+  /**
+   * Create a managed (non-self-service) account — an owner, staff or trainer —
+   * and assign its role and gym. Used by admin onboarding and staff management.
+   */
+  static async createManagedUser(input: {
+    email: string;
+    password: string;
+    fullName: string;
+    role: Role;
+    gymId: string;
+  }): Promise<ProfileDto> {
+    const email = normalizeEmail(input.email);
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password: input.password,
+      email_confirm: true,
+      user_metadata: { full_name: input.fullName },
+    });
+
+    if (error || !data.user) {
+      if (error?.message?.toLowerCase().includes('already')) {
+        throw new ConflictError('Email is already registered', 'EMAIL_EXISTS');
+      }
+      throw new BadRequestError(error?.message ?? 'Failed to create user', 'USER_CREATE_FAILED');
+    }
+
+    const updated = await profileRepository.update(data.user.id, {
+      role: input.role,
+      gym_id: input.gymId,
+      full_name: input.fullName,
+    });
+    if (!updated) throw new NotFoundError('Profile not found', 'PROFILE_NOT_FOUND');
+    return toProfileDto(updated);
   }
 
   static async getProfile(userId: string): Promise<ProfileDto> {
