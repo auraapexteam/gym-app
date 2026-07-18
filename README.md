@@ -9,9 +9,11 @@
 >
 > 📖 **Engineering Handbook & Documentation**: The complete system architecture, backend/frontend engineering handbook, standards, and ADRs are now organized in the [docs/README.md](docs/README.md) entry point.
 
-> **Status:** 🏗️ Foundational Phase (Core Architecture, Auth, Database Design & RBAC Complete)  
-> **Feature Modules Status:** ⏸️ Paused (QR Attendance, Digital Pass, Notifications, and Analytics are paused awaiting final business SRS)  
-> **Tech Stack:** React Native CLI, Express.js (TypeScript), Supabase (PostgreSQL + Auth), Upstash Redis, Razorpay, Pino Logger, Zod Validation.
+> **Status:** ✅ Backend Complete — feature-first modular API implementing all documented modules (Auth, Gym, Members, Plans, Subscriptions, Payments, Attendance, QR, Trainers, Equipment, Gallery, Analytics, Notifications, Admin).  
+> **Frontend Status:** 🏗️ In progress — consumes the backend API described in [`backend/README.md`](backend/README.md).  
+> **Tech Stack:** React Native CLI, Express.js (TypeScript, strict), Supabase (PostgreSQL + Auth + Storage), Razorpay, Pino Logger, Zod Validation.
+
+> 🔌 **Frontend integrators:** the complete API contract — every endpoint, request/response shape, auth model, error codes, RBAC matrix, and the checkout / QR / upload flows — lives in **[`backend/README.md`](backend/README.md)**.
 
 ---
 
@@ -72,14 +74,17 @@ The project uses a monorepo structure separating the client, API, database migra
 
 ```text
 Gym-Management-App/
-├── backend/                  # Node.js + Express.js API Server
-│   ├── src/                  # TypeScript source files
-│   │   ├── controllers/      # Route controllers (webhook, subscription)
-│   │   ├── middlewares/      # auth, role-checking, validate, and errors
-│   │   ├── routes/           # API routes definitions
-│   │   ├── services/         # business layer (Razorpay, Subscription)
-│   │   ├── utils/            # Pino logger, AppError helpers
-│   │   └── validations/      # Zod validation schemas
+├── backend/                  # Node.js + Express.js API Server (feature-first, layered)
+│   ├── src/
+│   │   ├── app.ts            # Express app + middleware pipeline
+│   │   ├── server.ts         # HTTP bootstrap + graceful shutdown
+│   │   ├── config/           # env, logger, supabase, razorpay, constants
+│   │   ├── routes/           # aggregated /api/v1 router
+│   │   ├── shared/           # errors, responses, middleware, rbac, base repository, utils
+│   │   └── modules/          # one folder per feature (auth, gym, members, plans,
+│   │   │                     #   subscriptions, payments, attendance, qr, trainers,
+│   │   │                     #   equipment, gallery, analytics, notifications, admin, health)
+│   ├── README.md             # ⭐ Full API reference for the frontend team
 │   └── package.json          # Backend dependencies
 ├── frontend/                 # React Native CLI Mobile Application
 │   ├── android/              # Native Android wrapper and Gradle settings
@@ -210,7 +215,7 @@ npx react-native run-android --no-packager
 ## 6. Core Architectural Features
 
 ### Role-Based Access Control (RBAC)
-* **Backend Middleware:** The `checkRole` middleware in [auth.ts](file:///c:/Users/baodh/OneDrive/Desktop/Projects/Subscription-Management-React-Cli/backend/src/middlewares/auth.ts) restrict endpoints based on profile roles (`customer`, `owner`, `admin`).
+* **Backend Middleware:** `authenticate` verifies the Supabase JWT and attaches the user context; `requireRole` / `requirePermission` (in `backend/src/shared/middleware`) enforce access. Roles: `customer`, `owner`, `staff`, `trainer`, `super_admin`, with granular permissions defined in `backend/src/shared/rbac`. See the RBAC matrix in [`backend/README.md`](backend/README.md).
 * **Frontend Routing:** The [AppNavigator.tsx](file:///c:/Users/baodh/OneDrive/Desktop/Projects/Subscription-Management-React-Cli/frontend/src/navigation/AppNavigator.tsx) separates stacks based on the authenticated user's role. Customers see the dashboard and membership options, while owners are redirected to the dedicated `OwnerDashboard`.
 
 ### Structured Logging (Pino)
