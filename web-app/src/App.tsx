@@ -155,7 +155,7 @@ function QRDisplay({ token, gymName, logoUrl }: { token: string; gymName: string
           ctx.fill();
 
           // Draw base QR code
-          const qrImg = new Image();
+          const qrImg = new window.Image();
           qrImg.crossOrigin = "anonymous";
           qrImg.src = qrDataUrl;
           await new Promise((r) => {
@@ -167,7 +167,7 @@ function QRDisplay({ token, gymName, logoUrl }: { token: string; gymName: string
           let hasLogo = false;
           if (logoUrl) {
             try {
-              const logoImg = new Image();
+              const logoImg = new window.Image();
               logoImg.crossOrigin = "anonymous";
               logoImg.src = logoUrl;
               await new Promise((resolveLogo, rejectLogo) => {
@@ -2622,7 +2622,7 @@ function StaffView({ activeTab, gym, showToast }: { activeTab: string; gym: any;
           </p>
 
           {activeQr ? (
-            <QRDisplay token={activeQr.token} gymName={gym?.name || "AURA APEX"} />
+            <QRDisplay token={activeQr.token} gymName={gym?.name || "AURA APEX"} logoUrl={gym?.logoUrl} />
           ) : (
             <div className="mt-8 text-on-surface-variant font-body bg-white/5 border border-white/10 rounded-lg p-6">
               No active QR code generated for this gym. Please request the Gym Owner to generate a new QR token.
