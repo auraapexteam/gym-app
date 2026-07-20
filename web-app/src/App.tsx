@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import QRCode from "qrcode";
 import {
   Activity,
   Users,
@@ -48,6 +49,298 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// QR Display helper component with download & fullscreen support
+function QRDisplay({ token, gymName, logoUrl }: { token: string; gymName: string; logoUrl?: string }) {
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [fancyUrl, setFancyUrl] = useState<string>("");
+  const [fullscreen, setFullscreen] = useState(false);
+
+  const generateFancyQr = async (): Promise<{ preview: string; fancy: string }> => {
+    return new Promise((resolve) => {
+      QRCode.toDataURL(
+        token,
+        {
+          width: 400,
+          margin: 1,
+          color: {
+            dark: "#0b0f19",
+            light: "#ffffff",
+          },
+        },
+        async (err, qrDataUrl) => {
+          if (err || !qrDataUrl) {
+            resolve({ preview: "", fancy: "" });
+            return;
+          }
+
+          // Generate simple preview url
+          const preview = qrDataUrl;
+
+          // Build fancy high-res canvas card
+          const canvas = document.createElement("canvas");
+          canvas.width = 600;
+          canvas.height = 750;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve({ preview, fancy: qrDataUrl });
+            return;
+          }
+
+          // Draw gradient dark background
+          const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+          gradient.addColorStop(0, "#080c14");
+          gradient.addColorStop(1, "#030408");
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // Draw subtle neon green background glow
+          const glowGrad = ctx.createRadialGradient(300, 380, 50, 300, 380, 260);
+          glowGrad.addColorStop(0, "rgba(163, 230, 53, 0.12)");
+          glowGrad.addColorStop(1, "rgba(163, 230, 53, 0)");
+          ctx.fillStyle = glowGrad;
+          ctx.beginPath();
+          ctx.arc(300, 380, 260, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Draw glass card frame
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+          ctx.lineWidth = 2;
+          ctx.fillStyle = "rgba(15, 23, 42, 0.7)";
+          const rectX = 40, rectY = 40, rectW = 520, rectH = 670, radius = 32;
+          ctx.beginPath();
+          ctx.moveTo(rectX + radius, rectY);
+          ctx.lineTo(rectX + rectW - radius, rectY);
+          ctx.quadraticCurveTo(rectX + rectW, rectY, rectX + rectW, rectY + radius);
+          ctx.lineTo(rectX + rectW, rectY + rectH - radius);
+          ctx.quadraticCurveTo(rectX + rectW, rectY + rectH, rectX + rectW - radius, rectY + rectH);
+          ctx.lineTo(rectX + radius, rectY + rectH);
+          ctx.quadraticCurveTo(rectX, rectY + rectH, rectX, rectY + rectH - radius);
+          ctx.lineTo(rectX, rectY + radius);
+          ctx.quadraticCurveTo(rectX, rectY, rectX + radius, rectY);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Draw Gym Header text
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "900 30px system-ui, -apple-system, sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          const headerText = (gymName || "AURA APEX").toUpperCase();
+          ctx.fillText(headerText, 300, 110);
+
+          // Subtitle / Label
+          ctx.fillStyle = "#a3e635"; // Neon Lime green
+          ctx.font = "bold 13px system-ui, -apple-system, sans-serif";
+          ctx.fillText("DAILY ATTENDANCE QR", 300, 150);
+
+          // Draw QR background plate (white card)
+          const qrSize = 340;
+          const qrX = 300 - qrSize / 2;
+          const qrY = 380 - qrSize / 2;
+          ctx.fillStyle = "#ffffff";
+          const qrRadius = 24;
+          ctx.beginPath();
+          ctx.moveTo(qrX + qrRadius, qrY);
+          ctx.lineTo(qrX + qrSize - qrRadius, qrY);
+          ctx.quadraticCurveTo(qrX + qrSize, qrY, qrX + qrSize, qrY + qrRadius);
+          ctx.lineTo(qrX + qrSize, qrY + qrSize - qrRadius);
+          ctx.quadraticCurveTo(qrX + qrSize, qrY + qrSize, qrX + qrSize - qrRadius, qrY + qrSize);
+          ctx.lineTo(qrX + qrRadius, qrY + qrSize);
+          ctx.quadraticCurveTo(qrX, qrY + qrSize, qrX, qrY + qrSize - qrRadius);
+          ctx.lineTo(qrX, qrY + qrRadius);
+          ctx.quadraticCurveTo(qrX, qrY, qrX + qrRadius, qrY);
+          ctx.closePath();
+          ctx.fill();
+
+          // Draw base QR code
+          const qrImg = new Image();
+          qrImg.crossOrigin = "anonymous";
+          qrImg.src = qrDataUrl;
+          await new Promise((r) => {
+            qrImg.onload = r;
+          });
+          ctx.drawImage(qrImg, qrX + 15, qrY + 15, qrSize - 30, qrSize - 30);
+
+          // Draw logo overlay in the center of QR code
+          let hasLogo = false;
+          if (logoUrl) {
+            try {
+              const logoImg = new Image();
+              logoImg.crossOrigin = "anonymous";
+              logoImg.src = logoUrl;
+              await new Promise((resolveLogo, rejectLogo) => {
+                logoImg.onload = resolveLogo;
+                logoImg.onerror = rejectLogo;
+              });
+
+              // White background boundary for logo
+              const logoSize = 68;
+              ctx.beginPath();
+              ctx.arc(300, 380, logoSize / 2 + 5, 0, Math.PI * 2);
+              ctx.fillStyle = "#ffffff";
+              ctx.fill();
+
+              // Draw logo rounded
+              ctx.save();
+              ctx.beginPath();
+              ctx.arc(300, 380, logoSize / 2, 0, Math.PI * 2);
+              ctx.closePath();
+              ctx.clip();
+              ctx.drawImage(logoImg, 300 - logoSize / 2, 380 - logoSize / 2, logoSize, logoSize);
+              ctx.restore();
+              hasLogo = true;
+            } catch (logoErr) {
+              console.warn("Logo load failed for QR overlay, fallback to default symbol:", logoErr);
+            }
+          }
+
+          // Fallback to dumbbell symbol
+          if (!hasLogo) {
+            const logoSize = 64;
+            ctx.beginPath();
+            ctx.arc(300, 380, logoSize / 2 + 5, 0, Math.PI * 2);
+            ctx.fillStyle = "#ffffff";
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(300, 380, logoSize / 2, 0, Math.PI * 2);
+            ctx.fillStyle = "#0f172a";
+            ctx.fill();
+
+            ctx.fillStyle = "#a3e635";
+            ctx.font = "900 24px system-ui, sans-serif";
+            ctx.fillText("💪", 300, 380);
+          }
+
+          // Draw Footer Info
+          ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+          ctx.font = "bold 11px monospace";
+          ctx.fillText("SCAN WITH AURA APEX APP", 300, 600);
+
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 16px monospace";
+          ctx.fillText(`TOKEN: ${token}`, 300, 630);
+
+          const fancy = canvas.toDataURL("image/png");
+          resolve({ preview, fancy });
+        }
+      );
+    });
+  };
+
+  useEffect(() => {
+    if (token) {
+      generateFancyQr().then((urls) => {
+        setPreviewUrl(urls.preview);
+        setFancyUrl(urls.fancy);
+      });
+    }
+  }, [token, logoUrl]);
+
+  const downloadQr = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!fancyUrl) return;
+    const link = document.createElement("a");
+    link.href = fancyUrl;
+    link.download = `fancy-gym-qr-${gymName.toLowerCase().replace(/\s+/g, "-")}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <>
+      <div className="mt-6 p-6 bg-slate-900/60 border border-white/10 rounded-2xl flex flex-col items-center max-w-sm w-full mx-auto shadow-2xl backdrop-blur-md">
+        {previewUrl ? (
+          <div className="relative group cursor-pointer" onClick={() => setFullscreen(true)}>
+            <div className="bg-white p-5 rounded-2xl inline-block shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-103">
+              <div className="relative">
+                <img src={previewUrl} alt="Gym QR Code" className="w-56 h-56 object-contain rounded-lg" />
+                {/* Micro logo overlay in preview */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white w-10 h-10 rounded-full flex items-center justify-center border border-slate-200 shadow-sm overflow-hidden">
+                  {logoUrl ? (
+                    <img src={logoUrl} alt="Logo" className="w-8 h-8 object-cover rounded-full" />
+                  ) : (
+                    <span className="text-sm">💪</span>
+                  )}
+                </div>
+              </div>
+              <span className="block text-xs font-black mt-3 font-mono uppercase text-center text-slate-900 tracking-wider">
+                {gymName || "AURA APEX"}
+              </span>
+            </div>
+            <div className="absolute inset-0 bg-black/60 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300">
+              <span className="text-white text-sm font-semibold bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm">Click to Zoom</span>
+            </div>
+          </div>
+        ) : (
+          <div className="w-56 h-56 bg-slate-800 animate-pulse rounded-2xl" />
+        )}
+        <p className="font-mono text-xs text-slate-400 mt-4 text-center break-all px-4">
+          Active Token: <span className="text-lime-400 font-bold">{token}</span>
+        </p>
+        
+        <div className="flex gap-3 mt-5 w-full px-4">
+          <button
+            onClick={downloadQr}
+            className="flex-1 px-4 py-2.5 bg-lime-500 hover:bg-lime-600 text-slate-950 text-sm font-bold rounded-xl transition-all duration-200 shadow-lg shadow-lime-500/20 active:scale-97 cursor-pointer"
+          >
+            Download PNG
+          </button>
+          <button
+            onClick={() => setFullscreen(true)}
+            className="flex-1 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white text-sm font-bold rounded-xl transition-all duration-200 active:scale-97 cursor-pointer"
+          >
+            Full Screen
+          </button>
+        </div>
+      </div>
+
+      {fullscreen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4 cursor-zoom-out animate-fade-in"
+          onClick={() => setFullscreen(false)}
+        >
+          <div 
+            className="bg-slate-950/80 border border-white/10 p-2 rounded-3xl max-w-lg w-full flex flex-col items-center shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              onClick={() => setFullscreen(false)}
+              className="absolute top-4 right-4 p-2.5 rounded-full hover:bg-white/10 text-white transition-colors cursor-pointer z-10"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            
+            {/* Show the fancy printable card in fullscreen */}
+            {fancyUrl ? (
+              <img src={fancyUrl} alt="Fancy Gym QR Card" className="max-w-full h-auto object-contain rounded-2xl max-h-[70vh] shadow-2xl" />
+            ) : (
+              <div className="w-full h-96 bg-slate-800 animate-pulse rounded-2xl" />
+            )}
+            
+            <div className="flex gap-3 mt-5 w-full p-4">
+              <button
+                onClick={downloadQr}
+                className="flex-1 py-3.5 bg-lime-500 hover:bg-lime-600 text-slate-950 font-black rounded-xl transition-transform active:scale-95 shadow-lg shadow-lime-500/30 cursor-pointer text-center"
+              >
+                Download Fancy Card
+              </button>
+              <button
+                onClick={() => setFullscreen(false)}
+                className="flex-1 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-transform active:scale-95 cursor-pointer text-center"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 // App Entry Point
 export default function App() {
@@ -1822,15 +2115,7 @@ function OwnerView({ activeTab, gym, setGym, showToast }: { activeTab: string; g
           </p>
 
           {activeQr ? (
-            <div className="mt-8 p-8 glass-card border border-outline-variant/30 rounded-lg space-y-4">
-              <div className="bg-white p-4 rounded-lg inline-block shadow-lg">
-                <div className="w-40 h-40 bg-surface flex flex-col items-center justify-center border-4 border-[#0e0e13] rounded text-[#0e0e13]">
-                  <QrCode className="h-16 w-16 text-primary" />
-                  <span className="text-[10px] font-bold mt-2 font-mono uppercase truncate w-32 tracking-wider">AURA APEX</span>
-                </div>
-              </div>
-              <p className="font-mono text-xs text-on-surface-variant">Active Token: <span className="text-secondary font-bold">{activeQr.token}</span></p>
-            </div>
+            <QRDisplay token={activeQr.token} gymName={gym?.name || "AURA APEX"} logoUrl={gymLogo} />
           ) : (
             <div className="mt-8 text-on-surface-variant font-body bg-white/5 border border-white/10 rounded-lg p-6">
               No active QR code generated for this gym. Click rotate below to generate one.
@@ -2337,15 +2622,7 @@ function StaffView({ activeTab, gym, showToast }: { activeTab: string; gym: any;
           </p>
 
           {activeQr ? (
-            <div className="mt-8 p-8 glass-card border border-outline-variant/30 rounded-lg space-y-4">
-              <div className="bg-white p-4 rounded-lg inline-block shadow-lg">
-                <div className="w-40 h-40 bg-surface flex flex-col items-center justify-center border-4 border-[#0e0e13] rounded text-[#0e0e13]">
-                  <QrCode className="h-16 w-16 text-primary" />
-                  <span className="text-[10px] font-bold mt-2 font-mono uppercase truncate w-32 tracking-wider">AURA APEX</span>
-                </div>
-              </div>
-              <p className="font-mono text-xs text-on-surface-variant">Active Token Value: <span className="text-secondary font-bold">{activeQr.token}</span></p>
-            </div>
+            <QRDisplay token={activeQr.token} gymName={gym?.name || "AURA APEX"} />
           ) : (
             <div className="mt-8 text-on-surface-variant font-body bg-white/5 border border-white/10 rounded-lg p-6">
               No active QR code generated for this gym. Please request the Gym Owner to generate a new QR token.
