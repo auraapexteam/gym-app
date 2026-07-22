@@ -1,95 +1,133 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
+import { Theme } from '../theme/Theme';
+import { AppButton } from '../components/AppButton';
 
 export function OwnerDashboardScreen() {
   const { userProfile, signOut } = useAuthStore();
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
+        <Text style={styles.headerSubtitle}>SaaS Console</Text>
         <Text style={styles.title}>Gym Owner Dashboard</Text>
         <Text style={styles.subtitle}>Welcome back, {userProfile?.full_name || 'Admin'}</Text>
-        <Text style={styles.roleBadge}>Role: {userProfile?.role?.toUpperCase()}</Text>
+        <View style={styles.roleBadgeContainer}>
+          <Text style={styles.roleBadge}>Role: {userProfile?.role?.toUpperCase()}</Text>
+        </View>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Owner Analytics (Placeholder)</Text>
-        <Text style={styles.cardText}>• Active Members: 1,245</Text>
-        <Text style={styles.cardText}>• Today's Check-ins: 312</Text>
-        <Text style={styles.cardText}>• Monthly Revenue: ₹1,85,000</Text>
+        <Text style={styles.cardTitle}>Owner Analytics</Text>
+        
+        <View style={styles.divider} />
+        
+        <View style={styles.metricRow}>
+          <Text style={styles.metricLabel}>👥 Active Members</Text>
+          <Text style={styles.metricValue}>1,245</Text>
+        </View>
+
+        <View style={styles.metricRow}>
+          <Text style={styles.metricLabel}>✅ Today's Check-ins</Text>
+          <Text style={styles.metricValue}>312</Text>
+        </View>
+
+        <View style={styles.metricRow}>
+          <Text style={styles.metricLabel}>💰 Monthly Revenue</Text>
+          <Text style={[styles.metricValue, { color: Theme.colors.primary }]}>₹1,85,000</Text>
+        </View>
       </View>
 
-      <TouchableOpacity style={styles.logoutButton} onPress={signOut}>
-        <Text style={styles.logoutText}>Sign Out</Text>
-      </TouchableOpacity>
-    </View>
+      <View style={styles.footer}>
+        <AppButton variant="destructive" size="md" fullWidth={true} onPress={signOut}>
+          Sign Out
+        </AppButton>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Theme.colors.background,
     justifyContent: 'space-between',
   },
   header: {
     marginTop: 40,
     alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Theme.colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   title: {
     fontSize: 26,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: Theme.colors.foreground,
+    marginTop: 4,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#4B5563',
-    marginTop: 5,
+    fontSize: 14,
+    color: Theme.colors.mutedForeground,
+    marginTop: 6,
   },
-  roleBadge: {
-    marginTop: 10,
-    backgroundColor: '#10B981',
-    color: '#FFFFFF',
+  roleBadgeContainer: {
+    marginTop: 12,
+    backgroundColor: Theme.colors.primarySoft,
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 9999,
-    fontSize: 12,
-    fontWeight: '600',
+    borderRadius: Theme.radius.round,
+  },
+  roleBadge: {
+    color: Theme.colors.primary,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Theme.colors.surface,
     padding: 20,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: Theme.radius.lg,
+    ...Theme.shadow.lift,
+    marginHorizontal: 24,
     marginVertical: 40,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 10,
+    color: Theme.colors.foreground,
   },
-  cardText: {
-    fontSize: 15,
-    color: '#4B5563',
-    lineHeight: 24,
+  divider: {
+    height: 1,
+    backgroundColor: Theme.colors.border,
+    marginVertical: 14,
   },
-  logoutButton: {
-    backgroundColor: '#EF4444',
-    paddingVertical: 14,
-    borderRadius: 8,
+  metricRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    paddingVertical: 10,
   },
-  logoutText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+  metricLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Theme.colors.mutedForeground,
+  },
+  metricValue: {
+    fontSize: 15,
     fontWeight: 'bold',
+    color: Theme.colors.foreground,
+  },
+  footer: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
   },
 });
