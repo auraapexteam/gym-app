@@ -39,29 +39,38 @@ export class TrainerService {
 
   static async create(gymId: string, input: CreateTrainerInput): Promise<TrainerDto> {
     let profileId = input.profileId ?? null;
+    let createdProfileId: string | null = null;
 
-    if (input.email && input.password) {
-      const profile = await AuthService.createManagedUser({
-        email: input.email,
-        password: input.password,
-        fullName: input.fullName,
-        role: Role.TRAINER,
-        gymId,
+    try {
+      if (input.email && input.password) {
+        const profile = await AuthService.createManagedUser({
+          email: input.email,
+          password: input.password,
+          fullName: input.fullName,
+          role: Role.TRAINER,
+          gymId,
+        });
+        profileId = profile.id;
+        createdProfileId = profile.id;
+      }
+
+      const row = await trainerRepository.create({
+        gym_id: gymId,
+        profile_id: profileId,
+        full_name: input.fullName,
+        specialization: input.specialization ?? null,
+        bio: input.bio ?? null,
+        phone: input.phone ?? null,
+        email: input.email ?? null,
+        image_url: input.imageUrl ?? null,
       });
-      profileId = profile.id;
+      return toTrainerDto(row);
+    } catch (err) {
+      if (createdProfileId) {
+        await AuthService.removeUser(createdProfileId);
+      }
+      throw err;
     }
-
-    const row = await trainerRepository.create({
-      gym_id: gymId,
-      profile_id: profileId,
-      full_name: input.fullName,
-      specialization: input.specialization ?? null,
-      bio: input.bio ?? null,
-      phone: input.phone ?? null,
-      email: input.email ?? null,
-      image_url: input.imageUrl ?? null,
-    });
-    return toTrainerDto(row);
   }
 
   static async update(gymId: string, id: string, input: UpdateTrainerInput): Promise<TrainerDto> {

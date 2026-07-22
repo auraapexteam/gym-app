@@ -296,34 +296,61 @@ export class GymService {
       throw new BadRequestError(profileUpdateErr.message, 'PROFILE_UPDATE_FAILED');
     }
 
-    const { data: existingMember } = await supabase
-      .from('members')
-      .select('id')
-      .eq('gym_id', gymId)
-      .eq('profile_id', request.profile_id)
-      .maybeSingle();
-
-    if (!existingMember) {
-      const { error: memberInsertErr } = await supabase
+    let createdMemberId: string | null = null;
+    try {
+      const { data: existingMember } = await supabase
         .from('members')
-        .insert({
-          gym_id: gymId,
-          profile_id: request.profile_id,
-          full_name: profile.full_name,
-          email: profile.email,
-          phone: profile.phone,
-          status: 'active'
-        });
+        .select('id')
+        .eq('gym_id', gymId)
+        .eq('profile_id', request.profile_id)
+        .maybeSingle();
 
-      if (memberInsertErr) {
-        console.error('Failed to create member directory entry:', memberInsertErr);
+      if (!existingMember) {
+        const { data: memberData, error: memberInsertErr } = await supabase
+          .from('members')
+          .insert({
+            gym_id: gymId,
+            profile_id: request.profile_id,
+            full_name: profile.full_name,
+            email: profile.email,
+            phone: profile.phone,
+            status: 'active'
+          })
+          .select('id')
+          .single();
+
+        if (memberInsertErr) {
+          throw new BadRequestError(memberInsertErr.message, 'MEMBER_CREATE_FAILED');
+        }
+        if (memberData) {
+          createdMemberId = memberData.id;
+        }
       }
-    }
 
-    await supabase
-      .from('gym_join_requests')
-      .update({ status: 'approved' })
-      .eq('id', requestId);
+      const { error: requestUpdateErr } = await supabase
+        .from('gym_join_requests')
+        .update({ status: 'approved' })
+        .eq('id', requestId);
+
+      if (requestUpdateErr) {
+        throw new BadRequestError(requestUpdateErr.message, 'REQUEST_UPDATE_FAILED');
+      }
+    } catch (err) {
+      // Rollback profile update
+      await supabase
+        .from('profiles')
+        .update({ gym_id: null })
+        .eq('id', request.profile_id);
+
+      // Rollback member insertion
+      if (createdMemberId) {
+        await supabase
+          .from('members')
+          .delete()
+          .eq('id', createdMemberId);
+      }
+      throw err;
+    }
 
     await NotificationService.notify({
       recipientId: request.profile_id,

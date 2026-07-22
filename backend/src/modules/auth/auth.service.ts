@@ -152,4 +152,12 @@ export class AuthService {
     if (!updated) throw new NotFoundError('Profile not found', 'PROFILE_NOT_FOUND');
     return toProfileDto(updated);
   }
+
+  /** Delete a user account (used for manual rollback on onboarding failures). */
+  static async removeUser(userId: string): Promise<void> {
+    const { error } = await supabase.auth.admin.deleteUser(userId);
+    if (error) {
+      throw new BadRequestError(error.message, 'USER_DELETE_FAILED');
+    }
+  }
 }

@@ -1,5 +1,6 @@
 import { env } from '@/config/env';
 import { logger } from '@/config/logger';
+import { supabase } from '@/config/supabase';
 import { paymentRepository } from '@/modules/payments/payments.repository';
 import { RazorpayService } from '@/modules/payments/razorpay.service';
 import { toPaymentDto } from '@/modules/payments/payments.dto';
@@ -138,22 +139,72 @@ export class PaymentService {
    * replayed events never double-apply.
    */
   static async handleWebhookEvent(event: RazorpayWebhookEvent): Promise<void> {
+    const eventId = event.id ?? (event as any).event_id;
+    if (!eventId) {
+      logger.warn('Webhook event missing id');
+      return;
+    }
+
+    // 1. Idempotency Check: check if event already processed
+    const { data: existingEvent } = await supabase
+      .from('payment_events')
+      .select('status')
+      .eq('event_id', eventId)
+      .maybeSingle();
+
+    if (existingEvent?.status === 'processed') {
+      logger.info({ eventId }, 'Payment webhook event already processed (idempotent skip)');
+      return;
+    }
+
+    if (!existingEvent) {
+      await supabase
+        .from('payment_events')
+        .insert({
+          event_id: eventId,
+          event_type: event.event,
+          payload: event,
+          status: 'pending',
+        });
+    }
+
     const payment = event.payload?.payment?.entity;
-    switch (event.event) {
-      case 'order.paid':
-      case 'payment.captured': {
-        const orderId = payment?.order_id ?? event.payload?.order?.entity?.id;
-        if (orderId && payment?.id) {
-          await this.confirmFromWebhook(orderId, payment.id, mapRazorpayMethod(payment.method));
+    try {
+      switch (event.event) {
+        case 'order.paid':
+        case 'payment.captured': {
+          const orderId = payment?.order_id ?? event.payload?.order?.entity?.id;
+          if (orderId && payment?.id) {
+            // Verify status directly from Razorpay API before activating subscription
+            const rpPayment = await RazorpayService.fetchPayment(payment.id);
+            if (rpPayment.status !== 'captured') {
+              throw new BusinessRuleError('Payment status is not captured', 'PAYMENT_NOT_CAPTURED');
+            }
+
+            await this.confirmFromWebhook(orderId, payment.id, mapRazorpayMethod(payment.method));
+          }
+          break;
         }
-        break;
+        case 'payment.failed': {
+          if (payment?.order_id) await this.markFailed(payment.order_id);
+          break;
+        }
+        default:
+          logger.info({ event: event.event }, 'Unhandled Razorpay webhook event');
       }
-      case 'payment.failed': {
-        if (payment?.order_id) await this.markFailed(payment.order_id);
-        break;
-      }
-      default:
-        logger.info({ event: event.event }, 'Unhandled Razorpay webhook event');
+
+      // Mark event as processed
+      await supabase
+        .from('payment_events')
+        .update({ status: 'processed', processed_at: new Date().toISOString() })
+        .eq('event_id', eventId);
+    } catch (err: any) {
+      // Mark event as failed
+      await supabase
+        .from('payment_events')
+        .update({ status: 'failed', error_msg: err.message || 'Unknown error' })
+        .eq('event_id', eventId);
+      throw err;
     }
   }
 

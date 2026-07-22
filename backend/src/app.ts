@@ -3,6 +3,7 @@ import cookieParser from 'cookie-parser';
 
 import { env, API_PREFIX } from '@/config';
 import apiRouter from '@/routes';
+import { docsRouter } from '@/docs';
 import { healthRoutes } from '@/modules/health';
 import { webhookRouter } from '@/modules/payments';
 import {
@@ -52,6 +53,9 @@ export function createApp(): Application {
   app.use(requestLogger);
   app.use(requestTimeout(env.REQUEST_TIMEOUT_MS));
   app.use(generalRateLimiter);
+
+  // OpenAPI docs — publicly accessible, no auth required.
+  app.use('/docs', docsRouter);
 
   // Versioned API.
   app.use(API_PREFIX, apiRouter);

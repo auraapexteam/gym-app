@@ -1,6 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/config/supabase';
-import { AppError } from '@/shared/errors';
+import { AppError, ConflictError } from '@/shared/errors';
 import { PaginatedResult } from '@/shared/types';
 
 export interface BaseRepositoryOptions {
@@ -53,6 +53,15 @@ export abstract class BaseRepository<TRow extends { id: string }> {
 
   /** Translate a Postgrest error into a logged, non-operational AppError. */
   protected fail(message: string, cause: unknown): never {
+    const errorObj = cause as any;
+    if (errorObj && (errorObj.code === '23505' || errorObj.message?.includes('uq_') || errorObj.message?.includes('unique'))) {
+      throw new ConflictError(
+        errorObj.details || errorObj.message || 'Duplicate record found',
+        errorObj.message?.includes('uq_attendance') || errorObj.details?.includes('uq_attendance') || message.toLowerCase().includes('attendance')
+          ? 'ALREADY_CHECKED_IN'
+          : 'DUPLICATE_RECORD',
+      );
+    }
     throw new AppError(
       message,
       500,

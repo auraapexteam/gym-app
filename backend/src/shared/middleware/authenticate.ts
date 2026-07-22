@@ -35,7 +35,7 @@ export const authenticate = asyncHandler(async (req, _res, next) => {
   const token = header.slice('Bearer '.length).trim();
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data.user) {
-    logger.warn({ error, token: token.substring(0, 15) + '...' }, 'Auth token verification failed');
+    logger.warn({ error }, 'Auth token verification failed');
     throw new UnauthorizedError('Invalid or expired token', 'INVALID_TOKEN');
   }
 
