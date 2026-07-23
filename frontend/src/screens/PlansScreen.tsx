@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -15,7 +15,7 @@ import {
 import RazorpayCheckout from 'react-native-razorpay';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/useAuthStore';
-import { Theme } from '../theme/Theme';
+import { useTheme } from '../context/ThemeContext';
 import { Check } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
@@ -30,6 +30,8 @@ interface Plan {
 }
 
 export function PlansScreen({ navigation }: any) {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
@@ -381,10 +383,10 @@ export function PlansScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b0f19',
+    backgroundColor: colors.background,
   },
   scroll: {
     paddingHorizontal: 20,
@@ -397,11 +399,11 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
   },
   screenSubtitle: {
     fontSize: 14,
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
     marginTop: 4,
   },
   segmentedRow: {
@@ -412,9 +414,9 @@ const styles = StyleSheet.create({
   },
   segmentedBg: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: colors.border,
     borderRadius: 9999,
     padding: 3,
   },
@@ -424,19 +426,19 @@ const styles = StyleSheet.create({
     borderRadius: 9999,
   },
   segmentBtnActive: {
-    backgroundColor: '#6366f1',
+    backgroundColor: colors.primary,
   },
   segmentText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
   },
   segmentTextActive: {
     color: '#FFFFFF',
     fontWeight: '700',
   },
   mintBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: colors.successSoft,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 99,
@@ -444,7 +446,7 @@ const styles = StyleSheet.create({
   mintBadgeText: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#10b981',
+    color: colors.success,
   },
   centerLoader: {
     height: 250,
@@ -463,25 +465,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 6,
   },
   standardCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: colors.border,
   },
   featuredCard: {
-    backgroundColor: '#141a2a',
+    backgroundColor: isDark ? colors.surfaceDark : colors.surface,
     borderWidth: 2,
-    borderColor: '#6366f1',
+    borderColor: colors.primary,
   },
   popBadge: {
     position: 'absolute',
     top: -12,
     right: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.foreground,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 99,
@@ -489,7 +491,7 @@ const styles = StyleSheet.create({
   popBadgeText: {
     fontSize: 9,
     fontWeight: '800',
-    color: '#6366f1',
+    color: colors.background,
     textTransform: 'uppercase',
   },
   tierName: {
@@ -498,10 +500,10 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
   textWhite: {
-    color: '#f5f6fa',
+    color: colors.foreground,
   },
   textMuted: {
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
   },
   priceRow: {
     flexDirection: 'row',
@@ -519,7 +521,7 @@ const styles = StyleSheet.create({
   },
   cardDivider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: colors.border,
     marginVertical: 14,
   },
   featuresContainer: {
@@ -545,10 +547,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   subscribeBtnStandard: {
-    backgroundColor: '#6366f1',
+    backgroundColor: colors.primary,
   },
   subscribeBtnElite: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.foreground,
   },
   subscribeBtnText: {
     fontSize: 14,
@@ -558,10 +560,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   subscribeTextElite: {
-    color: '#141a2a',
+    color: colors.background,
   },
-
-  /* ============ Sheet Styles ============ */
   sheetOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.65)',
@@ -571,11 +571,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sheetBody: {
-    backgroundColor: '#141a2a',
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: colors.border,
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
@@ -590,42 +590,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: colors.border,
   },
   sheetTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
   },
   sheetClose: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
   },
   checkoutAmountCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: colors.border,
     borderRadius: 18,
     padding: 16,
     marginTop: 10,
   },
   checkoutPlanSub: {
     fontSize: 11,
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
     fontWeight: '600',
   },
   checkoutAmountVal: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
     marginTop: 2,
   },
   checkoutGatewayBadge: {
-    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    backgroundColor: colors.primarySoft,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -633,12 +633,12 @@ const styles = StyleSheet.create({
   checkoutGatewayText: {
     fontSize: 9,
     fontWeight: '800',
-    color: '#6366f1',
+    color: colors.primary,
     textTransform: 'uppercase',
   },
   methodSegmentBg: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.02)',
     borderRadius: 14,
     padding: 3,
   },
@@ -649,44 +649,44 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   methodBtnActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
   },
   methodText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
   },
   methodTextActive: {
-    color: '#FFFFFF',
+    color: colors.foreground,
     fontWeight: '800',
   },
   methodDetailBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: colors.border,
     borderRadius: 18,
     padding: 16,
   },
   methodDetailLabel: {
     fontSize: 10,
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
     fontWeight: '700',
     textTransform: 'uppercase',
   },
   methodDetailValue: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#f5f6fa',
+    color: colors.foreground,
     marginTop: 4,
   },
   payBtn: {
-    backgroundColor: '#6366f1',
+    backgroundColor: colors.primary,
     borderRadius: 9999,
     height: 52,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
-    shadowColor: '#6366f1',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.45,
     shadowRadius: 12,
@@ -697,8 +697,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
   },
-
-  /* ============ State Views ============ */
   loadingState: {
     height: 200,
     justifyContent: 'center',
@@ -707,7 +705,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
     fontWeight: '600',
   },
   successState: {
@@ -720,10 +718,10 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: '#10b981',
+    backgroundColor: colors.success,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#10b981',
+    shadowColor: colors.success,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 10,
@@ -732,12 +730,12 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
     marginTop: 12,
   },
   successSubtitle: {
     fontSize: 12,
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
     fontWeight: '500',
   },
 });

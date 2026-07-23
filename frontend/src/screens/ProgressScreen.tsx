@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import Svg, { Circle, Polyline, Path, Rect, ClipPath, Defs } from 'react-native-svg';
 import { apiClient } from '../api/client';
+import { useTheme } from '../context/ThemeContext';
 import {
   ChevronLeft,
   ChevronRight,
@@ -25,6 +26,7 @@ import {
 /* ============ Vectors ============ */
 
 function ProgressRing({ size = 32, stroke = 3.5, progress = 0.5, color = '#f87171' }) {
+  const { isDark } = useTheme();
   const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
   const strokeDashoffset = circ - progress * circ;
@@ -34,7 +36,7 @@ function ProgressRing({ size = 32, stroke = 3.5, progress = 0.5, color = '#f8717
         cx={size / 2}
         cy={size / 2}
         r={r}
-        stroke="rgba(255, 255, 255, 0.08)"
+        stroke={isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)"}
         strokeWidth={stroke}
         fill="none"
       />
@@ -113,6 +115,8 @@ interface LogSummary {
 }
 
 export function ProgressScreen() {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const [loading, setLoading] = useState(false);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1); // 1-indexed
@@ -446,10 +450,10 @@ export function ProgressScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b0f19',
+    backgroundColor: colors.background,
   },
   scroll: {
     paddingHorizontal: 20,
@@ -462,17 +466,17 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
   },
   screenSubtitle: {
     fontSize: 14,
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
     marginTop: 4,
   },
   glassCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.02)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: colors.border,
     borderRadius: 24,
     padding: 16,
     marginBottom: 16,
@@ -486,11 +490,11 @@ const styles = StyleSheet.create({
   monthName: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
   },
   entriesCount: {
     fontSize: 11,
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
     fontWeight: '600',
     marginTop: 2,
   },
@@ -502,7 +506,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -515,7 +519,7 @@ const styles = StyleSheet.create({
     width: '14.2%',
     textAlign: 'center',
     fontWeight: '700',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
     fontSize: 11,
   },
   grid: {
@@ -532,14 +536,14 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   selectedCell: {
-    backgroundColor: '#6366f1',
+    backgroundColor: colors.primary,
   },
   futureCell: {
     opacity: 0.25,
   },
   dayText: {
     fontSize: 13,
-    color: '#f5f6fa',
+    color: colors.foreground,
     fontWeight: '600',
   },
   selectedDayText: {
@@ -547,7 +551,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   futureDayText: {
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
   },
   loggedDot: {
     position: 'absolute',
@@ -555,7 +559,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#10b981',
+    backgroundColor: colors.success,
   },
   metricsInputPanel: {
     gap: 16,
@@ -567,9 +571,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: colors.border,
     borderRadius: 18,
     paddingHorizontal: 16,
     height: 52,
@@ -577,12 +581,12 @@ const styles = StyleSheet.create({
   sheetInputTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
   },
   weightTextInput: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
     textAlign: 'right',
     width: 100,
     padding: 0,
@@ -595,22 +599,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: colors.border,
     borderRadius: 18,
     padding: 14,
   },
   sheetControlTitle: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
     textTransform: 'uppercase',
   },
   sheetControlValue: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
     marginTop: 2,
   },
   adjusterRow: {
@@ -622,7 +626,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -632,15 +636,15 @@ const styles = StyleSheet.create({
   photoTitle: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
     textTransform: 'uppercase',
     marginBottom: 8,
   },
   dashedUploadBox: {
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderColor: colors.border,
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.01)',
     borderRadius: 18,
     paddingVertical: 20,
     alignItems: 'center',
@@ -649,7 +653,7 @@ const styles = StyleSheet.create({
   uploadText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
   },
   photoList: {
     marginTop: 12,
@@ -661,12 +665,12 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   saveLogButton: {
-    backgroundColor: '#6366f1',
+    backgroundColor: colors.primary,
     borderRadius: 9999,
     height: 52,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#6366f1',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.45,
     shadowRadius: 12,

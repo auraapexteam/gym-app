@@ -15,7 +15,7 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { PlansScreen } from '../screens/PlansScreen';
 import { ProgressScreen } from '../screens/ProgressScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
-import { Theme } from '../theme/Theme';
+import { useTheme } from '../context/ThemeContext';
 import { Home, BookOpen, CreditCard, User, QrCode } from 'lucide-react-native';
 
 const Tab = createBottomTabNavigator();
@@ -29,7 +29,7 @@ const premiumSpringConfig = {
 };
 
 // 2. Custom Tab Button with Micro-Interactions
-const TabButton = React.memo(({ isFocused, label, IconComponent, activeColor, onPress }: any) => {
+const TabButton = React.memo(({ isFocused, label, IconComponent, activeColor, isDark, onPress }: any) => {
   const focusedProgress = useSharedValue(isFocused ? 1 : 0);
   const buttonScale = useSharedValue(1);
 
@@ -49,17 +49,17 @@ const TabButton = React.memo(({ isFocused, label, IconComponent, activeColor, on
   const animatedIconStyle = useAnimatedStyle(() => {
     return {
       transform: [
-        { scale: interpolate(focusedProgress.value, [0, 1], [1.0, 1.15], Extrapolation.CLAMP) },
-        { translateY: interpolate(focusedProgress.value, [0, 1], [0, -7], Extrapolation.CLAMP) },
+        { scale: interpolate(focusedProgress.value, [0, 1], [1.0, 1.12], Extrapolation.CLAMP) },
+        { translateY: interpolate(focusedProgress.value, [0, 1], [0, -3.5], Extrapolation.CLAMP) },
       ],
-      color: interpolateColor(focusedProgress.value, [0, 1], ['#a1a5b7', activeColor]),
+      color: interpolateColor(focusedProgress.value, [0, 1], [isDark ? '#a1a5b7' : '#5b5f70', activeColor]),
     };
   });
 
   const animatedLabelStyle = useAnimatedStyle(() => {
     return {
       opacity: interpolate(focusedProgress.value, [0.3, 1], [0, 1], Extrapolation.CLAMP),
-      transform: [{ translateY: interpolate(focusedProgress.value, [0, 1], [12, 0], Extrapolation.CLAMP) }],
+      transform: [{ translateY: interpolate(focusedProgress.value, [0, 1], [6, 0], Extrapolation.CLAMP) }],
     };
   });
 
@@ -70,20 +70,21 @@ const TabButton = React.memo(({ isFocused, label, IconComponent, activeColor, on
       onPress={onPress}
       style={styles.tabButton}
     >
-      <Animated.View style={{ transform: [{ scale: buttonScale.value }], alignItems: 'center' }}>
+      <Animated.View style={{ transform: [{ scale: buttonScale.value }], alignItems: 'center', justifyContent: 'center', height: 56 }}>
         <AnimatedIcon
           size={20}
           style={animatedIconStyle}
-          fill={isFocused ? activeColor : 'none'}
+          fill="none"
+          strokeWidth={isFocused ? 2.6 : 2.0}
         />
         <Animated.Text
           style={[
             {
               color: activeColor,
-              fontSize: 10,
+              fontSize: 9.5,
               fontWeight: '800',
               position: 'absolute',
-              bottom: -12,
+              bottom: 4,
             },
             animatedLabelStyle,
           ]}
@@ -97,6 +98,7 @@ const TabButton = React.memo(({ isFocused, label, IconComponent, activeColor, on
 
 // 3. Custom Tab Bar with Gliding & Morphing Pill Background
 function CustomTabBar({ state, descriptors, navigation }: any) {
+  const { colors, isDark } = useTheme();
   const containerWidth = useSharedValue(0);
 
   // Map state index (0, 1, 2, 3) to 5-column grid index (0, 1, 3, 4)
@@ -127,7 +129,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
     const padding = 12; // matching styles.glassShell.paddingHorizontal
     const contentWidth = containerWidth.value - padding * 2;
     const colWidth = contentWidth / 5;
-    const basePillWidth = 54;
+    const basePillWidth = 58;
 
     // Organic stretch based on target vs current animated index
     const diff = activeColIndex.value - targetCol;
@@ -153,17 +155,35 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
     <View style={styles.tabBarContainer}>
       <View
         onLayout={(e) => (containerWidth.value = e.nativeEvent.layout.width)}
-        style={styles.glassShell}
+        style={[
+          styles.glassShell,
+          {
+            backgroundColor: isDark ? 'rgba(28, 36, 58, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+            borderColor: colors.border,
+            shadowColor: isDark ? '#000000' : 'rgba(0, 0, 0, 0.08)',
+          }
+        ]}
       >
         {/* Sliding Pill Background */}
-        <Animated.View style={[styles.pillBackground, animatedPillStyle]} />
+        <Animated.View
+          style={[
+            styles.pillBackground,
+            animatedPillStyle,
+            {
+              backgroundColor: colors.primary,
+              borderColor: isDark ? 'rgba(99, 102, 241, 0.35)' : 'rgba(79, 70, 229, 0.25)',
+              opacity: isDark ? 0.20 : 0.12,
+            }
+          ]}
+        />
 
         {/* Tab 0: Home */}
         <TabButton
           isFocused={state.index === 0}
           label="Home"
           IconComponent={Home}
-          activeColor={Theme.colors.primary}
+          activeColor={colors.primary}
+          isDark={isDark}
           onPress={() => navigation.navigate(state.routes[0].name)}
         />
 
@@ -172,7 +192,8 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
           isFocused={state.index === 1}
           label="Logbook"
           IconComponent={BookOpen}
-          activeColor={Theme.colors.primary}
+          activeColor={colors.primary}
+          isDark={isDark}
           onPress={() => navigation.navigate(state.routes[1].name)}
         />
 
@@ -184,7 +205,8 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
           isFocused={state.index === 2}
           label="Plans"
           IconComponent={CreditCard}
-          activeColor={Theme.colors.primary}
+          activeColor={colors.primary}
+          isDark={isDark}
           onPress={() => navigation.navigate(state.routes[2].name)}
         />
 
@@ -193,7 +215,8 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
           isFocused={state.index === 3}
           label="Profile"
           IconComponent={User}
-          activeColor={Theme.colors.primary}
+          activeColor={colors.primary}
+          isDark={isDark}
           onPress={() => navigation.navigate(state.routes[3].name)}
         />
       </View>
@@ -262,8 +285,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 9999,
-    paddingVertical: 8,
     paddingHorizontal: 12,
+    height: 70,
     width: width - 32,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 10 },
@@ -275,14 +298,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    height: 50,
+    height: 70,
   },
   pillBackground: {
     position: 'absolute',
-    height: 44,
-    borderRadius: 22,
-    top: 11, // centers mathematically (height 50 + padding 8*2 = 66, (66 - 44) / 2 = 11)
-    backgroundColor: Theme.colors.primary,
+    height: 48,
+    borderRadius: 24,
+    top: 11, // centers mathematically (height 70, (70 - 48) / 2 = 11)
+    backgroundColor: '#6366f1',
     borderWidth: 1.5,
     borderColor: 'rgba(99, 102, 241, 0.35)', // glowing borders
     opacity: 0.20, // visible premium backdrop highlight

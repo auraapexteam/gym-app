@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import Svg, { Circle, Polyline, Path, Rect, ClipPath, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useAuthStore } from '../store/useAuthStore';
-import { Theme } from '../theme/Theme';
+import { useTheme } from '../context/ThemeContext';
 import {
   Bell,
   Flame,
@@ -28,6 +28,7 @@ import {
 /* ============ Vector Components ============ */
 
 function ProgressRing({ size = 60, stroke = 6, progress = 0.5, color = '#6366f1', label, sublabel }: any) {
+  const { isDark } = useTheme();
   const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
   const strokeDashoffset = circ - progress * circ;
@@ -39,7 +40,7 @@ function ProgressRing({ size = 60, stroke = 6, progress = 0.5, color = '#6366f1'
             cx={size / 2}
             cy={size / 2}
             r={r}
-            stroke="rgba(255, 255, 255, 0.08)"
+            stroke={isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)"}
             strokeWidth={stroke}
             fill="none"
           />
@@ -58,8 +59,8 @@ function ProgressRing({ size = 60, stroke = 6, progress = 0.5, color = '#6366f1'
       </View>
       {label && (
         <View style={{ position: 'absolute', alignItems: 'center' }}>
-          <Text style={{ fontSize: 13, fontWeight: '800', color: '#f5f6fa' }}>{label}</Text>
-          {sublabel && <Text style={{ fontSize: 8, color: '#a1a5b7', fontWeight: '600', marginTop: 1 }}>{sublabel}</Text>}
+          <Text style={{ fontSize: 13, fontWeight: '800', color: isDark ? '#f5f6fa' : '#14161f' }}>{label}</Text>
+          {sublabel && <Text style={{ fontSize: 8, color: isDark ? '#a1a5b7' : '#5b5f70', fontWeight: '600', marginTop: 1 }}>{sublabel}</Text>}
         </View>
       )}
     </View>
@@ -118,6 +119,8 @@ function WaterGlass({ value }: { value: number }) {
 /* ============ Main Screen ============ */
 
 export function HomeScreen({ navigation }: any) {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const { user, subscription, loadSubscription, loading, userProfile } = useAuthStore();
 
   // Metrics state (Interactive Prototype)
@@ -219,7 +222,7 @@ export function HomeScreen({ navigation }: any) {
               activeOpacity={0.7}
               style={styles.bellButton}
             >
-              <Bell size={16} color="#f5f6fa" />
+              <Bell size={16} color={colors.foreground} />
               <View style={styles.bellDot} />
             </TouchableOpacity>
           </View>
@@ -457,20 +460,20 @@ export function HomeScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b0f19',
+    backgroundColor: colors.background,
   },
   topBanner: {
-    backgroundColor: '#141a2a',
+    backgroundColor: colors.surface,
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'android' ? 48 : 20, // push down below status bar/notch on Android
     paddingBottom: 24,
     borderBottomLeftRadius: 36,
     borderBottomRightRadius: 36,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: colors.border,
   },
   topRow: {
     flexDirection: 'row',
@@ -486,16 +489,16 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    backgroundColor: colors.primarySoft,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#6366f1',
+    borderColor: colors.primary,
   },
   avatarText: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
   },
   headerTitles: {
     justifyContent: 'center',
@@ -503,14 +506,14 @@ const styles = StyleSheet.create({
   greetText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
   nameText: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#ffffff',
+    color: colors.foreground,
   },
   nameRow: {
     flexDirection: 'row',
@@ -519,7 +522,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   gymBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.05)',
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 99,
@@ -527,7 +530,7 @@ const styles = StyleSheet.create({
   gymBadgeText: {
     fontSize: 9,
     fontWeight: '800',
-    color: '#ffffff',
+    color: colors.foreground,
     textTransform: 'uppercase',
   },
   headerActions: {
@@ -538,8 +541,8 @@ const styles = StyleSheet.create({
   gymName: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#a1a5b7',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    color: colors.mutedForeground,
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 99,
@@ -548,7 +551,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -561,7 +564,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: '#f87171',
     borderWidth: 1,
-    borderColor: '#141a2a',
+    borderColor: colors.surface,
   },
   focusRow: {
     marginTop: 20,
@@ -570,14 +573,14 @@ const styles = StyleSheet.create({
   focusLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   focusValue: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -590,9 +593,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   glassCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: colors.border,
     borderRadius: 24,
     padding: 16,
   },
@@ -612,8 +615,8 @@ const styles = StyleSheet.create({
   planBadge: {
     fontSize: 9,
     fontWeight: '800',
-    color: '#6366f1',
-    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    color: colors.primary,
+    backgroundColor: colors.primarySoft,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 99,
@@ -621,16 +624,16 @@ const styles = StyleSheet.create({
   planPrice: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
   },
   planPricePeriod: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
   },
   planDates: {
     fontSize: 10,
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
     fontWeight: '600',
   },
   streakCard: {
@@ -641,11 +644,11 @@ const styles = StyleSheet.create({
   streakCount: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
   },
   streakLabel: {
     fontSize: 10,
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
     fontWeight: '600',
   },
   metricsGrid: {
@@ -663,17 +666,17 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     textTransform: 'uppercase',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
   },
   metricValue: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
   },
   metricUnit: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
   },
   sparklineContainer: {
     marginTop: 10,
@@ -699,12 +702,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
   },
   weekCount: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
   },
   weekScroll: {
     flexDirection: 'row',
@@ -713,27 +716,27 @@ const styles = StyleSheet.create({
   weekDayCard: {
     width: (Dimensions.get('window').width - 40) / 7.6,
     aspectRatio: 0.72,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
+    borderColor: colors.border,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 4,
   },
   weekTodayCard: {
-    borderColor: '#6366f1',
-    backgroundColor: 'rgba(99, 102, 241, 0.05)',
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
   },
   weekDayLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
   },
   weekDayNum: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
   },
   weekDayIndicator: {
     width: 5,
@@ -742,18 +745,18 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   checkedDot: {
-    backgroundColor: '#10b981',
+    backgroundColor: colors.success,
   },
   emptyDot: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
   },
   logTodayWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.02)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: colors.border,
     borderRadius: 24,
     padding: 16,
   },
@@ -763,19 +766,19 @@ const styles = StyleSheet.create({
   logTodayTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
   },
   logTodayDesc: {
     fontSize: 11,
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
     fontWeight: '500',
   },
   logButton: {
-    backgroundColor: '#6366f1',
+    backgroundColor: colors.primary,
     borderRadius: 9999,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    shadowColor: '#6366f1',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 8,
@@ -786,8 +789,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
-
-  /* ============ Sheet Styles ============ */
   sheetOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
@@ -797,11 +798,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sheetBody: {
-    backgroundColor: '#141a2a',
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: colors.border,
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
@@ -812,17 +813,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: colors.border,
   },
   sheetTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
   },
   sheetClose: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
   },
   sheetContent: {
     marginTop: 20,
@@ -835,9 +836,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: colors.border,
     borderRadius: 18,
     paddingHorizontal: 16,
     height: 52,
@@ -845,12 +846,12 @@ const styles = StyleSheet.create({
   sheetInputTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
   },
   weightTextInput: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
     textAlign: 'right',
     width: 100,
     padding: 0,
@@ -859,22 +860,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: colors.border,
     borderRadius: 18,
     padding: 14,
   },
   sheetControlTitle: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
     textTransform: 'uppercase',
   },
   sheetControlValue: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
     marginTop: 2,
   },
   adjusterRow: {
@@ -886,18 +887,18 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   saveLogButton: {
-    backgroundColor: '#6366f1',
+    backgroundColor: colors.primary,
     borderRadius: 9999,
     height: 52,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 10,
-    shadowColor: '#6366f1',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.45,
     shadowRadius: 12,
