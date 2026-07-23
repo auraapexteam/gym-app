@@ -71,7 +71,11 @@ const TabButton = React.memo(({ isFocused, label, IconComponent, activeColor, on
       style={styles.tabButton}
     >
       <Animated.View style={{ transform: [{ scale: buttonScale.value }], alignItems: 'center' }}>
-        <AnimatedIcon size={20} style={animatedIconStyle} />
+        <AnimatedIcon
+          size={20}
+          style={animatedIconStyle}
+          fill={isFocused ? activeColor : 'none'}
+        />
         <Animated.Text
           style={[
             {
@@ -119,8 +123,10 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 
   const animatedPillStyle = useAnimatedStyle(() => {
     if (containerWidth.value === 0) return { opacity: 0 };
-    const totalCols = 5;
-    const colWidth = containerWidth.value / totalCols;
+    
+    const padding = 12; // matching styles.glassShell.paddingHorizontal
+    const contentWidth = containerWidth.value - padding * 2;
+    const colWidth = contentWidth / 5;
     const basePillWidth = 54;
 
     // Organic stretch based on target vs current animated index
@@ -128,7 +134,8 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
     const stretchX = 1 + Math.min(Math.abs(diff) * 0.45, 0.35); // Stretches width up to 1.35x
     const currentPillWidth = basePillWidth * stretchX;
 
-    const leftOffset = activeColIndex.value * colWidth + (colWidth - currentPillWidth) / 2;
+    // Mathematically corrected offset accounting for horizontal padding
+    const leftOffset = padding + activeColIndex.value * colWidth + (colWidth - currentPillWidth) / 2;
     return {
       width: currentPillWidth,
       transform: [{ translateX: leftOffset }],
@@ -251,7 +258,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#141a2a', // Premium dark surface theme matching the rest of the app
+    backgroundColor: 'rgba(28, 36, 58, 0.95)', // Translucent premium navy slate surface
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 9999,
@@ -276,7 +283,9 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     top: 11, // centers mathematically (height 50 + padding 8*2 = 66, (66 - 44) / 2 = 11)
     backgroundColor: Theme.colors.primary,
-    opacity: 0.16, // soft soft overlay look
+    borderWidth: 1.5,
+    borderColor: 'rgba(99, 102, 241, 0.35)', // glowing borders
+    opacity: 0.20, // visible premium backdrop highlight
   },
   fabButton: {
     position: 'absolute',
