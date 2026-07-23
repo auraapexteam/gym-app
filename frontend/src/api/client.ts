@@ -2,8 +2,14 @@ import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import { useAuthStore } from '../store/useAuthStore';
 
+const cleanBaseUrl = (url: string) => {
+  if (!url) return '';
+  const clean = url.trim().replace(/\/+$/, '');
+  return clean.endsWith('/api/v1') ? clean : `${clean}/api/v1`;
+};
+
 export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: cleanBaseUrl(API_BASE_URL),
   timeout: 15000, // 15 seconds — prevents silent infinite hangs
   headers: {
     'Content-Type': 'application/json',

@@ -16,6 +16,17 @@ import { BeginnerGuideScreen } from '../screens/BeginnerGuideScreen';
 import { GymInfoScreen } from '../screens/GymInfoScreen';
 import { SubscriptionHistoryScreen } from '../screens/SubscriptionHistoryScreen';
 import { AttendanceHistoryScreen } from '../screens/AttendanceHistoryScreen';
+import { NotificationsScreen } from '../screens/NotificationsScreen';
+import { ThemeProvider } from '../context/ThemeContext';
+import { SettingsScreen } from '../screens/SettingsScreen';
+import { ThemeSettingsScreen } from '../screens/ThemeSettingsScreen';
+import { NotificationSettingsScreen } from '../screens/NotificationSettingsScreen';
+import { LanguageSettingsScreen } from '../screens/LanguageSettingsScreen';
+import { SecuritySettingsScreen } from '../screens/SecuritySettingsScreen';
+import { PrivacySettingsScreen } from '../screens/PrivacySettingsScreen';
+import { AppSettingsScreen } from '../screens/AppSettingsScreen';
+import { HelpSettingsScreen } from '../screens/HelpSettingsScreen';
+import { AboutSettingsScreen } from '../screens/AboutSettingsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -50,58 +61,110 @@ export function AppNavigator() {
     userProfile?.role === 'admin';
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: true }}>
-        {accessToken ? (
-          isStaffOrOwner ? (
-            <Stack.Screen
-              name="OwnerDashboard"
-              component={OwnerDashboardScreen}
-              options={{ headerShown: false }}
-            />
-          ) : (
-            // Customer stack
-            <>
+    <ThemeProvider>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: true }}>
+          {accessToken ? (
+            isStaffOrOwner ? (
               <Stack.Screen
-                name="MainTabs"
-                component={CustomerTabNavigator}
+                name="OwnerDashboard"
+                component={OwnerDashboardScreen}
                 options={{ headerShown: false }}
               />
-              <Stack.Screen
-                name="QRCheckIn"
-                component={QRCheckInScreen}
-                options={{ title: 'QR Check-in' }}
-              />
-              <Stack.Screen
-                name="BeginnerGuide"
-                component={BeginnerGuideScreen}
-                options={{ title: 'Beginner Guide' }}
-              />
-              <Stack.Screen
-                name="GymInfo"
-                component={GymInfoScreen}
-                options={{ title: 'Gym Information' }}
-              />
-              <Stack.Screen
-                name="SubscriptionHistory"
-                component={SubscriptionHistoryScreen}
-                options={{ title: 'Subscription History' }}
-              />
-              <Stack.Screen
-                name="AttendanceHistory"
-                component={AttendanceHistoryScreen}
-                options={{ title: 'Attendance History' }}
-              />
+            ) : (
+              // Customer stack
+              <>
+                <Stack.Screen
+                  name="MainTabs"
+                  component={CustomerTabNavigator}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="QRCheckIn"
+                  component={QRCheckInScreen}
+                  options={{ title: 'QR Check-in' }}
+                />
+                <Stack.Screen
+                  name="BeginnerGuide"
+                  component={BeginnerGuideScreen}
+                  options={{ title: 'Beginner Guide' }}
+                />
+                <Stack.Screen
+                  name="GymInfo"
+                  component={GymInfoScreen}
+                  options={{ title: 'Gym Information' }}
+                />
+                <Stack.Screen
+                  name="SubscriptionHistory"
+                  component={SubscriptionHistoryScreen}
+                  options={{ title: 'Subscription History' }}
+                />
+                <Stack.Screen
+                  name="AttendanceHistory"
+                  component={AttendanceHistoryScreen}
+                  options={{ title: 'Attendance History' }}
+                />
+                <Stack.Screen
+                  name="Notifications"
+                  component={NotificationsScreen}
+                  options={{ title: 'Notifications' }}
+                />
+                <Stack.Screen
+                  name="Settings"
+                  component={SettingsScreen}
+                  options={{ title: 'Settings' }}
+                />
+                <Stack.Screen
+                  name="ThemeSettings"
+                  component={ThemeSettingsScreen}
+                  options={{ title: 'Appearance' }}
+                />
+                <Stack.Screen
+                  name="NotificationSettings"
+                  component={NotificationSettingsScreen}
+                  options={{ title: 'Notifications' }}
+                />
+                <Stack.Screen
+                  name="LanguageSettings"
+                  component={LanguageSettingsScreen}
+                  options={{ title: 'Language' }}
+                />
+                <Stack.Screen
+                  name="SecuritySettings"
+                  component={SecuritySettingsScreen}
+                  options={{ title: 'Security' }}
+                />
+                <Stack.Screen
+                  name="PrivacySettings"
+                  component={PrivacySettingsScreen}
+                  options={{ title: 'Privacy' }}
+                />
+                <Stack.Screen
+                  name="AppSettings"
+                  component={AppSettingsScreen}
+                  options={{ title: 'Storage & Cache' }}
+                />
+                <Stack.Screen
+                  name="HelpSettings"
+                  component={HelpSettingsScreen}
+                  options={{ title: 'Help & Support' }}
+                />
+                <Stack.Screen
+                  name="AboutSettings"
+                  component={AboutSettingsScreen}
+                  options={{ title: 'About Aura Apex' }}
+                />
+              </>
+            )
+          ) : (
+            <>
+              <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="Signup" component={SignupScreen} options={{ title: 'Create Account' }} />
             </>
-          )
-        ) : (
-          <>
-            <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Signup" component={SignupScreen} options={{ title: 'Create Account' }} />
-          </>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
+    </ThemeProvider>
   );
 }
 

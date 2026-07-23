@@ -45,8 +45,8 @@ export const updateProfileSchema = z.object({
   body: z
     .object({
       fullName:  z.string().min(1).max(120),
-      phone:     z.string().min(5).max(20),
-      avatarUrl: z.string().url().max(500),
+      phone:     z.string().min(5).max(20).nullable().or(z.literal('')),
+      avatarUrl: z.string().url().max(500).nullable().or(z.literal('')),
     })
     .partial(),
 });

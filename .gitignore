@@ -76,3 +76,7 @@ UI_SYSTEM.md
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Binaries / Packages
+*.apk
+

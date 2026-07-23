@@ -1,579 +1,911 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   TouchableOpacity,
+  SafeAreaView,
   ActivityIndicator,
   ScrollView,
-  Alert,
+  Modal,
   TextInput,
-  FlatList,
+  Platform,
+  Dimensions,
 } from 'react-native';
+import Svg, { Circle, Polyline, Path, Rect, ClipPath, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useAuthStore } from '../store/useAuthStore';
-import { COLORS, SHADOWS } from '../theme/tokens';
-import { LogOut, Calendar, QrCode, CreditCard, ChevronRight, Award, Clock, Search, Building2, Send, Bell, BookOpen, Info } from 'lucide-react-native';
-import { apiClient } from '../api/client';
+import { Theme } from '../theme/Theme';
+import {
+  Bell,
+  Flame,
+  Droplet,
+  Beef,
+  ArrowUpRight,
+  Plus,
+  Minus,
+} from 'lucide-react-native';
 
-export function HomeScreen({ navigation }: any) {
-  const { user, userProfile, subscription, loadSubscription, loadUserProfile } = useAuthStore();
+/* ============ Vector Components ============ */
 
-  // Gym directory state (when gym_id is null)
-  const [gyms, setGyms] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [joinRequest, setJoinRequest] = useState<any>(null);
-  const [gymsLoading, setGymsLoading] = useState(false);
-
-  // Dashboard state (when gym_id is set)
-  const [history, setHistory] = useState<any[]>([]);
-  const [histLoading, setHistLoading] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [todayCheckedIn, setTodayCheckedIn] = useState(false);
-  const [recentNotification, setRecentNotification] = useState<any>(null);
-
-  useEffect(() => {
-    if (userProfile?.gym_id) {
-      loadSubscription();
-      fetchCheckInHistory();
-      fetchUnreadCount();
-      fetchRecentNotification();
-    } else {
-      fetchGymDirectory();
-      fetchJoinRequestStatus();
-    }
-  }, [userProfile?.gym_id]);
-
-  const fetchGymDirectory = async () => {
-    try {
-      setGymsLoading(true);
-      const res = await apiClient.get('/gyms/directory');
-      if (res.data?.success) {
-        setGyms(res.data.data.items || res.data.data);
-      }
-    } catch (err) {
-      console.warn('Gym directory load failed:', err);
-    } finally {
-      setGymsLoading(false);
-    }
-  };
-
-  const fetchJoinRequestStatus = async () => {
-    try {
-      const res = await apiClient.get('/gyms/join-request/status');
-      if (res.data?.success) {
-        setJoinRequest(res.data.data);
-      }
-    } catch {
-      setJoinRequest(null);
-    }
-  };
-
-  const handleApplyToGym = async (gymId: string, gymName: string) => {
-    try {
-      setGymsLoading(true);
-      const res = await apiClient.post('/gyms/join-request', { gymId });
-      if (res.data?.success) {
-        Alert.alert('Request Sent', `Your join request to ${gymName} has been submitted. The owner will review it shortly.`);
-        fetchJoinRequestStatus();
-      }
-    } catch (error: any) {
-      const msg = error.response?.data?.message || 'Could not submit request.';
-      Alert.alert('Request Failed', msg);
-    } finally {
-      setGymsLoading(false);
-    }
-  };
-
-  const fetchCheckInHistory = async () => {
-    try {
-      setHistLoading(true);
-      const res = await apiClient.get('/attendance/me', {
-        params: { limit: 3, page: 1 },
-      });
-      if (res.data?.success) {
-        const list = res.data.data.items || res.data.data || [];
-        setHistory(list.slice(0, 3));
-
-        // Check if user checked in today
-        const todayStr = new Date().toISOString().slice(0, 10);
-        const hasCheckedInToday = list.some(
-          (h: any) => new Date(h.attendance_date || h.created_at).toISOString().slice(0, 10) === todayStr
-        );
-        setTodayCheckedIn(hasCheckedInToday);
-      }
-    } catch {
-      setHistory([]);
-    } finally {
-      setHistLoading(false);
-    }
-  };
-
-  const fetchUnreadCount = async () => {
-    try {
-      const res = await apiClient.get('/notifications/unread-count');
-      if (res.data?.success) {
-        setUnreadCount(res.data.data.count || 0);
-      }
-    } catch {
-      setUnreadCount(0);
-    }
-  };
-
-  const fetchRecentNotification = async () => {
-    try {
-      const res = await apiClient.get('/notifications');
-      if (res.data?.success) {
-        const list = res.data.data.items || res.data.data || [];
-        if (list.length > 0) {
-          setRecentNotification(list[0]);
-        }
-      }
-    } catch {
-      setRecentNotification(null);
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      day: 'numeric', month: 'short', year: 'numeric',
-    });
-  };
-
-  // ─── RENDER: No gym linked yet ────────────────────────────────────────────
-  if (!userProfile?.gym_id) {
-    const filteredGyms = gyms.filter((g) =>
-      (g.name || '').toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    return (
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.headerGreeting}>Welcome,</Text>
-            <Text style={styles.headerName}>{userProfile?.full_name || user?.email?.split('@')[0]}</Text>
-          </View>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => useAuthStore.getState().signOut()}>
-            <LogOut size={20} color={COLORS.danger} />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* Status card */}
-          {joinRequest ? (
-            <View style={[styles.card, styles.pendingCard]}>
-              <Send size={22} color={COLORS.warning} style={styles.mb8} />
-              <Text style={styles.cardTitle}>Request Pending</Text>
-              <Text style={styles.cardDesc}>
-                Your request to join <Text style={{ fontWeight: 'bold' }}>{joinRequest.gyms?.name || 'the gym'}</Text> is being reviewed.{'\n'}Tap below once the owner has approved you.
-              </Text>
-              <TouchableOpacity
-                style={styles.outlineBtn}
-                onPress={async () => {
-                  setGymsLoading(true);
-                  await loadUserProfile();
-                  await fetchJoinRequestStatus();
-                  setGymsLoading(false);
-                }}
-              >
-                {gymsLoading
-                  ? <ActivityIndicator color={COLORS.primary} size="small" />
-                  : <Text style={styles.outlineBtnText}>Check Approval Status</Text>
-                }
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={[styles.card, styles.infoCard]}>
-              <Building2 size={28} color={COLORS.primary} style={styles.mb8} />
-              <Text style={styles.cardTitle}>Connect to a Gym</Text>
-              <Text style={styles.cardDesc}>
-                Search and select a gym below to send a join request. Once the owner approves, your full dashboard activates.
-              </Text>
-            </View>
-          )}
-
-          {/* Search + directory */}
-          {!joinRequest && (
-            <>
-              <View style={styles.searchRow}>
-                <Search size={16} color={COLORS.textSecondary} style={{ marginRight: 8 }} />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Search gyms by name..."
-                  placeholderTextColor={COLORS.textSecondary}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                />
-              </View>
-
-              {gymsLoading && gyms.length === 0
-                ? <ActivityIndicator color={COLORS.primary} style={{ marginTop: 24 }} />
-                : (
-                  <FlatList
-                    data={filteredGyms}
-                    keyExtractor={(item) => item.id}
-                    scrollEnabled={false}
-                    renderItem={({ item }) => (
-                      <View style={styles.gymRow}>
-                        <View style={{ flex: 1, marginRight: 12 }}>
-                          <Text style={styles.gymName}>{item.name}</Text>
-                          {!!item.address && <Text style={styles.gymAddress}>{item.address}</Text>}
-                        </View>
-                        <TouchableOpacity
-                          style={styles.applyBtn}
-                          onPress={() => handleApplyToGym(item.id, item.name)}
-                        >
-                          <Text style={styles.applyBtnText}>Join</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                    ListEmptyComponent={
-                      <Text style={styles.emptyText}>No gyms found in the directory.</Text>
-                    }
-                  />
-                )
-              }
-            </>
-          )}
-        </ScrollView>
-      </View>
-    );
-  }
-
-  // ─── RENDER: Gym linked — full dashboard ──────────────────────────────────
+function ProgressRing({ size = 60, stroke = 6, progress = 0.5, color = '#6366f1', label, sublabel }: any) {
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const strokeDashoffset = circ - progress * circ;
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerGreeting}>Welcome back,</Text>
-          <Text style={styles.headerName}>{userProfile?.full_name || user?.email?.split('@')[0]}</Text>
-        </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => navigation.navigate('NotificationsTab')}
-          >
-            <Bell size={22} color={COLORS.textPrimary} />
-            {unreadCount > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
+    <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ transform: [{ rotate: '-90deg' }] }}>
+        <Svg width={size} height={size}>
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            stroke="rgba(255, 255, 255, 0.08)"
+            strokeWidth={stroke}
+            fill="none"
+          />
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            stroke={color}
+            strokeWidth={stroke}
+            fill="none"
+            strokeDasharray={circ}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+          />
+        </Svg>
       </View>
-
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Subscription Card */}
-        {subscription && subscription.status === 'active' ? (
-          <View style={[styles.card, styles.activeCard]}>
-            <View style={styles.cardRow}>
-              <Award size={18} color={COLORS.success} />
-              <Text style={[styles.cardLabel, { color: COLORS.success, marginLeft: 6 }]}>ACTIVE MEMBER</Text>
-            </View>
-            <Text style={styles.planName}>{subscription.plans?.name || 'Membership'}</Text>
-            <Text style={styles.planPrice}>
-              ₹{subscription.plans?.price}
-              <Text style={styles.planDur}> / {subscription.plans?.durationDays || 30} days</Text>
-            </Text>
-            <View style={styles.divider} />
-            <View style={styles.cardRow}>
-              <Text style={styles.detailLabel}>Expires</Text>
-              <Text style={styles.detailValue}>{formatDate(subscription.end_date)}</Text>
-            </View>
-          </View>
-        ) : (
-          <View style={[styles.card, styles.inactiveCard]}>
-            <Text style={styles.cardLabel}>NO ACTIVE PLAN</Text>
-            <Text style={styles.planName}>Start Your Journey</Text>
-            <Text style={styles.cardDesc}>Buy a membership plan to unlock full gym access, tracking, and check-ins.</Text>
-            <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('PlansTab')}>
-              <CreditCard size={16} color={COLORS.surface} style={{ marginRight: 8 }} />
-              <Text style={styles.primaryBtnText}>Browse Plans</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Check-In Today Status Banner */}
-        <View style={[styles.card, todayCheckedIn ? styles.checkInSuccessCard : styles.checkInPendingCard]}>
-          <Text style={[styles.checkInStatusTitle, { color: todayCheckedIn ? COLORS.success : COLORS.warning }]}>
-            {todayCheckedIn ? '✓ Checked In Today' : '⚠️ Attendance Required'}
-          </Text>
-          <Text style={styles.checkInStatusDesc}>
-            {todayCheckedIn
-              ? 'Your attendance has been logged successfully. Have a great workout session!'
-              : 'Remember to check in using the QR code scanner when you arrive at the gym.'}
-          </Text>
+      {label && (
+        <View style={{ position: 'absolute', alignItems: 'center' }}>
+          <Text style={{ fontSize: 13, fontWeight: '800', color: '#f5f6fa' }}>{label}</Text>
+          {sublabel && <Text style={{ fontSize: 8, color: '#a1a5b7', fontWeight: '600', marginTop: 1 }}>{sublabel}</Text>}
         </View>
-
-        {/* Recent Notification Preview */}
-        {recentNotification && (
-          <TouchableOpacity
-            style={styles.notificationPreviewCard}
-            onPress={() => navigation.navigate('NotificationsTab')}
-          >
-            <Info size={16} color={COLORS.primary} style={{ marginRight: 8 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.notificationPreviewTitle} numberOfLines={1}>
-                {recentNotification.title || 'Notification'}
-              </Text>
-              <Text style={styles.notificationPreviewText} numberOfLines={1}>
-                {recentNotification.message}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        )}
-
-        {/* Quick Actions */}
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-
-        <TouchableOpacity style={styles.actionRow} onPress={() => navigation.navigate('QRCheckIn')}>
-          <View style={styles.actionLeft}>
-            <View style={[styles.actionIcon, { backgroundColor: '#EEF2FF' }]}>
-              <QrCode size={20} color={COLORS.primary} />
-            </View>
-            <View>
-              <Text style={styles.actionTitle}>QR Check-In</Text>
-              <Text style={styles.actionSub}>Scan your gym's daily QR code</Text>
-            </View>
-          </View>
-          <ChevronRight size={16} color={COLORS.textSecondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionRow} onPress={() => navigation.navigate('ProgressTab')}>
-          <View style={styles.actionLeft}>
-            <View style={[styles.actionIcon, { backgroundColor: '#E0F2FE' }]}>
-              <Calendar size={20} color="#0284C7" />
-            </View>
-            <View>
-              <Text style={styles.actionTitle}>Progress Logbook</Text>
-              <Text style={styles.actionSub}>Log weight, water & protein</Text>
-            </View>
-          </View>
-          <ChevronRight size={16} color={COLORS.textSecondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionRow} onPress={() => navigation.navigate('BeginnerGuide')}>
-          <View style={styles.actionLeft}>
-            <View style={[styles.actionIcon, { backgroundColor: '#F0FDF4' }]}>
-              <BookOpen size={20} color={COLORS.success} />
-            </View>
-            <View>
-              <Text style={styles.actionTitle}>Beginner Guide</Text>
-              <Text style={styles.actionSub}>Learn how to use Aura Apex app</Text>
-            </View>
-          </View>
-          <ChevronRight size={16} color={COLORS.textSecondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionRow} onPress={() => navigation.navigate('GymInfo')}>
-          <View style={styles.actionLeft}>
-            <View style={[styles.actionIcon, { backgroundColor: '#FEF3C7' }]}>
-              <Building2 size={20} color={COLORS.warning} />
-            </View>
-            <View>
-              <Text style={styles.actionTitle}>Gym Information</Text>
-              <Text style={styles.actionSub}>View timings, address & contact info</Text>
-            </View>
-          </View>
-          <ChevronRight size={16} color={COLORS.textSecondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionRow} onPress={() => navigation.navigate('SubscriptionHistory')}>
-          <View style={styles.actionLeft}>
-            <View style={[styles.actionIcon, { backgroundColor: '#FAE8FF' }]}>
-              <Award size={20} color="#C084FC" />
-            </View>
-            <View>
-              <Text style={styles.actionTitle}>Subscription History</Text>
-              <Text style={styles.actionSub}>View past plans & cancellations</Text>
-            </View>
-          </View>
-          <ChevronRight size={16} color={COLORS.textSecondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionRow} onPress={() => navigation.navigate('AttendanceHistory')}>
-          <View style={styles.actionLeft}>
-            <View style={[styles.actionIcon, { backgroundColor: '#E0F2FE' }]}>
-              <Clock size={20} color="#38BDF8" />
-            </View>
-            <View>
-              <Text style={styles.actionTitle}>Attendance History</Text>
-              <Text style={styles.actionSub}>View full logged check-in history</Text>
-            </View>
-          </View>
-          <ChevronRight size={16} color={COLORS.textSecondary} />
-        </TouchableOpacity>
-      </ScrollView>
+      )}
     </View>
   );
 }
 
+function Sparkline({ data, color = '#10b981', width = 92, height = 22 }: any) {
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const points = data
+    .map((val: number, i: number) => {
+      const x = (i / (data.length - 1)) * width;
+      const y = height - ((val - min) / range) * height;
+      return `${x},${y}`;
+    })
+    .join(' ');
+  return (
+    <Svg width={width} height={height}>
+      <Polyline
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        points={points}
+      />
+    </Svg>
+  );
+}
+
+function WaterGlass({ value }: { value: number }) {
+  const fillHeight = Math.min(26, value * 26);
+  const yPos = 32 - fillHeight;
+  return (
+    <Svg width={28} height={32} viewBox="0 0 28 32">
+      <Defs>
+        <ClipPath id="glass-clip">
+          <Path d="M4 4 L24 4 L22 30 L6 30 Z" />
+        </ClipPath>
+      </Defs>
+      <Path d="M4 4 L24 4 L22 30 L6 30 Z" fill="none" stroke="#0d94f8" strokeWidth={1.5} />
+      <Rect
+        x={0}
+        y={yPos}
+        width={28}
+        height={fillHeight}
+        fill="#0d94f8"
+        opacity={0.5}
+        clipPath="url(#glass-clip)"
+      />
+    </Svg>
+  );
+}
+
+/* ============ Main Screen ============ */
+
+export function HomeScreen({ navigation }: any) {
+  const { user, subscription, loadSubscription, loading, userProfile } = useAuthStore();
+
+  // Metrics state (Interactive Prototype)
+  const [streak, setStreak] = useState(12);
+  const [todayWater, setTodayWater] = useState(1500);
+  const [todayProtein, setTodayProtein] = useState(95);
+  const [todayWeight, setTodayWeight] = useState(72.0);
+  
+  // Weekly check-in tracker
+  const [weekCheckIns, setWeekCheckIns] = useState<string[]>([]);
+  const [logModalOpen, setLogModalOpen] = useState(false);
+
+  // Quick log temp states
+  const [tempWeight, setTempWeight] = useState('72.0');
+  const [tempWater, setTempWater] = useState(1500);
+  const [tempProtein, setTempProtein] = useState(95);
+
+  useEffect(() => {
+    loadSubscription();
+    
+    // Seed check-in dates for this week
+    const daysAgo = (n: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() - n);
+      return d.toISOString().slice(0, 10);
+    };
+    setWeekCheckIns([daysAgo(1), daysAgo(2), daysAgo(4), daysAgo(6)]);
+  }, [loadSubscription]);
+
+  // Subscription calculation
+  const isSubscribed = subscription && subscription.status === 'active';
+  const planName = subscription?.plans?.name || 'Elite';
+  
+  const daysLeft = useMemo(() => {
+    if (subscription?.current_period_end) {
+      const diff = new Date(subscription.current_period_end).getTime() - Date.now();
+      return Math.max(1, Math.ceil(diff / 86400000));
+    }
+    return 21; // Prototype default
+  }, [subscription]);
+
+  const progress = 1 - daysLeft / 30;
+
+  // Calendar dates for the week
+  const weekDates = useMemo(() => {
+    const arr: { date: string; label: string; day: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      arr.push({
+        date: d.toISOString().slice(0, 10),
+        label: ['S', 'M', 'T', 'W', 'T', 'F', 'S'][d.getDay()],
+        day: d.getDate(),
+      });
+    }
+    return arr;
+  }, []);
+
+  const openLogSheet = () => {
+    setTempWeight(todayWeight.toFixed(1));
+    setTempWater(todayWater);
+    setTempProtein(todayProtein);
+    setLogModalOpen(true);
+  };
+
+  const handleSaveLog = () => {
+    const wtNum = parseFloat(tempWeight) || todayWeight;
+    setTodayWeight(wtNum);
+    setTodayWater(tempWater);
+    setTodayProtein(tempProtein);
+    setLogModalOpen(false);
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Top Banner Area */}
+      <View style={styles.topBanner}>
+        <View style={styles.topRow}>
+          <View style={styles.avatarRow}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {userProfile?.full_name ? userProfile.full_name.charAt(0).toUpperCase() : 'A'}
+              </Text>
+            </View>
+            <View style={styles.headerTitles}>
+              <Text style={styles.greetText}>GOOD MORNING</Text>
+              <Text style={styles.nameText}>
+                {userProfile?.full_name ? userProfile.full_name.split(' ')[0] : 'amanmahadik8'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.headerActions}>
+            <View style={styles.gymBadge}>
+              <Text style={styles.gymBadgeText}>Aura Downtown</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Notifications')}
+              activeOpacity={0.7}
+              style={styles.bellButton}
+            >
+              <Bell size={16} color="#f5f6fa" />
+              <View style={styles.bellDot} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.focusRow}>
+          <Text style={styles.focusLabel}>TODAY'S FOCUS</Text>
+          <Text style={styles.focusValue}>Push Day · Chest & Triceps</Text>
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Active Plan / Streak row */}
+        <View style={styles.heroGrid}>
+          {/* Plan Info Card */}
+          <View style={[styles.glassCard, styles.planCard]}>
+            <View style={styles.planDetails}>
+              <View style={styles.badgeContainer}>
+                <Text style={styles.planBadge}>{planName.toUpperCase()} PLAN</Text>
+              </View>
+              <Text style={styles.planPrice}>
+                ₹{subscription?.plans?.price ? subscription.plans.price.toLocaleString() : '2,999'}
+                <Text style={styles.planPricePeriod}>/mo</Text>
+              </Text>
+              <Text style={styles.planDates}>
+                {isSubscribed ? 'Active Access' : 'Renew Pending'}
+              </Text>
+            </View>
+            <ProgressRing size={72} stroke={7} progress={progress} label={`${daysLeft}`} sublabel="Days left" />
+          </View>
+
+          {/* Streak Card */}
+          <View style={[styles.glassCard, styles.streakCard]}>
+            <Flame size={20} color="#fbbf24" style={{ marginBottom: 4 }} />
+            <Text style={styles.streakCount}>{streak}</Text>
+            <Text style={styles.streakLabel}>Day streak</Text>
+          </View>
+        </View>
+
+        {/* Metrics Row (Weight, Water, Protein) */}
+        <View style={styles.metricsGrid}>
+          {/* Weight Card */}
+          <View style={styles.glassCard}>
+            <View style={styles.metricHeader}>
+              <Text style={styles.metricTitle}>Weight</Text>
+              <ArrowUpRight size={14} color="#10b981" />
+            </View>
+            <Text style={styles.metricValue}>
+              {todayWeight.toFixed(1)}
+              <Text style={styles.metricUnit}>kg</Text>
+            </Text>
+            <View style={styles.sparklineContainer}>
+              <Sparkline data={[74, 73.6, 73.2, 73, 72.5, 72.2, todayWeight]} color="#10b981" />
+            </View>
+          </View>
+
+          {/* Water Card */}
+          <View style={styles.glassCard}>
+            <View style={styles.metricHeader}>
+              <Text style={styles.metricTitle}>Water</Text>
+              <Droplet size={14} color="#0d94f8" />
+            </View>
+            <Text style={styles.metricValue}>
+              {(todayWater / 1000).toFixed(1)}
+              <Text style={styles.metricUnit}>L</Text>
+            </Text>
+            <View style={styles.waterContainer}>
+              <WaterGlass value={todayWater / 3000} />
+            </View>
+          </View>
+
+          {/* Protein Card */}
+          <View style={styles.glassCard}>
+            <View style={styles.metricHeader}>
+              <Text style={styles.metricTitle}>Protein</Text>
+              <Beef size={14} color="#f87171" />
+            </View>
+            <Text style={styles.metricValue}>
+              {todayProtein}
+              <Text style={styles.metricUnit}>g</Text>
+            </Text>
+            <View style={styles.proteinRingContainer}>
+              <ProgressRing size={44} stroke={4} progress={todayProtein / 150} color="#f87171" />
+            </View>
+          </View>
+        </View>
+
+        {/* This Week check-ins calendar layout */}
+        <View style={styles.weekSection}>
+          <View style={styles.weekHeader}>
+            <Text style={styles.sectionTitle}>This Week</Text>
+            <Text style={styles.weekCount}>{weekCheckIns.length} check-ins</Text>
+          </View>
+          <View style={styles.weekScroll}>
+            {weekDates.map((d) => {
+              const checked = weekCheckIns.includes(d.date);
+              const isToday = d.date === new Date().toISOString().slice(0, 10);
+              return (
+                <View
+                  key={d.date}
+                  style={[styles.weekDayCard, isToday && styles.weekTodayCard]}
+                >
+                  <Text style={styles.weekDayLabel}>{d.label}</Text>
+                  <Text style={styles.weekDayNum}>{d.day}</Text>
+                  <View style={[styles.weekDayIndicator, checked ? styles.checkedDot : styles.emptyDot]} />
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Quick Log Action Box */}
+        <View style={styles.logTodayWrapper}>
+          <View style={styles.logTodayLeft}>
+            <Text style={styles.logTodayTitle}>Quick Log</Text>
+            <Text style={styles.logTodayDesc}>Water · protein · weight · photo</Text>
+          </View>
+          <TouchableOpacity
+            onPress={openLogSheet}
+            activeOpacity={0.8}
+            style={styles.logButton}
+          >
+            <Text style={styles.logButtonText}>+ Log Today</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+
+      {/* Quick Log Bottom Sheet Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={logModalOpen}
+        onRequestClose={() => setLogModalOpen(false)}
+      >
+        <View style={styles.sheetOverlay}>
+          <TouchableOpacity
+            style={styles.dismissOverlay}
+            activeOpacity={1}
+            onPress={() => setLogModalOpen(false)}
+          />
+          <View style={styles.sheetBody}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Log today</Text>
+              <TouchableOpacity onPress={() => setLogModalOpen(false)}>
+                <Text style={styles.sheetClose}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.sheetContent}>
+              {/* Weight Slider */}
+              <View style={styles.sheetItem}>
+                <View style={styles.sheetInputLabelRow}>
+                  <Text style={styles.sheetInputTitle}>Weight (kg)</Text>
+                  <TextInput
+                    value={tempWeight}
+                    onChangeText={setTempWeight}
+                    keyboardType="decimal-pad"
+                    style={styles.weightTextInput}
+                  />
+                </View>
+                {/* Visual Weight graph simulator */}
+                <View style={{ height: 26, marginVertical: 8, alignItems: 'center' }}>
+                  <Sparkline
+                    data={[74, 73.6, 73.2, 73, 72.5, 72.2, parseFloat(tempWeight) || todayWeight]}
+                    color="#10b981"
+                    width={260}
+                    height={26}
+                  />
+                </View>
+              </View>
+
+              {/* Water Adjustment Box */}
+              <View style={styles.sheetControlBox}>
+                <View>
+                  <Text style={styles.sheetControlTitle}>Water</Text>
+                  <Text style={styles.sheetControlValue}>{(tempWater / 1000).toFixed(2)} L</Text>
+                </View>
+                <View style={styles.adjusterRow}>
+                  <TouchableOpacity
+                    onPress={() => setTempWater(Math.max(0, tempWater - 250))}
+                    activeOpacity={0.7}
+                    style={styles.adjustButton}
+                  >
+                    <Minus size={16} color="#f5f6fa" />
+                  </TouchableOpacity>
+                  <WaterGlass value={tempWater / 3000} />
+                  <TouchableOpacity
+                    onPress={() => setTempWater(tempWater + 250)}
+                    activeOpacity={0.7}
+                    style={[styles.adjustButton, { backgroundColor: '#0d94f8' }]}
+                  >
+                    <Plus size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Protein Adjustment Box */}
+              <View style={styles.sheetControlBox}>
+                <View>
+                  <Text style={styles.sheetControlTitle}>Protein</Text>
+                  <Text style={styles.sheetControlValue}>{tempProtein} g</Text>
+                </View>
+                <View style={styles.adjusterRow}>
+                  <TouchableOpacity
+                    onPress={() => setTempProtein(Math.max(0, tempProtein - 5))}
+                    activeOpacity={0.7}
+                    style={styles.adjustButton}
+                  >
+                    <Minus size={16} color="#f5f6fa" />
+                  </TouchableOpacity>
+                  <ProgressRing size={32} stroke={3.5} progress={tempProtein / 150} color="#f87171" />
+                  <TouchableOpacity
+                    onPress={() => setTempProtein(tempProtein + 5)}
+                    activeOpacity={0.7}
+                    style={[styles.adjustButton, { backgroundColor: '#f87171' }]}
+                  >
+                    <Plus size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Submit Save */}
+              <TouchableOpacity
+                onPress={handleSaveLog}
+                activeOpacity={0.85}
+                style={styles.saveLogButton}
+              >
+                <Text style={styles.saveLogButtonText}>Save log</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  scrollContent: { padding: 20, paddingBottom: 40 },
-
-  // Header
-  header: {
+  container: {
+    flex: 1,
+    backgroundColor: '#0b0f19',
+  },
+  topBanner: {
+    backgroundColor: '#141a2a',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? 48 : 20, // push down below status bar/notch on Android
+    paddingBottom: 24,
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 52,
-    paddingBottom: 16,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderColor: COLORS.border,
   },
-  headerGreeting: { fontSize: 13, color: COLORS.textSecondary, fontWeight: '500' },
-  headerName: { fontSize: 20, fontWeight: '800', color: COLORS.textPrimary, marginTop: 2, textTransform: 'capitalize' },
-  headerActions: { flexDirection: 'row', gap: 8 },
-  iconBtn: { padding: 8, borderRadius: 10, backgroundColor: COLORS.background, position: 'relative' },
-
-  // Notification badge
-  badge: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    backgroundColor: COLORS.danger,
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 3,
-  },
-  badgeText: { color: '#fff', fontSize: 9, fontWeight: 'bold' },
-
-  // Cards
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.medium,
-  },
-  activeCard: { borderLeftWidth: 4, borderLeftColor: COLORS.success },
-  inactiveCard: { borderLeftWidth: 4, borderLeftColor: COLORS.warning },
-  pendingCard: { borderLeftWidth: 4, borderLeftColor: COLORS.warning, alignItems: 'center' },
-  infoCard: { alignItems: 'center' },
-
-  cardRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  cardLabel: { fontSize: 11, fontWeight: '700', color: COLORS.textSecondary, letterSpacing: 0.8 },
-  cardTitle: { fontSize: 18, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 6 },
-  cardDesc: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 20, textAlign: 'center', marginBottom: 12 },
-  planName: { fontSize: 22, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 4 },
-  planPrice: { fontSize: 18, fontWeight: '700', color: COLORS.primary },
-  planDur: { fontSize: 13, fontWeight: '400', color: COLORS.textSecondary },
-  divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 12 },
-  detailLabel: { flex: 1, fontSize: 13, color: COLORS.textSecondary },
-  detailValue: { fontSize: 13, fontWeight: '700', color: COLORS.textPrimary },
-  mb8: { marginBottom: 8 },
-
-  // Check-In Status Banners
-  checkInSuccessCard: { borderLeftWidth: 4, borderLeftColor: COLORS.success, backgroundColor: COLORS.success + '0A' },
-  checkInPendingCard: { borderLeftWidth: 4, borderLeftColor: COLORS.warning, backgroundColor: COLORS.warning + '0A' },
-  checkInStatusTitle: { fontSize: 15, fontWeight: '700', marginBottom: 4 },
-  checkInStatusDesc: { fontSize: 12, color: COLORS.textSecondary, lineHeight: 18 },
-
-  // Notification Preview
-  notificationPreviewCard: {
+  avatarRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    marginBottom: 12,
-    ...SHADOWS.small,
+    gap: 12,
   },
-  notificationPreviewTitle: { fontSize: 13, fontWeight: '700', color: COLORS.textPrimary },
-  notificationPreviewText: { fontSize: 12, color: COLORS.textSecondary, marginTop: 1 },
-
-  // Buttons
-  primaryBtn: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    alignItems: 'center',
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(99, 102, 241, 0.15)',
     justifyContent: 'center',
-    marginTop: 12,
-  },
-  primaryBtnText: { color: COLORS.surface, fontSize: 15, fontWeight: '700' },
-  outlineBtn: {
+    alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: COLORS.primary,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    marginTop: 4,
+    borderColor: '#6366f1',
   },
-  outlineBtnText: { color: COLORS.primary, fontSize: 14, fontWeight: '700' },
-  applyBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
-  applyBtnText: { color: COLORS.surface, fontSize: 12, fontWeight: '700' },
-
-  // Section title
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: COLORS.textPrimary, marginTop: 8, marginBottom: 10 },
-
-  // Action rows
-  actionRow: {
+  avatarText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#f5f6fa',
+  },
+  headerTitles: {
+    justifyContent: 'center',
+  },
+  greetText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#a1a5b7',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  nameText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  gymBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 99,
+  },
+  gymBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#ffffff',
+    textTransform: 'uppercase',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  gymName: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#a1a5b7',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 99,
+  },
+  bellButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bellDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#f87171',
+    borderWidth: 1,
+    borderColor: '#141a2a',
+  },
+  focusRow: {
+    marginTop: 20,
+    gap: 4,
+  },
+  focusLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#a1a5b7',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  focusValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#f5f6fa',
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 120, // increased padding to ensure zero overlap with floating tabs
+  },
+  heroGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  glassCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 24,
+    padding: 16,
+  },
+  planCard: {
+    flex: 2,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  planDetails: {
+    justifyContent: 'center',
+    gap: 4,
+  },
+  badgeContainer: {
+    alignSelf: 'flex-start',
+  },
+  planBadge: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#6366f1',
+    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 99,
+  },
+  planPrice: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#f5f6fa',
+  },
+  planPricePeriod: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#a1a5b7',
+  },
+  planDates: {
+    fontSize: 10,
+    color: '#a1a5b7',
+    fontWeight: '600',
+  },
+  streakCard: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  streakCount: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#f5f6fa',
+  },
+  streakLabel: {
+    fontSize: 10,
+    color: '#a1a5b7',
+    fontWeight: '600',
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  metricHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  metricTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    color: '#a1a5b7',
+  },
+  metricValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#f5f6fa',
+  },
+  metricUnit: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#a1a5b7',
+  },
+  sparklineContainer: {
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  waterContainer: {
+    marginTop: 6,
+    alignItems: 'center',
+  },
+  proteinRingContainer: {
+    marginTop: 4,
+    alignItems: 'center',
+  },
+  weekSection: {
+    marginBottom: 20,
+  },
+  weekHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#f5f6fa',
+  },
+  weekCount: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#a1a5b7',
+  },
+  weekScroll: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  weekDayCard: {
+    width: (Dimensions.get('window').width - 40) / 7.6,
+    aspectRatio: 0.72,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+  },
+  weekTodayCard: {
+    borderColor: '#6366f1',
+    backgroundColor: 'rgba(99, 102, 241, 0.05)',
+  },
+  weekDayLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#a1a5b7',
+  },
+  weekDayNum: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#f5f6fa',
+  },
+  weekDayIndicator: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    marginTop: 2,
+  },
+  checkedDot: {
+    backgroundColor: '#10b981',
+  },
+  emptyDot: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  logTodayWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: COLORS.surface,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 24,
     padding: 16,
-    borderRadius: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.small,
   },
-  actionLeft: { flexDirection: 'row', alignItems: 'center' },
-  actionIcon: { padding: 10, borderRadius: 10, marginRight: 14 },
-  actionTitle: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary },
-  actionSub: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
+  logTodayLeft: {
+    gap: 2,
+  },
+  logTodayTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#f5f6fa',
+  },
+  logTodayDesc: {
+    fontSize: 11,
+    color: '#a1a5b7',
+    fontWeight: '500',
+  },
+  logButton: {
+    backgroundColor: '#6366f1',
+    borderRadius: 9999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  logButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
 
-  // History
-  histRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
-  histRowBorder: { borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  histDate: { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary },
-  histMethod: { fontSize: 11, color: COLORS.textSecondary, marginTop: 2 },
-  histBadge: { fontSize: 16, color: COLORS.success, fontWeight: '700' },
-
-  // Directory
-  searchRow: {
+  /* ============ Sheet Styles ============ */
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  dismissOverlay: {
+    flex: 1,
+  },
+  sheetBody: {
+    backgroundColor: '#141a2a',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#f5f6fa',
+  },
+  sheetClose: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#a1a5b7',
+  },
+  sheetContent: {
+    marginTop: 20,
+    gap: 16,
+  },
+  sheetItem: {
+    gap: 8,
+  },
+  sheetInputLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    height: 52,
+  },
+  sheetInputTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#a1a5b7',
+  },
+  weightTextInput: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#f5f6fa',
+    textAlign: 'right',
+    width: 100,
+    padding: 0,
+  },
+  sheetControlBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    marginBottom: 12,
-  },
-  searchInput: { flex: 1, paddingVertical: 10, fontSize: 14, color: COLORS.textPrimary },
-  gymRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 18,
     padding: 14,
-    borderRadius: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.small,
   },
-  gymName: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary },
-  gymAddress: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
-
-  // Empty
-  emptyText: { textAlign: 'center', color: COLORS.textSecondary, fontSize: 14, paddingVertical: 12 },
+  sheetControlTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#a1a5b7',
+    textTransform: 'uppercase',
+  },
+  sheetControlValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#f5f6fa',
+    marginTop: 2,
+  },
+  adjusterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  adjustButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  saveLogButton: {
+    backgroundColor: '#6366f1',
+    borderRadius: 9999,
+    height: 52,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  saveLogButtonText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
 });

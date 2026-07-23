@@ -14,15 +14,29 @@ import {
 } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { apiClient } from '../api/client';
-import { COLORS, SHADOWS } from '../theme/tokens';
-import { User, Phone, Save, LogOut } from 'lucide-react-native';
+import { useTheme } from '../context/ThemeContext';
+import {
+  User as UserIcon,
+  Phone,
+  Save,
+  LogOut,
+  ChevronRight,
+  Bell,
+  Dumbbell,
+  CreditCard,
+  Settings,
+} from 'lucide-react-native';
 
-export function ProfileScreen() {
-  const { userProfile, signOut, loadUserProfile } = useAuthStore();
+export function ProfileScreen({ navigation }: any) {
+  const { userProfile, signOut, loadUserProfile, subscription } = useAuthStore();
+  const { colors } = useTheme();
+  
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(false);
+  
+  // Toggle editing fields
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     if (userProfile) {
@@ -47,6 +61,7 @@ export function ProfileScreen() {
       if (res.data?.success) {
         Alert.alert('Profile Saved', 'Your profile details have been updated.');
         await loadUserProfile();
+        setIsEditing(false);
       }
     } catch (err: any) {
       Alert.alert('Update Failed', err.response?.data?.message || 'Failed to update profile info.');
@@ -55,68 +70,173 @@ export function ProfileScreen() {
     }
   };
 
+  const menuItems = [
+    { icon: Bell, label: 'Notifications', meta: 'On', id: 'NotificationSettings' },
+    { icon: Dumbbell, label: 'Linked gym', meta: 'Aura Downtown', id: null },
+    { icon: CreditCard, label: 'Payment methods', meta: '•••• 4242', id: null },
+    { icon: Settings, label: 'Settings', meta: '', id: 'Settings' },
+  ];
+
+  const planName = subscription?.plans?.name || 'Elite';
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={styles.scroll}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          {/* Profile Header Block */}
           <View style={styles.header}>
-            <View style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarText}>
-                {(fullName || 'U').charAt(0).toUpperCase()}
-              </Text>
+            <View style={styles.headerLeft}>
+              <View style={[styles.avatarCircle, { backgroundColor: colors.primarySoft, borderColor: colors.primary }]}>
+                <Text style={[styles.avatarText, { color: colors.foreground }]}>
+                  {(fullName || 'U').charAt(0).toUpperCase()}
+                </Text>
+              </View>
+              <View style={styles.userMeta}>
+                <Text style={[styles.userName, { color: colors.foreground }]}>{fullName || 'Athlete'}</Text>
+                <View style={styles.badgeRow}>
+                  <View style={[styles.badgeIndigo, { backgroundColor: colors.primarySoft }]}>
+                    <Text style={[styles.badgeIndigoText, { color: colors.primary }]}>{planName}</Text>
+                  </View>
+                  <View style={styles.badgeMint}>
+                    <Text style={styles.badgeMintText}>Active</Text>
+                  </View>
+                </View>
+              </View>
             </View>
-            <Text style={styles.userEmail}>{userProfile?.email}</Text>
-            <Text style={styles.userRole}>
-              Role: {(userProfile?.role || 'Customer').toUpperCase()}
-            </Text>
-          </View>
 
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Account Details</Text>
-
-            <View style={styles.inputLabelRow}>
-              <User size={16} color={COLORS.textSecondary} style={{ marginRight: 6 }} />
-              <Text style={styles.inputLabel}>Full Name</Text>
-            </View>
-            <TextInput
-              style={styles.input}
-              placeholder="Full Name"
-              placeholderTextColor={COLORS.textSecondary}
-              value={fullName}
-              onChangeText={setFullName}
-            />
-
-            <View style={styles.inputLabelRow}>
-              <Phone size={16} color={COLORS.textSecondary} style={{ marginRight: 6 }} />
-              <Text style={styles.inputLabel}>Phone Number</Text>
-            </View>
-            <TextInput
-              style={styles.input}
-              placeholder="Phone Number"
-              placeholderTextColor={COLORS.textSecondary}
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-            />
-
-            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveProfile} disabled={saving}>
-              {saving ? (
-                <ActivityIndicator color={COLORS.surface} />
-              ) : (
-                <>
-                  <Save size={18} color={COLORS.surface} style={{ marginRight: 8 }} />
-                  <Text style={styles.saveText}>Save Profile</Text>
-                </>
-              )}
+            {/* Settings Icon on top right */}
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('Settings')}
+              style={[styles.headerGearBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            >
+              <Settings size={18} color={colors.foreground} />
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.logoutBtn} onPress={signOut}>
-            <LogOut size={18} color={COLORS.danger} style={{ marginRight: 8 }} />
-            <Text style={styles.logoutText}>Sign Out</Text>
+          {/* Statistics Grid */}
+          <View style={styles.statsGrid}>
+            <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.statsValue, { color: colors.foreground }]}>52</Text>
+              <Text style={[styles.statsLabel, { color: colors.mutedForeground }]}>Check-ins</Text>
+            </View>
+            <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.statsValue, { color: colors.foreground }]}>12</Text>
+              <Text style={[styles.statsLabel, { color: colors.mutedForeground }]}>Streak</Text>
+            </View>
+            <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.statsValue, { color: colors.foreground }]}>Mar '25</Text>
+              <Text style={[styles.statsLabel, { color: colors.mutedForeground }]}>Member since</Text>
+            </View>
+          </View>
+
+          {/* Menu Items Glass Box */}
+          <View style={[styles.glassCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {menuItems.map((item, idx) => {
+              const IconComp = item.icon;
+              return (
+                <View key={idx}>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    style={styles.menuRow}
+                    onPress={() => {
+                      if (item.id) {
+                        navigation.navigate(item.id);
+                      }
+                    }}
+                  >
+                    <View style={styles.menuRowLeft}>
+                      <View style={[styles.menuIconWrapper, { backgroundColor: colors.primarySoft }]}>
+                        <IconComp size={16} color={colors.primary} />
+                      </View>
+                      <Text style={[styles.menuLabel, { color: colors.foreground }]}>{item.label}</Text>
+                    </View>
+                    <View style={styles.menuRowRight}>
+                      {item.meta !== '' && <Text style={[styles.menuMeta, { color: colors.mutedForeground }]}>{item.meta}</Text>}
+                      <ChevronRight size={14} color={colors.mutedForeground} />
+                    </View>
+                  </TouchableOpacity>
+                  {idx < menuItems.length - 1 && <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />}
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Account Edit Block */}
+          {isEditing ? (
+            <View style={[styles.glassCard, styles.editCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Edit Account Info</Text>
+
+              <View style={styles.inputLabelRow}>
+                <UserIcon size={14} color={colors.mutedForeground} style={{ marginRight: 6 }} />
+                <Text style={[styles.inputLabel, { color: colors.mutedForeground }]}>Full Name</Text>
+              </View>
+              <TextInput
+                style={[styles.textInput, { color: colors.foreground, borderColor: colors.border }]}
+                placeholder="Full Name"
+                placeholderTextColor={colors.mutedForeground}
+                value={fullName}
+                onChangeText={setFullName}
+              />
+
+              <View style={styles.inputLabelRow}>
+                <Phone size={14} color={colors.mutedForeground} style={{ marginRight: 6 }} />
+                <Text style={[styles.inputLabel, { color: colors.mutedForeground }]}>Phone Number</Text>
+              </View>
+              <TextInput
+                style={[styles.textInput, { color: colors.foreground, borderColor: colors.border }]}
+                placeholder="Phone Number"
+                placeholderTextColor={colors.mutedForeground}
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+              />
+
+              <View style={styles.editActionRow}>
+                <TouchableOpacity
+                  style={[styles.editBtn, { backgroundColor: 'rgba(255,255,255,0.06)' }]}
+                  onPress={() => setIsEditing(false)}
+                >
+                  <Text style={[styles.saveText, { color: colors.foreground }]}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.editBtn, { backgroundColor: colors.primary }]}
+                  onPress={handleSaveProfile}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Save size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Text style={styles.saveText}>Save</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setIsEditing(true)}
+              style={[styles.triggerEditBtn, { borderColor: colors.border }]}
+            >
+              <Text style={[styles.triggerEditText, { color: colors.foreground }]}>Edit Profile Details</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Destructive Log out */}
+          <TouchableOpacity
+            style={styles.logoutBtn}
+            onPress={signOut}
+            activeOpacity={0.8}
+          >
+            <LogOut size={16} color="#f87171" style={{ marginRight: 8 }} />
+            <Text style={styles.logoutText}>Log out</Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -125,65 +245,216 @@ export function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  scroll: { padding: 20 },
-  header: { alignItems: 'center', marginVertical: 24 },
-  avatarPlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: COLORS.primaryLight,
+  container: {
+    flex: 1,
+  },
+  scroll: {
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? 48 : 24, // clear top notch/status bar on Android
+    paddingBottom: 120, // increased padding to avoid tabbar overlaps
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  avatarCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  userMeta: {
+    justifyContent: 'center',
+    gap: 6,
+  },
+  userName: {
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  badgeIndigo: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  badgeIndigoText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  badgeMint: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  badgeMintText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#10b981',
+  },
+  headerGearBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 20,
+  },
+  statsCard: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  statsValue: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  statsLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  glassCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    padding: 8,
+    marginBottom: 16,
+  },
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+  },
+  menuRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  menuIconWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  menuRowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  menuMeta: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  menuDivider: {
+    height: 1,
+    marginHorizontal: 12,
+  },
+  triggerEditBtn: {
+    height: 48,
+    borderRadius: 18,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  triggerEditText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  editCard: {
+    padding: 16,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 12,
+  },
+  inputLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  textInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderWidth: 1,
+    borderRadius: 14,
+    height: 44,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  editActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  editBtn: {
+    flex: 1,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  saveText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  logoutBtn: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(248, 113, 113, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(248, 113, 113, 0.25)',
+    borderRadius: 18,
+    height: 52,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
-    ...SHADOWS.small,
   },
-  avatarText: { fontSize: 32, fontWeight: '800', color: COLORS.primary },
-  userEmail: { fontSize: 16, fontWeight: '700', color: COLORS.textPrimary },
-  userRole: { fontSize: 12, color: COLORS.textSecondary, marginTop: 4, fontWeight: '600' },
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.medium,
-    marginBottom: 20,
-  },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 16 },
-  inputLabelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  inputLabel: { fontSize: 13, color: COLORS.textSecondary, fontWeight: '600' },
-  input: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+  logoutText: {
+    color: '#f87171',
     fontSize: 15,
-    color: COLORS.textPrimary,
-    backgroundColor: COLORS.background,
-    marginBottom: 16,
+    fontWeight: '700',
   },
-  saveBtn: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    padding: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  saveText: { color: COLORS.surface, fontSize: 15, fontWeight: '700' },
-  logoutBtn: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.danger + '33',
-    borderRadius: 12,
-    padding: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...SHADOWS.small,
-  },
-  logoutText: { color: COLORS.danger, fontSize: 15, fontWeight: '700' },
 });

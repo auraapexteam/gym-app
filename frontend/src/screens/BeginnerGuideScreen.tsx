@@ -1,82 +1,215 @@
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView, Image, SafeAreaView } from 'react-native';
-import { COLORS, SHADOWS } from '../theme/tokens';
-import { BookOpen, Sparkles, ShieldCheck, Heart } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, Dimensions } from 'react-native';
+import { Theme } from '../theme/Theme';
+import { Dumbbell, Sparkles, QrCode, ChevronRight } from 'lucide-react-native';
 
-export function BeginnerGuideScreen() {
-  const sections = [
+const { width } = Dimensions.get('window');
+
+export function BeginnerGuideScreen({ navigation }: any) {
+  const [slideIndex, setSlideIndex] = useState(0);
+
+  const slides = [
     {
-      title: '1. Welcome to Aura Apex',
-      desc: 'Embark on your fitness journey with precision tracking. Your mobile app allows you to link with your gym, scan attendance QR codes, track daily hydration/protein/weight, and manage your active subscriptions.',
-      icon: <Sparkles size={20} color={COLORS.primary} />,
+      icon: Dumbbell,
+      title: 'Train with intent',
+      body: 'Track sessions, set streaks, and stay consistent — your gym in one place.',
+      color: '#6366f1',
     },
     {
-      title: '2. QR Attendance Logging',
-      desc: 'Check-in automatically at the reception desk. Scan the active daily QR code from the front display screen using the built-in scanner to securely log your daily attendance.',
-      icon: <ShieldCheck size={20} color={COLORS.success} />,
+      icon: Sparkles,
+      title: 'See your progress',
+      body: 'Weight, water, protein and photos captured beautifully every day.',
+      color: '#10b981',
     },
     {
-      title: '3. Progress Tracking Logbook',
-      desc: 'Keep daily logs of your body weight (kg), water intake (ml), and protein consumption (g). Consistency is key to building healthy, long-lasting fitness habits.',
-      icon: <Heart size={20} color={COLORS.danger} />,
+      icon: QrCode,
+      title: 'One-tap check-in',
+      body: "Skip the front desk. Scan your Aura Apex QR and you're in.",
+      color: '#0d94f8',
     },
   ];
 
+  const currentSlide = slides[slideIndex];
+  const IconComponent = currentSlide.icon;
+
+  const handleNext = () => {
+    if (slideIndex < slides.length - 1) {
+      setSlideIndex(slideIndex + 1);
+    } else {
+      // Finished onboarding, go back to main screen
+      navigation.goBack();
+    }
+  };
+
+  const handleSkip = () => {
+    navigation.goBack();
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.header}>
-          <BookOpen size={40} color={COLORS.primary} style={{ marginBottom: 12 }} />
-          <Text style={styles.title}>Beginner's Guide</Text>
-          <Text style={styles.subtitle}>Get started with Aura Apex Gym Management</Text>
-        </View>
+      {/* Top Header */}
+      <View style={styles.header}>
+        <Text style={styles.brandTitle}>Aura Apex</Text>
+        <TouchableOpacity onPress={handleSkip} activeOpacity={0.7}>
+          <Text style={styles.skipText}>Skip</Text>
+        </TouchableOpacity>
+      </View>
 
-        {sections.map((sec, idx) => (
-          <View key={idx} style={styles.card}>
-            <View style={styles.cardHeader}>
-              {sec.icon}
-              <Text style={styles.cardTitle}>{sec.title}</Text>
-            </View>
-            <Text style={styles.cardDesc}>{sec.desc}</Text>
+      {/* Main Slide Content */}
+      <View style={styles.contentContainer}>
+        {/* Giant Circle Icon Wrapper */}
+        <View style={[styles.iconContainer, { backgroundColor: Theme.colors.surface }]}>
+          <View style={[styles.iconCircle, { backgroundColor: 'rgba(99, 102, 241, 0.15)' }]}>
+            <IconComponent size={64} color={currentSlide.color} />
           </View>
-        ))}
-
-        <View style={styles.tipsContainer}>
-          <Text style={styles.tipsTitle}>💡 Quick Fitness Tips</Text>
-          <Text style={styles.tipText}>• Stay hydrated: Aim for at least 2.5 - 3 liters of water daily.</Text>
-          <Text style={styles.tipText}>• High protein: Try to consume 1.6g - 2.2g of protein per kg of body weight.</Text>
-          <Text style={styles.tipText}>• Rest & Recovery: Get 7-8 hours of quality sleep for muscle growth.</Text>
         </View>
-      </ScrollView>
+
+        {/* Text Details */}
+        <View style={styles.textContainer}>
+          <Text style={styles.slideTitle}>{currentSlide.title}</Text>
+          <Text style={styles.slideBody}>{currentSlide.body}</Text>
+        </View>
+
+        {/* Page Indicators */}
+        <View style={styles.indicatorContainer}>
+          {slides.map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.indicatorDot,
+                index === slideIndex
+                  ? styles.indicatorDotActive
+                  : styles.indicatorDotInactive,
+              ]}
+            />
+          ))}
+        </View>
+      </View>
+
+      {/* Bottom Action Button */}
+      <View style={styles.footer}>
+        <TouchableOpacity
+          onPress={handleNext}
+          activeOpacity={0.85}
+          style={styles.actionButton}
+        >
+          <Text style={styles.actionButtonText}>
+            {slideIndex < slides.length - 1 ? 'Next' : 'Get Started'}
+          </Text>
+          <ChevronRight size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  scroll: { padding: 20, paddingBottom: 40 },
-  header: { alignItems: 'center', marginBottom: 24, marginTop: 12 },
-  title: { fontSize: 22, fontWeight: '800', color: COLORS.textPrimary },
-  subtitle: { fontSize: 13, color: COLORS.textSecondary, marginTop: 4, textAlign: 'center' },
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.small,
+  container: {
+    flex: 1,
+    backgroundColor: '#0b0f19',
+    paddingHorizontal: 24,
   },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: COLORS.textPrimary, marginLeft: 8 },
-  cardDesc: { fontSize: 14, color: COLORS.textSecondary, lineHeight: 22 },
-  tipsContainer: {
-    backgroundColor: COLORS.primaryLight,
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.primary + '1A',
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 16,
+    paddingBottom: 24,
   },
-  tipsTitle: { fontSize: 15, fontWeight: '700', color: COLORS.primary, marginBottom: 10 },
-  tipText: { fontSize: 13, color: COLORS.textPrimary, lineHeight: 20, marginBottom: 4 },
+  brandTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#f5f6fa',
+  },
+  skipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#a1a5b7',
+  },
+  contentContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconContainer: {
+    width: 170,
+    height: 170,
+    borderRadius: 48,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  iconCircle: {
+    width: 130,
+    height: 130,
+    borderRadius: 9999,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  textContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 32,
+  },
+  slideTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#f5f6fa',
+    textAlign: 'center',
+  },
+  slideBody: {
+    fontSize: 14,
+    color: '#a1a5b7',
+    textAlign: 'center',
+    marginTop: 12,
+    lineHeight: 22,
+    maxWidth: 280,
+  },
+  indicatorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  indicatorDot: {
+    height: 6,
+    borderRadius: 3,
+  },
+  indicatorDotActive: {
+    width: 24,
+    backgroundColor: '#6366f1',
+  },
+  indicatorDotInactive: {
+    width: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  footer: {
+    paddingBottom: 32,
+    paddingTop: 16,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#6366f1',
+    borderRadius: 9999,
+    paddingVertical: 16,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
 });
