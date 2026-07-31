@@ -4,6 +4,7 @@ import {
   logWeightSchema,
   logWaterSchema,
   logProteinSchema,
+  logStepsSchema,
   logImageSchema,
   getMonthSummarySchema,
 } from '@/modules/progress/progress.validation';
@@ -47,6 +48,13 @@ router.post(
   requireRole(Role.CUSTOMER),
   validate(logProteinSchema),
   asyncHandler(ProgressController.logProtein),
+);
+
+router.post(
+  '/steps',
+  requireRole(Role.CUSTOMER),
+  validate(logStepsSchema),
+  asyncHandler(ProgressController.logSteps),
 );
 
 router.post(

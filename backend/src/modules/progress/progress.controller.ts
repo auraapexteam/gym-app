@@ -28,6 +28,14 @@ export class ProgressController {
     return sendSuccess(res, log, 'Protein intake logged successfully');
   }
 
+  /** Log daily steps. */
+  static async logSteps(req: Request, res: Response): Promise<Response> {
+    const user = currentUser(req);
+    const { steps, logDate } = req.body;
+    const log = await ProgressService.logSteps(user.id, steps, logDate);
+    return sendSuccess(res, log, 'Steps logged successfully');
+  }
+
   /** Log daily progress photo. */
   static async logImage(req: Request, res: Response): Promise<Response> {
     const user = currentUser(req);

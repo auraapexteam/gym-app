@@ -39,6 +39,14 @@ export const logProteinSchema = z.object({
   }),
 });
 
+export const logStepsSchema = z.object({
+  body: z.object({
+    /** Daily step count. Reasonable upper bound: 100 000 steps/day. */
+    steps:   z.number().int().min(0).max(100_000, 'Steps cannot exceed 100 000 per day'),
+    logDate: pastOrTodayDate,
+  }),
+});
+
 export const logImageSchema = z.object({
   body: z.object({
     /**
