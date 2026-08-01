@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../api/supabase';
 import { apiClient } from '../api/client';
+import { useGymStore } from '../store/useGymStore';
 
 interface AuthState {
   user: any | null;
@@ -83,6 +84,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ loading: true });
       await supabase.auth.signOut();
       set({ user: null, userProfile: null, accessToken: null, subscription: null });
+      useGymStore.getState().reset();
     } catch (error) {
       console.error('Signout error:', error);
     } finally {
