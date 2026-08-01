@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -13,11 +13,16 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { supabase } from '../api/supabase';
-import { Theme } from '../theme/Theme';
+import { useTheme } from '../context/ThemeContext';
 import { Sparkles, Apple } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function LoginScreen({ navigation }: any) {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,21 +30,42 @@ export function LoginScreen({ navigation }: any) {
   const [emailFocus, setEmailFocus] = useState(false);
   const [passwordFocus, setPasswordFocus] = useState(false);
 
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter email and password.');
+    setEmailError('');
+    setPasswordError('');
+
+    if (!email.trim()) {
+      setEmailError('Email is required.');
+      return;
+    }
+    if (!EMAIL_REGEX.test(email.trim())) {
+      setEmailError('Enter a valid email address.');
+      return;
+    }
+    if (!password) {
+      setPasswordError('Password is required.');
       return;
     }
 
     try {
       setLoading(true);
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim(),
         password,
       });
 
       if (error) {
-        Alert.alert('Login Failed', error.message);
+        const msg = error.message.toLowerCase();
+        if (msg.includes('email')) {
+          setEmailError(error.message);
+        } else if (msg.includes('password') || msg.includes('credentials')) {
+          setPasswordError(error.message);
+        } else {
+          Alert.alert('Login Failed', error.message);
+        }
       }
     } catch (err: any) {
       Alert.alert('Error', err.message || 'An unexpected error occurred.');
@@ -49,11 +75,7 @@ export function LoginScreen({ navigation }: any) {
   };
 
   const handleForgotPasscode = () => {
-    Alert.alert(
-      'Forgot Passcode?',
-      'Please contact your gym administrator to reset your passcode or send a recovery link.',
-      [{ text: 'OK' }]
-    );
+    navigation.navigate('ForgotPassword');
   };
 
   return (
@@ -75,13 +97,22 @@ export function LoginScreen({ navigation }: any) {
           {/* Form */}
           <View style={styles.formContainer}>
             {/* Email Input */}
-            <View style={[styles.inputLabelContainer, emailFocus && styles.inputFocus]}>
+            <View
+              style={[
+                styles.inputLabelContainer,
+                emailFocus && styles.inputFocus,
+                !!emailError && styles.inputErrorBorder,
+              ]}
+            >
               <Text style={[styles.floatingLabel, (emailFocus || email.length > 0) && styles.floatingLabelActive]}>
                 Email
               </Text>
               <TextInput
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(t) => {
+                  setEmail(t);
+                  if (emailError) setEmailError('');
+                }}
                 onFocus={() => setEmailFocus(true)}
                 onBlur={() => setEmailFocus(false)}
                 autoCapitalize="none"
@@ -89,15 +120,25 @@ export function LoginScreen({ navigation }: any) {
                 style={styles.textInput}
               />
             </View>
+            {!!emailError && <Text style={styles.errorText}>{emailError}</Text>}
 
             {/* Password Input */}
-            <View style={[styles.inputLabelContainer, passwordFocus && styles.inputFocus]}>
+            <View
+              style={[
+                styles.inputLabelContainer,
+                passwordFocus && styles.inputFocus,
+                !!passwordError && styles.inputErrorBorder,
+              ]}
+            >
               <Text style={[styles.floatingLabel, (passwordFocus || password.length > 0) && styles.floatingLabelActive]}>
                 Password
               </Text>
               <TextInput
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(t) => {
+                  setPassword(t);
+                  if (passwordError) setPasswordError('');
+                }}
                 onFocus={() => setPasswordFocus(true)}
                 onBlur={() => setPasswordFocus(false)}
                 autoCapitalize="none"
@@ -105,6 +146,7 @@ export function LoginScreen({ navigation }: any) {
                 style={styles.textInput}
               />
             </View>
+            {!!passwordError && <Text style={styles.errorText}>{passwordError}</Text>}
 
             {/* Forgot Password Link */}
             <TouchableOpacity onPress={handleForgotPasscode} style={styles.forgotContainer}>
@@ -119,7 +161,7 @@ export function LoginScreen({ navigation }: any) {
               style={styles.primaryButton}
             >
               {loading ? (
-                <ActivityIndicator size="small" color="#0b0f19" />
+                <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <Text style={styles.primaryButtonText}>Sign In</Text>
               )}
@@ -145,7 +187,7 @@ export function LoginScreen({ navigation }: any) {
               </TouchableOpacity>
 
               <TouchableOpacity activeOpacity={0.7} style={styles.socialButton}>
-                <Apple size={16} color="#f5f6fa" />
+                <Apple size={16} color={colors.foreground} />
                 <Text style={styles.socialButtonText}>Apple</Text>
               </TouchableOpacity>
             </View>
@@ -169,10 +211,10 @@ export function LoginScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b0f19',
+    backgroundColor: colors.background,
   },
   scrollContainer: {
     flexGrow: 1,
@@ -188,10 +230,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 18,
-    backgroundColor: '#6366f1',
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#6366f1',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 10,
@@ -201,11 +243,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
   },
   subtitle: {
     fontSize: 14,
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
     marginTop: 6,
   },
   formContainer: {
@@ -216,23 +258,32 @@ const styles = StyleSheet.create({
     position: 'relative',
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderColor: colors.border,
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
     paddingHorizontal: 16,
     paddingTop: 22,
     paddingBottom: 8,
     height: 58,
   },
   inputFocus: {
-    borderColor: '#6366f1',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: colors.primary,
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.surface,
+  },
+  inputErrorBorder: {
+    borderColor: colors.destructive,
+  },
+  errorText: {
+    fontSize: 12,
+    color: colors.destructive,
+    fontWeight: '600',
+    marginTop: -4,
   },
   floatingLabel: {
     position: 'absolute',
     left: 16,
     top: 18,
     fontSize: 14,
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
   },
   floatingLabelActive: {
     top: 6,
@@ -240,12 +291,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    color: '#6366f1',
+    color: colors.primary,
   },
   textInput: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#f5f6fa',
+    color: colors.foreground,
     padding: 0,
     margin: 0,
   },
@@ -257,15 +308,15 @@ const styles = StyleSheet.create({
   forgotText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#6366f1',
+    color: colors.primary,
   },
   primaryButton: {
-    backgroundColor: '#6366f1',
+    backgroundColor: colors.primary,
     borderRadius: 9999,
     height: 52,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#6366f1',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.45,
     shadowRadius: 12,
@@ -285,12 +336,12 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: colors.border,
   },
   dividerText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
     marginHorizontal: 12,
   },
   socialRow: {
@@ -305,14 +356,14 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 9999,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderColor: colors.border,
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
     gap: 8,
   },
   socialButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#f5f6fa',
+    color: colors.foreground,
   },
   footer: {
     marginTop: 24,
@@ -320,10 +371,10 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
   },
   footerLink: {
-    color: '#6366f1',
+    color: colors.primary,
     fontWeight: '700',
   },
 });
