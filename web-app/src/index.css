@@ -1,92 +1,158 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @import "tailwindcss";
 
-@source "../src/**/*.{js,jsx,ts,tsx}";
-
 @theme {
-  /* Surfaces elevation system */
-  --color-surface-dim: #08080a;
-  --color-surface: #08080a;
-  --color-surface-container-low: #0c0c0f;
-  --color-surface-container: #111215;
-  --color-surface-container-high: #17181c;
-  --color-surface-container-highest: #1f2025;
-  --color-surface-bright: #292a30;
+  --color-aura-bg: #0F1115;
+  --color-aura-card: #1B1D22;
+  --color-aura-primary: #C6FF00;
+  --color-aura-text: #FFFFFF;
+  --color-aura-muted: #9CA3AF;
+  --color-aura-border: #2A2D35;
+  --color-aura-success: #22C55E;
+  --color-aura-warning: #F97316;
+  --color-aura-danger: #EF4444;
+  --color-aura-info: #3B82F6;
 
-  /* On surfaces colors */
-  --color-on-surface: #f4f4f5;
-  --color-on-surface-variant: #a1a1aa;
-  --color-outline: #52525b;
-  --color-outline-variant: #27272a;
+  --color-background: #0F1115;
+  --color-foreground: #FFFFFF;
+  --color-card: #1B1D22;
+  --color-card-foreground: #FFFFFF;
+  --color-border: #2A2D35;
+  --color-input: #2A2D35;
+  --color-ring: #C6FF00;
+  --color-primary: #C6FF00;
+  --color-primary-foreground: #0F1115;
+  --color-secondary: #1B1D22;
+  --color-secondary-foreground: #FFFFFF;
+  --color-muted: #1B1D22;
+  --color-muted-foreground: #9CA3AF;
+  --color-accent: #C6FF00;
+  --color-accent-foreground: #0F1115;
+  --color-destructive: #EF4444;
+  --color-destructive-foreground: #FFFFFF;
 
-  /* Primary colors (Volt Green) */
-  --color-primary: #a3e635;
-  --color-primary-dim: #84cc16;
-  --color-primary-fixed: #a3e635;
-  --color-primary-fixed-dim: #84cc16;
-  --color-primary-container: #1a2e05;
-  --color-on-primary: #000000;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
 
-  /* Secondary colors (Lime-Gray accents) */
-  --color-secondary: #d9f99d;
-  --color-secondary-dim: #bdf55d;
-  --color-secondary-fixed: #d9f99d;
-  --color-secondary-fixed-dim: #c5f276;
-  --color-secondary-container: #21340e;
-  --color-on-secondary: #000000;
-  --color-on-secondary-fixed: #132304;
-  --color-on-secondary-container: #ecfccb;
+  --font-sans: Inter, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 
-  /* Tertiary colors */
-  --color-tertiary: #bef264;
-  --color-tertiary-dim: #a3e635;
-  --color-tertiary-container: #2d4a0f;
-  --color-on-tertiary: #000000;
+  --shadow-aura-sm: 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-aura-md: 0 4px 16px rgba(0,0,0,0.4);
+  --shadow-aura-lg: 0 8px 32px rgba(0,0,0,0.5);
+  --shadow-aura-primary: 0 0 20px rgba(198,255,0,0.2);
 
-  /* Error colors */
-  --color-error: #ef4444;
-  --color-error-dim: #dc2626;
-  --color-error-container: #450a0a;
-  --color-on-error: #ffffff;
-  --color-on-error-container: #fecaca;
-
-  /* Typography */
-  --font-headline: "Plus Jakarta Sans", system-ui, sans-serif;
-  --font-body: "Inter", system-ui, sans-serif;
-  --font-label: "Inter", system-ui, sans-serif;
-
-  /* Border radius */
-  --radius-sm: 0.375rem;
-  --radius: 0.75rem;
-  --radius-lg: 1.25rem;
-  --radius-xl: 2rem;
-  --radius-full: 9999px;
+  --animate-fade-in: fade-in 0.3s ease-out;
+  --animate-slide-in: slide-in 0.3s ease-out;
+  --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
 }
 
-@utility glass-card {
-  background: rgba(20, 21, 25, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-@utility glass-subtle {
-  background: rgba(20, 21, 25, 0.4);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.02);
+@keyframes slide-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
 }
 
-@utility glass-elevated {
-  background: rgba(25, 26, 32, 0.85);
-  backdrop-filter: blur(40px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 5px rgba(198,255,0,0.3); }
+  50% { box-shadow: 0 0 20px rgba(198,255,0,0.6); }
+}
+
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
+
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  margin: 0;
-  background-color: #08080a;
-  color: #f4f4f5;
-  font-family: "Inter", system-ui, sans-serif;
-  min-height: 100vh;
+  background-color: #0F1115;
+  color: #FFFFFF;
+  font-family: Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv11", "ss01";
 }
 
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0F1115;
+}
+::-webkit-scrollbar-thumb {
+  background: #2A2D35;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3A3D45;
+}
+
+/* Selection */
+::selection {
+  background: rgba(198, 255, 0, 0.2);
+  color: #C6FF00;
+}
+
+/* ============================================================
+   COMPONENT UTILITIES
+   ============================================================ */
+.aura-card {
+  background-color: #1B1D22;
+  border: 1px solid #2A2D35;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+.aura-glass {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+}
+
+.gradient-text {
+  background: linear-gradient(to right, #C6FF00, #a3d400);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Sonner toast overrides */
+[data-sonner-toaster] {
+  --normal-bg: #1B1D22 !important;
+  --normal-border: #2A2D35 !important;
+  --normal-text: #FFFFFF !important;
+}
