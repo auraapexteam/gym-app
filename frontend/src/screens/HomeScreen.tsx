@@ -11,9 +11,12 @@ import {
   TextInput,
   Platform,
   Dimensions,
+  Alert,
 } from 'react-native';
-import Svg, { Circle, Polyline, Path, Rect, ClipPath, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Polyline, Path, Rect, ClipPath, Defs } from 'react-native-svg';
+import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/useAuthStore';
+import { useGymStore } from '../store/useGymStore';
 import { useTheme } from '../context/ThemeContext';
 import {
   Bell,
@@ -23,6 +26,11 @@ import {
   ArrowUpRight,
   Plus,
   Minus,
+  Building2,
+  Clock,
+  XCircle,
+  CreditCard,
+  Footprints,
 } from 'lucide-react-native';
 
 /* ============ Vector Components ============ */
@@ -121,39 +129,120 @@ function WaterGlass({ value }: { value: number }) {
 export function HomeScreen({ navigation }: any) {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
-  const { user, subscription, loadSubscription, loading, userProfile } = useAuthStore();
+  const { subscription, loadSubscription, userProfile } = useAuthStore();
+  const { myRequest, fetchMyRequestStatus } = useGymStore();
 
-  // Metrics state (Interactive Prototype)
-  const [streak, setStreak] = useState(12);
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'GOOD MORNING';
+    if (hour < 17) return 'GOOD AFTERNOON';
+    return 'GOOD EVENING';
+  }, []);
+
+  // Today's metrics — loaded from the real Logbook (/progress/month), same
+  // data ProgressScreen writes to. Defaults only apply until the first log.
   const [todayWater, setTodayWater] = useState(1500);
   const [todayProtein, setTodayProtein] = useState(95);
   const [todayWeight, setTodayWeight] = useState(72.0);
-  
-  // Weekly check-in tracker
-  const [weekCheckIns, setWeekCheckIns] = useState<string[]>([]);
+  const [todaySteps, setTodaySteps] = useState(0);
+
+  // Real attendance history, used to derive this week's check-in dots and streak.
+  const [attendanceDates, setAttendanceDates] = useState<string[]>([]);
   const [logModalOpen, setLogModalOpen] = useState(false);
+  const [savingLog, setSavingLog] = useState(false);
 
   // Quick log temp states
   const [tempWeight, setTempWeight] = useState('72.0');
   const [tempWater, setTempWater] = useState(1500);
   const [tempProtein, setTempProtein] = useState(95);
+  const [tempSteps, setTempSteps] = useState(0);
+
+  const fetchTodayMetrics = async () => {
+    try {
+      const now = new Date();
+      const res = await apiClient.get('/progress/month', {
+        params: { year: String(now.getFullYear()), month: String(now.getMonth() + 1) },
+      });
+      if (res.data?.success) {
+        const summary = res.data.data;
+        const w = summary.weightLogs?.find((l: any) => l.log_date === todayIso)?.weight;
+        const wa = summary.waterLogs?.find((l: any) => l.log_date === todayIso)?.amount_ml;
+        const p = summary.proteinLogs?.find((l: any) => l.log_date === todayIso)?.amount_g;
+        const s = summary.stepsLogs?.find((l: any) => l.log_date === todayIso)?.steps;
+        if (w) setTodayWeight(w);
+        if (wa) setTodayWater(wa);
+        if (p) setTodayProtein(p);
+        if (s) setTodaySteps(s);
+      }
+    } catch (err) {
+      console.warn('Failed to load today\'s logbook metrics:', err);
+    }
+  };
 
   useEffect(() => {
     loadSubscription();
-    
-    // Seed check-in dates for this week
-    const daysAgo = (n: number) => {
-      const d = new Date();
-      d.setDate(d.getDate() - n);
-      return d.toISOString().slice(0, 10);
+    fetchMyRequestStatus();
+    fetchTodayMetrics();
+
+    const fetchAttendance = async () => {
+      try {
+        const res = await apiClient.get('/attendance/me');
+        if (res.data?.success) {
+          const items = res.data.data.items || res.data.data || [];
+          setAttendanceDates(
+            items.map((i: any) => String(i.attendance_date || i.created_at).slice(0, 10))
+          );
+        }
+      } catch (err) {
+        console.warn('Failed to load attendance for dashboard:', err);
+      }
     };
-    setWeekCheckIns([daysAgo(1), daysAgo(2), daysAgo(4), daysAgo(6)]);
-  }, [loadSubscription]);
+    fetchAttendance();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only fetch; store actions are stable
+  }, [loadSubscription, fetchMyRequestStatus]);
+
+  const weekCheckIns = attendanceDates;
+
+  // Consecutive-day streak counted backward from today (or yesterday, so a
+  // day not yet checked into doesn't immediately zero the streak).
+  const streak = useMemo(() => {
+    const dateSet = new Set(attendanceDates);
+    const toIso = (d: Date) => d.toISOString().slice(0, 10);
+    let count = 0;
+    let cursor = new Date();
+    if (!dateSet.has(toIso(cursor))) {
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    while (dateSet.has(toIso(cursor))) {
+      count += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return count;
+  }, [attendanceDates]);
+
+  // Real gym-link state — never assume a user is linked/subscribed without checking.
+  const gymStatus: 'linked' | 'pending' | 'rejected' | 'none' = userProfile?.gym_id
+    ? 'linked'
+    : myRequest?.status === 'pending'
+    ? 'pending'
+    : myRequest?.status === 'rejected'
+    ? 'rejected'
+    : 'none';
+
+  const gymBadgeLabel =
+    gymStatus === 'linked'
+      ? myRequest?.gyms?.name || 'My Gym'
+      : gymStatus === 'pending'
+      ? 'Pending'
+      : gymStatus === 'rejected'
+      ? 'Declined'
+      : 'No Gym';
 
   // Subscription calculation
   const isSubscribed = subscription && subscription.status === 'active';
   const planName = subscription?.plans?.name || 'Elite';
-  
+
   const daysLeft = useMemo(() => {
     if (subscription?.current_period_end) {
       const diff = new Date(subscription.current_period_end).getTime() - Date.now();
@@ -179,19 +268,39 @@ export function HomeScreen({ navigation }: any) {
     return arr;
   }, []);
 
+  const weekCheckInCount = useMemo(
+    () => weekDates.filter((d) => weekCheckIns.includes(d.date)).length,
+    [weekDates, weekCheckIns]
+  );
+
   const openLogSheet = () => {
     setTempWeight(todayWeight.toFixed(1));
     setTempWater(todayWater);
     setTempProtein(todayProtein);
+    setTempSteps(todaySteps);
     setLogModalOpen(true);
   };
 
-  const handleSaveLog = () => {
+  const handleSaveLog = async () => {
     const wtNum = parseFloat(tempWeight) || todayWeight;
-    setTodayWeight(wtNum);
-    setTodayWater(tempWater);
-    setTodayProtein(tempProtein);
-    setLogModalOpen(false);
+    try {
+      setSavingLog(true);
+      await Promise.all([
+        apiClient.post('/progress/weight', { weight: wtNum, logDate: todayIso }),
+        apiClient.post('/progress/water', { amountMl: tempWater, logDate: todayIso }),
+        apiClient.post('/progress/protein', { amountG: tempProtein, logDate: todayIso }),
+        apiClient.post('/progress/steps', { steps: tempSteps, logDate: todayIso }),
+      ]);
+      setTodayWeight(wtNum);
+      setTodayWater(tempWater);
+      setTodayProtein(tempProtein);
+      setTodaySteps(tempSteps);
+      setLogModalOpen(false);
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.message || 'Failed to save your log.');
+    } finally {
+      setSavingLog(false);
+    }
   };
 
   return (
@@ -206,16 +315,16 @@ export function HomeScreen({ navigation }: any) {
               </Text>
             </View>
             <View style={styles.headerTitles}>
-              <Text style={styles.greetText}>GOOD MORNING</Text>
+              <Text style={styles.greetText}>{greeting}</Text>
               <Text style={styles.nameText}>
-                {userProfile?.full_name ? userProfile.full_name.split(' ')[0] : 'amanmahadik8'}
+                {userProfile?.full_name ? userProfile.full_name.split(' ')[0] : 'Athlete'}
               </Text>
             </View>
           </View>
 
           <View style={styles.headerActions}>
             <View style={styles.gymBadge}>
-              <Text style={styles.gymBadgeText}>Aura Downtown</Text>
+              <Text style={styles.gymBadgeText} numberOfLines={1}>{gymBadgeLabel}</Text>
             </View>
             <TouchableOpacity
               onPress={() => navigation.navigate('Notifications')}
@@ -227,48 +336,100 @@ export function HomeScreen({ navigation }: any) {
             </TouchableOpacity>
           </View>
         </View>
-
-        <View style={styles.focusRow}>
-          <Text style={styles.focusLabel}>TODAY'S FOCUS</Text>
-          <Text style={styles.focusValue}>Push Day · Chest & Triceps</Text>
-        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Active Plan / Streak row */}
-        <View style={styles.heroGrid}>
-          {/* Plan Info Card */}
-          <View style={[styles.glassCard, styles.planCard]}>
-            <View style={styles.planDetails}>
-              <View style={styles.badgeContainer}>
-                <Text style={styles.planBadge}>{planName.toUpperCase()} PLAN</Text>
-              </View>
-              <Text style={styles.planPrice}>
-                ₹{subscription?.plans?.price ? subscription.plans.price.toLocaleString() : '2,999'}
-                <Text style={styles.planPricePeriod}>/mo</Text>
+        {gymStatus !== 'linked' ? (
+          /* Not yet linked to a gym — real state, no fabricated plan data. */
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={styles.onboardCard}
+            onPress={() => navigation.navigate('GymDirectory')}
+          >
+            <View
+              style={[
+                styles.onboardIconBadge,
+                { backgroundColor: gymStatus === 'rejected' ? colors.destructiveSoft : gymStatus === 'pending' ? colors.infoSoft : colors.primarySoft },
+              ]}
+            >
+              {gymStatus === 'pending' ? (
+                <Clock size={22} color={colors.info} />
+              ) : gymStatus === 'rejected' ? (
+                <XCircle size={22} color={colors.destructive} />
+              ) : (
+                <Building2 size={22} color={colors.primary} />
+              )}
+            </View>
+            <View style={styles.onboardTextGroup}>
+              <Text style={styles.onboardTitle}>
+                {gymStatus === 'pending'
+                  ? 'Request pending'
+                  : gymStatus === 'rejected'
+                  ? 'Request declined'
+                  : 'No gym linked yet'}
               </Text>
-              <Text style={styles.planDates}>
-                {isSubscribed ? 'Active Access' : 'Renew Pending'}
+              <Text style={styles.onboardDesc}>
+                {gymStatus === 'pending'
+                  ? `Waiting for ${myRequest?.gyms?.name || 'the gym'} to approve your request.`
+                  : gymStatus === 'rejected'
+                  ? `${myRequest?.gyms?.name || 'The gym'} declined your request — tap to browse others.`
+                  : 'Browse gyms and request to join one to unlock plans & check-ins.'}
               </Text>
             </View>
-            <ProgressRing size={72} stroke={7} progress={progress} label={`${daysLeft}`} sublabel="Days left" />
-          </View>
+          </TouchableOpacity>
+        ) : !isSubscribed ? (
+          /* Linked, but no active plan yet — prompt to purchase instead of showing fake plan data. */
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={styles.onboardCard}
+            onPress={() => navigation.navigate('PlansTab')}
+          >
+            <View style={[styles.onboardIconBadge, { backgroundColor: colors.primarySoft }]}>
+              <CreditCard size={22} color={colors.primary} />
+            </View>
+            <View style={styles.onboardTextGroup}>
+              <Text style={styles.onboardTitle}>Choose your plan</Text>
+              <Text style={styles.onboardDesc}>
+                You're linked to {gymBadgeLabel} — pick a membership plan to unlock your digital check-in pass.
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ) : (
+          /* Active Plan / Streak row */
+          <View style={styles.heroGrid}>
+            {/* Plan Info Card */}
+            <View style={[styles.glassCard, styles.planCard]}>
+              <View style={styles.planDetails}>
+                <View style={styles.badgeContainer}>
+                  <Text style={styles.planBadge}>{planName.toUpperCase()} PLAN</Text>
+                </View>
+                <Text style={styles.planPrice}>
+                  ₹{subscription?.plans?.price ? subscription.plans.price.toLocaleString() : '—'}
+                  <Text style={styles.planPricePeriod}>/mo</Text>
+                </Text>
+                <Text style={styles.planDates}>Active Access</Text>
+              </View>
+              <ProgressRing size={72} stroke={7} progress={progress} label={`${daysLeft}`} sublabel="Days left" />
+            </View>
 
-          {/* Streak Card */}
-          <View style={[styles.glassCard, styles.streakCard]}>
-            <Flame size={20} color="#fbbf24" style={{ marginBottom: 4 }} />
-            <Text style={styles.streakCount}>{streak}</Text>
-            <Text style={styles.streakLabel}>Day streak</Text>
+            {/* Streak Card */}
+            <View style={[styles.glassCard, styles.streakCard]}>
+              <Flame size={20} color="#fbbf24" style={{ marginBottom: 4 }} />
+              <Text style={styles.streakCount}>{streak}</Text>
+              <Text style={styles.streakLabel}>Day streak</Text>
+            </View>
           </View>
-        </View>
+        )}
 
-        {/* Metrics Row (Weight, Water, Protein) */}
+        {/* Metrics Row (Weight, Water, Protein, Steps) */}
         <View style={styles.metricsGrid}>
           {/* Weight Card */}
-          <View style={styles.glassCard}>
+          <View style={[styles.glassCard, styles.metricCard]}>
             <View style={styles.metricHeader}>
+              <View style={[styles.metricIconBadge, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                <ArrowUpRight size={13} color="#10b981" />
+              </View>
               <Text style={styles.metricTitle}>Weight</Text>
-              <ArrowUpRight size={14} color="#10b981" />
             </View>
             <Text style={styles.metricValue}>
               {todayWeight.toFixed(1)}
@@ -280,10 +441,12 @@ export function HomeScreen({ navigation }: any) {
           </View>
 
           {/* Water Card */}
-          <View style={styles.glassCard}>
+          <View style={[styles.glassCard, styles.metricCard]}>
             <View style={styles.metricHeader}>
+              <View style={[styles.metricIconBadge, { backgroundColor: 'rgba(13, 148, 248, 0.15)' }]}>
+                <Droplet size={13} color="#0d94f8" />
+              </View>
               <Text style={styles.metricTitle}>Water</Text>
-              <Droplet size={14} color="#0d94f8" />
             </View>
             <Text style={styles.metricValue}>
               {(todayWater / 1000).toFixed(1)}
@@ -295,10 +458,12 @@ export function HomeScreen({ navigation }: any) {
           </View>
 
           {/* Protein Card */}
-          <View style={styles.glassCard}>
+          <View style={[styles.glassCard, styles.metricCard]}>
             <View style={styles.metricHeader}>
+              <View style={[styles.metricIconBadge, { backgroundColor: 'rgba(248, 113, 113, 0.15)' }]}>
+                <Beef size={13} color="#f87171" />
+              </View>
               <Text style={styles.metricTitle}>Protein</Text>
-              <Beef size={14} color="#f87171" />
             </View>
             <Text style={styles.metricValue}>
               {todayProtein}
@@ -308,13 +473,29 @@ export function HomeScreen({ navigation }: any) {
               <ProgressRing size={44} stroke={4} progress={todayProtein / 150} color="#f87171" />
             </View>
           </View>
+
+          {/* Steps Card */}
+          <View style={[styles.glassCard, styles.metricCard]}>
+            <View style={styles.metricHeader}>
+              <View style={[styles.metricIconBadge, { backgroundColor: 'rgba(251, 191, 36, 0.15)' }]}>
+                <Footprints size={13} color="#fbbf24" />
+              </View>
+              <Text style={styles.metricTitle}>Steps</Text>
+            </View>
+            <Text style={styles.metricValue} numberOfLines={1} adjustsFontSizeToFit>
+              {todaySteps.toLocaleString()}
+            </Text>
+            <View style={styles.proteinRingContainer}>
+              <ProgressRing size={44} stroke={4} progress={Math.min(1, todaySteps / 10000)} color="#fbbf24" />
+            </View>
+          </View>
         </View>
 
         {/* This Week check-ins calendar layout */}
         <View style={styles.weekSection}>
           <View style={styles.weekHeader}>
             <Text style={styles.sectionTitle}>This Week</Text>
-            <Text style={styles.weekCount}>{weekCheckIns.length} check-ins</Text>
+            <Text style={styles.weekCount}>{weekCheckInCount} check-ins</Text>
           </View>
           <View style={styles.weekScroll}>
             {weekDates.map((d) => {
@@ -406,7 +587,7 @@ export function HomeScreen({ navigation }: any) {
                     activeOpacity={0.7}
                     style={styles.adjustButton}
                   >
-                    <Minus size={16} color="#f5f6fa" />
+                    <Minus size={16} color={colors.foreground} />
                   </TouchableOpacity>
                   <WaterGlass value={tempWater / 3000} />
                   <TouchableOpacity
@@ -431,7 +612,7 @@ export function HomeScreen({ navigation }: any) {
                     activeOpacity={0.7}
                     style={styles.adjustButton}
                   >
-                    <Minus size={16} color="#f5f6fa" />
+                    <Minus size={16} color={colors.foreground} />
                   </TouchableOpacity>
                   <ProgressRing size={32} stroke={3.5} progress={tempProtein / 150} color="#f87171" />
                   <TouchableOpacity
@@ -444,13 +625,42 @@ export function HomeScreen({ navigation }: any) {
                 </View>
               </View>
 
+              {/* Steps Adjustment Box */}
+              <View style={styles.sheetControlBox}>
+                <View>
+                  <Text style={styles.sheetControlTitle}>Steps</Text>
+                  <Text style={styles.sheetControlValue}>{tempSteps.toLocaleString()}</Text>
+                </View>
+                <View style={styles.adjusterRow}>
+                  <TouchableOpacity
+                    onPress={() => setTempSteps(Math.max(0, tempSteps - 500))}
+                    activeOpacity={0.7}
+                    style={styles.adjustButton}
+                  >
+                    <Minus size={16} color={colors.foreground} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setTempSteps(tempSteps + 500)}
+                    activeOpacity={0.7}
+                    style={[styles.adjustButton, { backgroundColor: '#fbbf24' }]}
+                  >
+                    <Plus size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
               {/* Submit Save */}
               <TouchableOpacity
                 onPress={handleSaveLog}
                 activeOpacity={0.85}
+                disabled={savingLog}
                 style={styles.saveLogButton}
               >
-                <Text style={styles.saveLogButtonText}>Save log</Text>
+                {savingLog ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.saveLogButtonText}>Save log</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -566,22 +776,6 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.surface,
   },
-  focusRow: {
-    marginTop: 20,
-    gap: 4,
-  },
-  focusLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.mutedForeground,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  focusValue: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.foreground,
-  },
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -592,6 +786,27 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     gap: 12,
     marginBottom: 12,
   },
+  onboardCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 12,
+  },
+  onboardIconBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  onboardTextGroup: { flex: 1 },
+  onboardTitle: { fontSize: 15, fontWeight: '800', color: colors.foreground },
+  onboardDesc: { fontSize: 12, color: colors.mutedForeground, marginTop: 3, lineHeight: 17 },
   glassCard: {
     backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
     borderWidth: 1,
@@ -653,14 +868,25 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   },
   metricsGrid: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
     marginBottom: 20,
+  },
+  metricCard: {
+    flex: 1,
+    paddingHorizontal: 10,
   },
   metricHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    gap: 6,
+    marginBottom: 8,
+  },
+  metricIconBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   metricTitle: {
     fontSize: 10,
