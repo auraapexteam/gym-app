@@ -35,6 +35,7 @@ const TabButton = React.memo(({ isFocused, label, IconComponent, activeColor, is
 
   useEffect(() => {
     focusedProgress.value = withSpring(isFocused ? 1 : 0, premiumSpringConfig);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Reanimated shared values are stable refs by design
   }, [isFocused]);
 
   const handlePressIn = () => {
@@ -97,7 +98,7 @@ const TabButton = React.memo(({ isFocused, label, IconComponent, activeColor, is
 });
 
 // 3. Custom Tab Bar with Gliding & Morphing Pill Background
-function CustomTabBar({ state, descriptors, navigation }: any) {
+function CustomTabBar({ state, navigation }: any) {
   const { colors, isDark } = useTheme();
   const containerWidth = useSharedValue(0);
 
@@ -108,6 +109,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 
   useEffect(() => {
     activeColIndex.value = withSpring(targetCol, premiumSpringConfig);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Reanimated shared values are stable refs by design
   }, [state.index, targetCol]);
 
   // Center QR Pulse Animation using Reanimated shared values
@@ -118,6 +120,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
       -1, // Infinite loops
       false
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Reanimated shared values are stable refs by design
   }, []);
 
   const scale = interpolate(pulseVal.value, [0, 1], [0.8, 1.25]);

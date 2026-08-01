@@ -9,11 +9,13 @@ import { COLORS } from '../theme/tokens';
 // Screens & Navigators
 import { LoginScreen } from '../screens/LoginScreen';
 import { SignupScreen } from '../screens/SignupScreen';
+import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
 import { OwnerDashboardScreen } from '../screens/OwnerDashboardScreen';
 import { CustomerTabNavigator } from './CustomerTabNavigator';
 import { QRCheckInScreen } from '../screens/QRCheckInScreen';
 import { BeginnerGuideScreen } from '../screens/BeginnerGuideScreen';
 import { GymInfoScreen } from '../screens/GymInfoScreen';
+import { GymDirectoryScreen } from '../screens/GymDirectoryScreen';
 import { SubscriptionHistoryScreen } from '../screens/SubscriptionHistoryScreen';
 import { AttendanceHistoryScreen } from '../screens/AttendanceHistoryScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
@@ -95,6 +97,11 @@ export function AppNavigator() {
                   options={{ title: 'Gym Information' }}
                 />
                 <Stack.Screen
+                  name="GymDirectory"
+                  component={GymDirectoryScreen}
+                  options={{ title: 'Find a Gym' }}
+                />
+                <Stack.Screen
                   name="SubscriptionHistory"
                   component={SubscriptionHistoryScreen}
                   options={{ title: 'Subscription History' }}
@@ -160,6 +167,11 @@ export function AppNavigator() {
             <>
               <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
               <Stack.Screen name="Signup" component={SignupScreen} options={{ title: 'Create Account' }} />
+              <Stack.Screen
+                name="ForgotPassword"
+                component={ForgotPasswordScreen}
+                options={{ title: 'Reset Password' }}
+              />
             </>
           )}
         </Stack.Navigator>
