@@ -8,6 +8,7 @@ import {
   TextInputProps,
 } from 'react-native';
 import { Theme } from '../theme/Theme';
+import { useTheme } from '../context/ThemeContext';
 
 interface TextFieldProps extends TextInputProps {
   label?: string;
@@ -25,6 +26,7 @@ export function TextField({
   style,
   ...props
 }: TextFieldProps) {
+  const { colors } = useTheme();
   const [showPassword, setShowPassword] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -32,18 +34,19 @@ export function TextField({
 
   return (
     <View style={styles.container}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && <Text style={[styles.label, { color: colors.foreground }]}>{label}</Text>}
       <View
         style={[
           styles.inputWrapper,
-          isFocused && styles.inputFocused,
-          error && styles.inputError,
+          { backgroundColor: colors.surfaceDark },
+          isFocused && [styles.inputFocused, { borderColor: colors.primary, backgroundColor: colors.surface }],
+          error && [styles.inputError, { borderColor: colors.destructive }],
         ]}
       >
-        {leftIconText && <Text style={styles.leftIcon}>{leftIconText}</Text>}
+        {leftIconText && <Text style={[styles.leftIcon, { color: colors.mutedForeground }]}>{leftIconText}</Text>}
         <TextInput
-          style={[styles.input, style]}
-          placeholderTextColor={Theme.colors.mutedForeground}
+          style={[styles.input, { color: colors.foreground }, style]}
+          placeholderTextColor={colors.mutedForeground}
           secureTextEntry={isSecure}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
@@ -60,7 +63,7 @@ export function TextField({
           </TouchableOpacity>
         )}
       </View>
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {error && <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text>}
     </View>
   );
 }
@@ -73,7 +76,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '600',
-    color: Theme.colors.foreground,
     marginBottom: 6,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -81,29 +83,21 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EAEBE6', // Light gray background matching var(--surface-1)
     borderRadius: Theme.radius.round,
     paddingHorizontal: 16,
     height: 48,
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
-  inputFocused: {
-    borderColor: Theme.colors.primary,
-    backgroundColor: Theme.colors.surface,
-  },
-  inputError: {
-    borderColor: Theme.colors.destructive,
-  },
+  inputFocused: {},
+  inputError: {},
   leftIcon: {
     fontSize: 16,
     marginRight: 8,
-    color: Theme.colors.mutedForeground,
   },
   input: {
     flex: 1,
     height: '100%',
-    color: Theme.colors.foreground,
     fontSize: 14,
     paddingVertical: 0,
   },
@@ -116,7 +110,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   errorText: {
-    color: Theme.colors.destructive,
     fontSize: 11,
     marginTop: 4,
     paddingHorizontal: 8,

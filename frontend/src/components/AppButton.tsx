@@ -9,6 +9,7 @@ import {
   TouchableOpacityProps,
 } from 'react-native';
 import { Theme } from '../theme/Theme';
+import { useTheme } from '../context/ThemeContext';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'destructive' | 'outline';
 type Size = 'sm' | 'md' | 'lg';
@@ -38,6 +39,7 @@ export function AppButton({
   disabled,
   ...props
 }: AppButtonProps) {
+  const { colors } = useTheme();
   const isButtonDisabled = disabled || loading;
 
   // Resolve backgrounds and colors
@@ -47,21 +49,21 @@ export function AppButton({
   switch (variant) {
     case 'primary':
       buttonStyle = {
-        backgroundColor: Theme.colors.primary,
+        backgroundColor: colors.primary,
         ...Theme.shadow.soft,
       };
       labelStyle = { color: '#FFFFFF' };
       break;
     case 'secondary':
       buttonStyle = {
-        backgroundColor: Theme.colors.secondary,
+        backgroundColor: colors.secondary,
         ...Theme.shadow.soft,
       };
       labelStyle = { color: '#FFFFFF' };
       break;
     case 'destructive':
       buttonStyle = {
-        backgroundColor: Theme.colors.destructive,
+        backgroundColor: colors.destructive,
         ...Theme.shadow.soft,
       };
       labelStyle = { color: '#FFFFFF' };
@@ -70,15 +72,15 @@ export function AppButton({
       buttonStyle = {
         backgroundColor: 'transparent',
         borderWidth: 1.5,
-        borderColor: Theme.colors.border,
+        borderColor: colors.border,
       };
-      labelStyle = { color: Theme.colors.foreground };
+      labelStyle = { color: colors.foreground };
       break;
     case 'ghost':
       buttonStyle = {
         backgroundColor: 'transparent',
       };
-      labelStyle = { color: Theme.colors.foreground };
+      labelStyle = { color: colors.foreground };
       break;
   }
 
