@@ -66,6 +66,7 @@ export function AppRouter() {
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/members" element={<MembersPage />} />
+          <Route path="/members/add" element={<MembersPage defaultShowAdd={true} />} />
           <Route path="/members/:id" element={<MemberProfilePage />} />
           <Route path="/checkins" element={<CheckInsPage />} />
           <Route path="/plans" element={<PlansPage />} />

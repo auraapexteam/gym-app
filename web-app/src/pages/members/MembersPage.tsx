@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import {
   SearchInput, Badge, Avatar, Pagination, EmptyListState, Select, Button, Modal,
@@ -33,7 +33,11 @@ const statusVariantMap: Record<string, 'success' | 'danger' | 'warning' | 'info'
   pending: 'muted',
 };
 
-export default function MembersPage() {
+interface MembersPageProps {
+  defaultShowAdd?: boolean;
+}
+
+export default function MembersPage({ defaultShowAdd = false }: MembersPageProps) {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
@@ -41,7 +45,13 @@ export default function MembersPage() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [deleteModal, setDeleteModal] = useState<Member | null>(null);
   const [suspendModal, setSuspendModal] = useState<Member | null>(null);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(defaultShowAdd);
+
+  useEffect(() => {
+    if (!showAddModal && window.location.pathname === '/members/add') {
+      navigate('/members');
+    }
+  }, [showAddModal, navigate]);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
