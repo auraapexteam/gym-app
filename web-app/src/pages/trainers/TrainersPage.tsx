@@ -14,10 +14,13 @@ const mockTrainers: Trainer[] = [
   { id: '6', name: 'Divya Reddy', email: 'divya.r@gym.com', phone: '9321098765', specialization: ['Sports Nutrition', 'Weight Management'], rating: 4.5, clients: 15, workingHours: '10 AM – 6 PM', availability: false, salary: 42000, gymId: 'g1', joinedAt: '2023-04-05' },
 ];
 
+import { useTrainers } from '@/hooks/useTrainers';
+
 export default function TrainersPage() {
   const [search, setSearch] = useState('');
+  const { data: trainers = [], isLoading } = useTrainers();
 
-  const filtered = mockTrainers.filter((t) =>
+  const filtered = trainers.filter((t) =>
     t.name.toLowerCase().includes(search.toLowerCase()) ||
     t.specialization.some((s) => s.toLowerCase().includes(search.toLowerCase())),
   );
@@ -29,7 +32,7 @@ export default function TrainersPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-aura-text">Trainers</h1>
-          <p className="text-sm text-aura-muted mt-0.5">{mockTrainers.length} trainers registered</p>
+          <p className="text-sm text-aura-muted mt-0.5">{trainers.length} trainers registered</p>
         </div>
         <div className="flex items-center gap-2">
           <SearchInput value={search} onChange={setSearch} placeholder="Search trainers..." className="w-56" />

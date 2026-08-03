@@ -2,4 +2,8 @@ export { authApi } from './auth';
 export { membersApi } from './members';
 export { dashboardApi } from './dashboard';
 export { plansApi } from './plans';
+export { trainersApi } from './trainers';
+export { equipmentApi } from './equipment';
+export { paymentsApi } from './payments';
+export { attendanceApi } from './attendance';
 export { default as axiosInstance } from './axios';

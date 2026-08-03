@@ -24,21 +24,24 @@ const statusVariantMap: Record<string, 'success' | 'danger' | 'warning' | 'info'
 
 const TABS = ['All', 'Completed', 'Pending', 'Failed', 'Refunded'];
 
+import { usePayments } from '@/hooks/usePayments';
+
 export default function PaymentsPage() {
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('All');
   const [page, setPage] = useState(1);
+  const { data: payments = [], isLoading } = usePayments();
 
-  const filtered = mockPayments.filter((p) => {
+  const filtered = payments.filter((p) => {
     if (search && !p.memberName.toLowerCase().includes(search.toLowerCase()) && !p.transactionId.toLowerCase().includes(search.toLowerCase())) return false;
     if (activeTab !== 'All' && p.status !== activeTab.toLowerCase()) return false;
     return true;
   });
 
-  const totalRevenue = mockPayments.filter((p) => p.status === 'completed').reduce((a, p) => a + p.amount, 0);
-  const pendingAmount = mockPayments.filter((p) => p.status === 'pending').reduce((a, p) => a + p.amount, 0);
-  const refundAmount = mockPayments.filter((p) => p.status === 'refunded').reduce((a, p) => a + p.amount, 0);
-  const failedCount = mockPayments.filter((p) => p.status === 'failed').length;
+  const totalRevenue = payments.filter((p) => p.status === 'completed').reduce((a, p) => a + p.amount, 0);
+  const pendingAmount = payments.filter((p) => p.status === 'pending').reduce((a, p) => a + p.amount, 0);
+  const refundAmount = payments.filter((p) => p.status === 'refunded').reduce((a, p) => a + p.amount, 0);
+  const failedCount = payments.filter((p) => p.status === 'failed').length;
 
   const stats = [
     { title: 'Total Revenue', value: totalRevenue, isCurrency: true, icon: DollarSign, iconColor: 'text-aura-primary' },

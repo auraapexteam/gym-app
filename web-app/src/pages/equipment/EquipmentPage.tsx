@@ -26,23 +26,27 @@ const conditionVariantMap: Record<string, 'success' | 'default' | 'warning' | 'd
   maintenance: 'muted',
 };
 
-const stats = [
-  { title: 'Total Equipment', value: mockEquipment.length, icon: Wrench, iconColor: 'text-aura-primary' },
-  { title: 'Needs Service', value: mockEquipment.filter((e) => e.condition === 'maintenance').length, icon: AlertTriangle, iconColor: 'text-aura-danger' },
-  { title: 'Service Due Soon', value: mockEquipment.filter((e) => { const days = (new Date(e.nextService).getTime() - Date.now()) / (1000 * 3600 * 24); return days <= 14 && days >= 0; }).length, icon: Calendar, iconColor: 'text-aura-warning' },
-  { title: 'Excellent Condition', value: mockEquipment.filter((e) => e.condition === 'excellent').length, icon: CheckCircle, iconColor: 'text-aura-success' },
-];
+import { useEquipment } from '@/hooks/useEquipment';
 
 export default function EquipmentPage() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
+  const { data: equipment = [], isLoading } = useEquipment();
 
-  const categories = ['All', ...Array.from(new Set(mockEquipment.map((e) => e.category)))];
-  const filtered = mockEquipment.filter((e) => {
+  const categories = ['All', ...Array.from(new Set(equipment.map((e) => e.category)))];
+  
+  const filtered = equipment.filter((e) => {
     if (search && !e.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (category !== 'All' && e.category !== category) return false;
     return true;
   });
+
+  const stats = [
+    { title: 'Total Equipment', value: equipment.length, icon: Wrench, iconColor: 'text-aura-primary' },
+    { title: 'Needs Service', value: equipment.filter((e) => e.condition === 'maintenance').length, icon: AlertTriangle, iconColor: 'text-aura-danger' },
+    { title: 'Service Due Soon', value: equipment.filter((e) => { const days = (new Date(e.nextService).getTime() - Date.now()) / (1000 * 3600 * 24); return days <= 14 && days >= 0; }).length, icon: Calendar, iconColor: 'text-aura-warning' },
+    { title: 'Excellent Condition', value: equipment.filter((e) => e.condition === 'excellent').length, icon: CheckCircle, iconColor: 'text-aura-success' },
+  ];
 
   return (
     <DashboardLayout
