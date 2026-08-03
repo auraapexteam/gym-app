@@ -54,8 +54,15 @@ export class AuthService {
 
   /** Email/password login. Returns tokens plus the business profile. */
   static async login(input: LoginInput): Promise<AuthResult> {
+    const email = normalizeEmail(input.email);
+    const existing = await profileRepository.findOneBy('email', email);
+    
+    if (!existing) {
+      throw new UnauthorizedError('Account does not exist. Please contact your administrator.', 'ACCOUNT_NOT_FOUND');
+    }
+
     const { data, error } = await supabaseAnon.auth.signInWithPassword({
-      email: normalizeEmail(input.email),
+      email,
       password: input.password,
     });
 
