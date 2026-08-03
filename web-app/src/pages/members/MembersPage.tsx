@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import {
-  SearchInput, Badge, Avatar, Pagination, EmptyListState, Select, Button,
+  SearchInput, Badge, Avatar, Pagination, EmptyListState, Select, Button, Modal,
 } from '@/components/ui';
 import { ConfirmModal } from '@/components/ui/modal';
-import { useMembers, useDeleteMember, useSuspendMember } from '@/hooks/useMembers';
+import { useMembers, useDeleteMember, useSuspendMember, useCreateMember } from '@/hooks/useMembers';
 import { formatDate, isExpiringSoon } from '@/utils';
 import { MEMBERSHIP_STATUS_COLORS } from '@/constants';
 import { membersApi } from '@/api';
@@ -41,10 +41,20 @@ export default function MembersPage() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [deleteModal, setDeleteModal] = useState<Member | null>(null);
   const [suspendModal, setSuspendModal] = useState<Member | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [address, setAddress] = useState('');
+  const [emergencyContact, setEmergencyContact] = useState('');
+  const [notes, setNotes] = useState('');
 
   const { data, isLoading } = useMembers({ page, limit: 10, search, status: status || undefined });
   const deleteMutation = useDeleteMember();
   const suspendMutation = useSuspendMember();
+  const createMutation = useCreateMember();
 
   const handleExport = async () => {
     try {
@@ -63,6 +73,35 @@ export default function MembersPage() {
     }
   };
 
+  const handleAddMemberSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    createMutation.mutate(
+      {
+        fullName,
+        email: email || undefined,
+        phone: phone || undefined,
+        gender,
+        dateOfBirth: dateOfBirth || undefined,
+        address: address || undefined,
+        emergencyContact: emergencyContact || undefined,
+        notes: notes || undefined,
+      },
+      {
+        onSuccess: () => {
+          setShowAddModal(false);
+          setFullName('');
+          setEmail('');
+          setPhone('');
+          setGender('male');
+          setDateOfBirth('');
+          setAddress('');
+          setEmergencyContact('');
+          setNotes('');
+        },
+      }
+    );
+  };
+
   return (
     <DashboardLayout
       breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Members' }]}
@@ -78,7 +117,7 @@ export default function MembersPage() {
           <Button variant="secondary" size="md" onClick={handleExport}>
             <Download className="h-4 w-4" /> Export CSV
           </Button>
-          <Button variant="primary" size="md" onClick={() => navigate('/members/add')}>
+          <Button variant="primary" size="md" onClick={() => setShowAddModal(true)}>
             <UserPlus className="h-4 w-4" /> Add Member
           </Button>
         </div>
@@ -215,7 +254,7 @@ export default function MembersPage() {
             </tbody>
           </table>
           {!isLoading && !data?.data.length && (
-            <EmptyListState entity="members" onAdd={() => navigate('/members/add')} />
+            <EmptyListState entity="members" onAdd={() => setShowAddModal(true)} />
           )}
         </div>
 
@@ -265,6 +304,112 @@ export default function MembersPage() {
         variant="warning"
         loading={suspendMutation.isPending}
       />
+
+      {/* Add Member Modal */}
+      <Modal
+        open={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        title="Register New Member"
+        size="md"
+      >
+        <form onSubmit={handleAddMemberSubmit} className="p-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-aura-text mb-1.5">Full Name</label>
+              <input
+                required
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="e.g. John Doe"
+                className="w-full bg-aura-bg border border-aura-border rounded-md px-3 py-2.5 text-sm text-aura-text placeholder-aura-muted focus:outline-none focus:border-aura-primary"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-aura-text mb-1.5">Email Address</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="john@example.com"
+                  className="w-full bg-aura-bg border border-aura-border rounded-md px-3 py-2.5 text-sm text-aura-text placeholder-aura-muted focus:outline-none focus:border-aura-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-aura-text mb-1.5">Phone Number</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="e.g. 9876543210"
+                  className="w-full bg-aura-bg border border-aura-border rounded-md px-3 py-2.5 text-sm text-aura-text placeholder-aura-muted focus:outline-none focus:border-aura-primary"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-aura-text mb-1.5">Gender</label>
+                <Select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value as any)}
+                  options={[
+                    { value: 'male', label: 'Male' },
+                    { value: 'female', label: 'Female' },
+                    { value: 'other', label: 'Other' },
+                  ]}
+                  className="text-xs h-10 bg-aura-bg"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-aura-text mb-1.5">Date of Birth (YYYY-MM-DD)</label>
+                <input
+                  type="text"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  placeholder="e.g. 1995-08-23"
+                  className="w-full bg-aura-bg border border-aura-border rounded-md px-3 py-2.5 text-sm text-aura-text placeholder-aura-muted focus:outline-none focus:border-aura-primary"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-aura-text mb-1.5">Address</label>
+              <input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="123 Street Name, City"
+                className="w-full bg-aura-bg border border-aura-border rounded-md px-3 py-2.5 text-sm text-aura-text placeholder-aura-muted focus:outline-none focus:border-aura-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-aura-text mb-1.5">Emergency Contact</label>
+              <input
+                value={emergencyContact}
+                onChange={(e) => setEmergencyContact(e.target.value)}
+                placeholder="e.g. Spouse/Parent contact number"
+                className="w-full bg-aura-bg border border-aura-border rounded-md px-3 py-2.5 text-sm text-aura-text placeholder-aura-muted focus:outline-none focus:border-aura-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-aura-text mb-1.5">Notes</label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Important medical details, fitness targets..."
+                rows={2}
+                className="w-full bg-aura-bg border border-aura-border rounded-md px-3 py-2.5 text-sm text-aura-text placeholder-aura-muted focus:outline-none focus:border-aura-primary resize-none"
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button type="button" variant="secondary" onClick={() => setShowAddModal(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" disabled={createMutation.isPending}>
+                Register Member
+              </Button>
+            </div>
+          </div>
+        </form>
+      </Modal>
     </DashboardLayout>
   );
 }

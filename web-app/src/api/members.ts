@@ -8,11 +8,11 @@ export const membersApi = {
   getById: (id: string) =>
     axiosInstance.get<ApiResponse<MemberProfile>>(`/members/${id}`),
 
-  create: (data: Partial<Member>) =>
-    axiosInstance.post<ApiResponse<Member>>('/members', data),
+  create: (data: any) =>
+    axiosInstance.post<ApiResponse<any>>('/members', data),
 
-  update: (id: string, data: Partial<Member>) =>
-    axiosInstance.patch<ApiResponse<Member>>(`/members/${id}`, data),
+  update: (id: string, data: any) =>
+    axiosInstance.patch<ApiResponse<any>>(`/members/${id}`, data),
 
   delete: (id: string) =>
     axiosInstance.delete<ApiResponse<null>>(`/members/${id}`),
