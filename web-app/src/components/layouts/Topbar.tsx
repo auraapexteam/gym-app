@@ -66,7 +66,7 @@ export function Topbar({ title, breadcrumbs }: TopbarProps) {
 
         {/* New Member Action */}
         <Link
-          to="/members"
+          to="/members/add"
           className="h-10 w-10 sm:w-auto sm:px-4 rounded-md flex items-center justify-center gap-2 bg-aura-primary text-sm font-semibold text-aura-bg hover:bg-aura-primary/90 transition-colors"
           aria-label="New Member"
         >
