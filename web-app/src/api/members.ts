@@ -12,19 +12,19 @@ export const membersApi = {
     axiosInstance.post<ApiResponse<Member>>('/members', data),
 
   update: (id: string, data: Partial<Member>) =>
-    axiosInstance.put<ApiResponse<Member>>(`/members/${id}`, data),
+    axiosInstance.patch<ApiResponse<Member>>(`/members/${id}`, data),
 
   delete: (id: string) =>
     axiosInstance.delete<ApiResponse<null>>(`/members/${id}`),
 
   suspend: (id: string, reason?: string) =>
-    axiosInstance.post<ApiResponse<Member>>(`/members/${id}/suspend`, { reason }),
+    axiosInstance.patch<ApiResponse<Member>>(`/members/${id}`, { status: 'suspended', notes: reason }),
 
   freeze: (id: string, days: number) =>
-    axiosInstance.post<ApiResponse<Member>>(`/members/${id}/freeze`, { days }),
+    axiosInstance.patch<ApiResponse<Member>>(`/members/${id}`, { status: 'inactive', notes: `Frozen for ${days} days` }),
 
   renew: (id: string, planId: string) =>
-    axiosInstance.post<ApiResponse<Member>>(`/members/${id}/renew`, { planId }),
+    axiosInstance.patch<ApiResponse<Member>>(`/members/${id}`, { notes: `Renewed plan: ${planId}` }),
 
   assignTrainer: (id: string, trainerId: string) =>
     axiosInstance.post<ApiResponse<Member>>(`/members/${id}/assign-trainer`, { trainerId }),
