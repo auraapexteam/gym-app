@@ -7,6 +7,8 @@ import { ConfirmModal } from '@/components/ui/modal';
 import { useMembers, useDeleteMember, useSuspendMember } from '@/hooks/useMembers';
 import { formatDate, isExpiringSoon } from '@/utils';
 import { MEMBERSHIP_STATUS_COLORS } from '@/constants';
+import { membersApi } from '@/api';
+import { toast } from 'sonner';
 import {
   UserPlus, Download, MoreHorizontal, Eye, UserX, RefreshCw,
   Trash2, AlertTriangle,
@@ -44,6 +46,23 @@ export default function MembersPage() {
   const deleteMutation = useDeleteMember();
   const suspendMutation = useSuspendMember();
 
+  const handleExport = async () => {
+    try {
+      toast.success('Preparing members CSV export...');
+      const res = await membersApi.exportCSV();
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `members_export_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('Members CSV downloaded successfully!');
+    } catch (err) {
+      toast.error('Failed to export members list.');
+    }
+  };
+
   return (
     <DashboardLayout
       breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Members' }]}
@@ -56,7 +75,7 @@ export default function MembersPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="md" onClick={() => {}}>
+          <Button variant="secondary" size="md" onClick={handleExport}>
             <Download className="h-4 w-4" /> Export CSV
           </Button>
           <Button variant="primary" size="md" onClick={() => navigate('/members/add')}>
