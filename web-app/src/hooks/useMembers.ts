@@ -21,14 +21,14 @@ export function useMembers(params?: { page?: number; limit?: number; search?: st
     queryFn: async () => {
       try {
         const res = await membersApi.getAll(params);
-        const rawItems = res.data.data || [];
+        const rawItems = Array.isArray(res.data.data) ? res.data.data : [];
         const pagination = (res.data as any).meta?.pagination || {};
         
         // Map DTO fields to frontend Member layout
         const items: Member[] = rawItems.map((m: any) => ({
-          id: m.id,
-          memberId: m.id.substring(0, 8).toUpperCase(),
-          name: m.fullName || m.name || '',
+          id: m?.id || '',
+          memberId: m?.id ? m.id.substring(0, 8).toUpperCase() : '',
+          name: m?.fullName || m?.name || '',
           email: m.email || '',
           phone: m.phone || '',
           membershipStatus: m.status || 'active',
@@ -82,11 +82,11 @@ export function useMember(id: string) {
     queryFn: async () => {
       try {
         const res = await membersApi.getById(id);
-        const m = res.data.data as any;
+        const m = res.data?.data as any;
         return {
-          id: m.id,
-          memberId: m.id.substring(0, 8).toUpperCase(),
-          name: m.fullName || m.name || '',
+          id: m?.id || '',
+          memberId: m?.id ? m.id.substring(0, 8).toUpperCase() : '',
+          name: m?.fullName || m?.name || '',
           email: m.email || '',
           phone: m.phone || '',
           avatar: m.avatar || '',
