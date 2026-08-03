@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { membersApi } from '@/api';
+import { formatDate, isExpiringSoon, safeNewDate } from '@/utils';
 import { toast } from 'sonner';
 import type { Member } from '@/types';
 
@@ -33,7 +34,7 @@ export function useMembers(params?: { page?: number; limit?: number; search?: st
           phone: m.phone || '',
           membershipStatus: m.status || 'active',
           membershipPlan: m.notes?.includes('Renewed plan:') ? m.notes.replace('Renewed plan: ', '') : 'Premium',
-          renewDate: m.joinedAt ? new Date(new Date(m.joinedAt).getTime() + 30 * 24 * 3600 * 1000).toISOString() : new Date().toISOString(),
+          renewDate: m.joinedAt ? new Date(safeNewDate(m.joinedAt).getTime() + 30 * 24 * 3600 * 1000).toISOString() : new Date().toISOString(),
           attendance: 85,
           visits: 12,
           gymId: m.gymId || '',
@@ -92,7 +93,7 @@ export function useMember(id: string) {
           avatar: m.avatar || '',
           membershipStatus: m.status || 'active',
           membershipPlan: 'Premium',
-          renewDate: m.joinedAt ? new Date(new Date(m.joinedAt).getTime() + 30 * 24 * 3600 * 1000).toISOString() : new Date().toISOString(),
+          renewDate: m.joinedAt ? new Date(safeNewDate(m.joinedAt).getTime() + 30 * 24 * 3600 * 1000).toISOString() : new Date().toISOString(),
           attendance: 85,
           visits: 12,
           trainerName: m.trainerName || '',

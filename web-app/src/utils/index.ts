@@ -12,26 +12,42 @@ export function cn(...inputs: ClassValue[]) {
 // ============================================================
 // DATE UTILITIES
 // ============================================================
+export const safeNewDate = (date: string | Date | undefined | null): Date => {
+  if (!date) return new Date();
+  if (date instanceof Date) return date;
+  
+  let dateStr = String(date).trim();
+  if (dateStr.includes(' ')) {
+    dateStr = dateStr.replace(' ', 'T');
+  }
+  
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) {
+    return new Date();
+  }
+  return d;
+};
+
 export const formatDate = (date: string | Date, fmt = 'MMM dd, yyyy') => {
-  return format(new Date(date), fmt);
+  return format(safeNewDate(date), fmt);
 };
 
 export const formatDateTime = (date: string | Date) => {
-  return format(new Date(date), 'MMM dd, yyyy HH:mm');
+  return format(safeNewDate(date), 'MMM dd, yyyy HH:mm');
 };
 
 export const formatRelativeTime = (date: string | Date) => {
-  return formatDistanceToNow(new Date(date), { addSuffix: true });
+  return formatDistanceToNow(safeNewDate(date), { addSuffix: true });
 };
 
 export const isExpiringSoon = (date: string | Date, days = 7) => {
-  const expiry = new Date(date);
-  const soon = addDays(new Date(), days);
-  return isAfter(soon, expiry) && isAfter(expiry, new Date());
+  const expiry = safeNewDate(date);
+  const soon = addDays(safeNewDate(new Date()), days);
+  return isAfter(soon, expiry) && isAfter(expiry, safeNewDate(new Date()));
 };
 
 export const isExpired = (date: string | Date) => {
-  return isBefore(new Date(date), new Date());
+  return isBefore(safeNewDate(date), safeNewDate(new Date()));
 };
 
 // ============================================================

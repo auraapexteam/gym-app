@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardContent, Badge, Button, SearchInput, StatCard } from '@/components/ui';
 import { Wrench, Plus, AlertTriangle, CheckCircle, Calendar } from 'lucide-react';
-import { formatDate } from '@/utils';
+import { formatDate, safeNewDate } from '@/utils';
 import type { Equipment } from '@/types';
 import { EQUIPMENT_CONDITION_COLORS } from '@/constants';
 import { motion } from 'framer-motion';
@@ -44,7 +44,7 @@ export default function EquipmentPage() {
   const stats = [
     { title: 'Total Equipment', value: equipment.length, icon: Wrench, iconColor: 'text-aura-primary' },
     { title: 'Needs Service', value: equipment.filter((e) => e.condition === 'maintenance').length, icon: AlertTriangle, iconColor: 'text-aura-danger' },
-    { title: 'Service Due Soon', value: equipment.filter((e) => { const days = (new Date(e.nextService).getTime() - Date.now()) / (1000 * 3600 * 24); return days <= 14 && days >= 0; }).length, icon: Calendar, iconColor: 'text-aura-warning' },
+    { title: 'Service Due Soon', value: equipment.filter((e) => { const days = (safeNewDate(e.nextService).getTime() - Date.now()) / (1000 * 3600 * 24); return days <= 14 && days >= 0; }).length, icon: Calendar, iconColor: 'text-aura-warning' },
     { title: 'Excellent Condition', value: equipment.filter((e) => e.condition === 'excellent').length, icon: CheckCircle, iconColor: 'text-aura-success' },
   ];
 
@@ -100,7 +100,7 @@ export default function EquipmentPage() {
             </thead>
             <tbody className="divide-y divide-aura-border">
               {filtered.map((eq, i) => {
-                const daysToService = Math.round((new Date(eq.nextService).getTime() - Date.now()) / (1000 * 3600 * 24));
+                const daysToService = Math.round((safeNewDate(eq.nextService).getTime() - Date.now()) / (1000 * 3600 * 24));
                 return (
                   <motion.tr
                     key={eq.id}
