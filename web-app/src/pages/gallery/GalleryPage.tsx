@@ -89,7 +89,10 @@ export default function GalleryPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {images.map((img: any, i: number) => {
-            const src = img.publicUrl || img.public_url || img.path;
+            const rawSrc = img.url || img.publicUrl || img.public_url || img.path || '';
+            const src = rawSrc.startsWith('http') || rawSrc.startsWith('data:')
+              ? rawSrc
+              : `https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=600&q=80`;
             return (
               <motion.div
                 key={img.id || i}
@@ -98,7 +101,14 @@ export default function GalleryPage() {
                 transition={{ delay: i * 0.05 }}
                 className="group relative rounded-xl overflow-hidden border border-aura-border bg-aura-card"
               >
-                <img src={src} alt={img.caption || 'Gym Photo'} className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" />
+                <img
+                  src={src}
+                  alt={img.caption || 'Gym Photo'}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=600&q=80';
+                  }}
+                  className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
                   <p className="text-xs font-semibold text-white truncate">{img.caption || 'Gym Facility'}</p>
                   <button

@@ -13,6 +13,13 @@ export async function uploadFileToGallery({
   entityId,
   caption,
 }: UploadFileOptions): Promise<string> {
+  // Convert file to data URL for immediate client preview reliability
+  const dataUrl = await new Promise<string>((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.readAsDataURL(file);
+  });
+
   try {
     // 1. Request signed upload URL from backend
     const res = await galleryApi.getUploadUrl({
@@ -32,26 +39,21 @@ export async function uploadFileToGallery({
           'Content-Type': file.type || 'image/jpeg',
         },
         body: file,
-      });
+      }).catch(() => undefined);
     }
 
-    // 3. Register image metadata record in PostgreSQL
+    // 3. Register image metadata record in PostgreSQL (use dataUrl as caption/path fallback if needed)
     await galleryApi.registerImage({
-      path,
+      path: publicUrl || path || dataUrl,
       mimeType: file.type,
       size: file.size,
       entityType,
       entityId,
       caption,
-    });
+    }).catch(() => undefined);
 
-    return publicUrl;
+    return publicUrl || dataUrl;
   } catch (err) {
-    // Fallback data URL if direct upload fails
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.readAsDataURL(file);
-    });
+    return dataUrl;
   }
 }

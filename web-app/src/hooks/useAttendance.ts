@@ -32,6 +32,9 @@ export function useManualCheckIn() {
       qc.invalidateQueries({ queryKey: ['attendance-stats'] });
       toast.success('Member checked in successfully.');
     },
-    onError: () => toast.error('Failed to register check-in.'),
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || 'Failed to register check-in.';
+      toast.error(msg);
+    },
   });
 }

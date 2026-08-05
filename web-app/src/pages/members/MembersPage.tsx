@@ -5,6 +5,8 @@ import {
 } from '@/components/ui';
 import { ConfirmModal } from '@/components/ui/modal';
 import { useMembers, useDeleteMember, useSuspendMember, useCreateMember } from '@/hooks/useMembers';
+import { usePlans } from '@/hooks/usePlans';
+import { useCreateManualSubscription } from '@/hooks/useSubscriptions';
 import { formatDate, isExpiringSoon } from '@/utils';
 import { MEMBERSHIP_STATUS_COLORS } from '@/constants';
 import { membersApi } from '@/api';
@@ -61,10 +63,17 @@ export default function MembersPage({ defaultShowAdd = false }: MembersPageProps
   const [emergencyContact, setEmergencyContact] = useState('');
   const [notes, setNotes] = useState('');
 
+  const [activateModal, setActivateModal] = useState<Member | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState('');
+
   const { data, isLoading } = useMembers({ page, limit: 10, search, status: status || undefined });
+  const { data: plansData } = usePlans();
+  const activePlans = Array.isArray(plansData) ? plansData : (plansData as any)?.data || [];
+
   const deleteMutation = useDeleteMember();
   const suspendMutation = useSuspendMember();
   const createMutation = useCreateMember();
+  const activateSubscriptionMutation = useCreateManualSubscription();
 
   const handleExport = async () => {
     try {
@@ -247,7 +256,7 @@ export default function MembersPage({ defaultShowAdd = false }: MembersPageProps
                               <div className="absolute right-0 z-10 mt-1 w-40 bg-aura-card border border-aura-border rounded-lg shadow-aura-lg overflow-hidden">
                                 {[
                                   { label: 'View Profile', icon: Eye, action: () => navigate(`/members/${member.id}`) },
-                                  { label: 'Renew', icon: RefreshCw, action: () => {} },
+                                  { label: 'Activate / Renew Plan', icon: RefreshCw, action: () => { setActivateModal(member); setOpenMenu(null); } },
                                   { label: 'Suspend', icon: UserX, action: () => { setSuspendModal(member); setOpenMenu(null); } },
                                   { label: 'Delete', icon: Trash2, action: () => { setDeleteModal(member); setOpenMenu(null); }, danger: true },
                                 ].map((item) => (
@@ -425,6 +434,48 @@ export default function MembersPage({ defaultShowAdd = false }: MembersPageProps
             </div>
           </div>
         </form>
+      </Modal>
+
+      {/* Activate / Renew Membership Plan Modal */}
+      <Modal open={!!activateModal} onClose={() => setActivateModal(null)} title={`Activate Membership Plan: ${activateModal?.name || 'Member'}`}>
+        <div className="space-y-4">
+          <p className="text-xs text-aura-muted">Select an active membership plan to assign to this member. This will activate their subscription immediately for check-ins.</p>
+          <div>
+            <label className="block text-xs font-medium text-aura-text mb-1">Select Membership Plan *</label>
+            <Select
+              value={selectedPlanId}
+              onChange={(e) => setSelectedPlanId(e.target.value)}
+              placeholder={activePlans.length ? "Choose a membership plan..." : "No active plans created yet"}
+              options={activePlans.map((p: any) => ({
+                value: p.id,
+                label: `${p.name || p.title} — ₹${p.price} (${p.durationDays || p.duration || 30} Days)`,
+              }))}
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setActivateModal(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              disabled={!selectedPlanId || activateSubscriptionMutation.isPending}
+              onClick={() => {
+                if (!activateModal || !selectedPlanId) return;
+                activateSubscriptionMutation.mutate(
+                  { memberId: activateModal.id, planId: selectedPlanId, method: 'cash' },
+                  {
+                    onSuccess: () => {
+                      setActivateModal(null);
+                      setSelectedPlanId('');
+                    },
+                  }
+                );
+              }}
+            >
+              {activateSubscriptionMutation.isPending ? 'Activating Plan...' : 'Activate Plan Now'}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </DashboardLayout>
   );
