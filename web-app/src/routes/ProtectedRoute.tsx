@@ -15,7 +15,7 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   }
 
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={user.role === 'super_admin' ? '/super-admin/gyms' : '/dashboard'} replace />;
   }
 
   return <Outlet />;

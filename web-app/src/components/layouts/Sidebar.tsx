@@ -28,48 +28,47 @@ const navConfig: NavGroup[] = [
   {
     group: 'Overview',
     items: [
-      { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
+      { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', roles: ['gym_owner', 'staff', 'trainer'] },
+    ],
+  },
+  {
+    group: 'Platform Admin',
+    items: [
+      { label: 'Manage Gyms', icon: Building2, href: '/super-admin/gyms', roles: ['super_admin'] },
+      { label: 'Manage Owners', icon: Crown, href: '/super-admin/owners', roles: ['super_admin'] },
+      { label: 'Platform Analytics', icon: BarChart3, href: '/super-admin/analytics', roles: ['super_admin'] },
     ],
   },
   {
     group: 'Management',
     items: [
-      { label: 'Members', icon: Users, href: '/members', roles: ['super_admin', 'gym_owner', 'staff'] },
-      { label: 'Check-ins', icon: UserCheck, href: '/checkins', roles: ['super_admin', 'gym_owner', 'staff', 'trainer'] },
-      { label: 'Classes', icon: Calendar, href: '/classes', roles: ['super_admin', 'gym_owner', 'staff', 'trainer'] },
-      { label: 'Trainers', icon: Dumbbell, href: '/trainers', roles: ['super_admin', 'gym_owner', 'staff'] },
-      { label: 'Staff', icon: UserCog, href: '/staff', roles: ['super_admin', 'gym_owner'] },
+      { label: 'Members', icon: Users, href: '/members', roles: ['gym_owner', 'staff'] },
+      { label: 'Check-ins', icon: UserCheck, href: '/checkins', roles: ['gym_owner', 'staff', 'trainer'] },
+      { label: 'Classes', icon: Calendar, href: '/classes', roles: ['gym_owner', 'staff', 'trainer'] },
+      { label: 'Trainers', icon: Dumbbell, href: '/trainers', roles: ['gym_owner', 'staff'] },
+      { label: 'Staff', icon: UserCog, href: '/staff', roles: ['gym_owner'] },
     ],
   },
   {
     group: 'Plans & Finance',
     items: [
-      { label: 'Membership Plans', icon: Zap, href: '/plans', roles: ['super_admin', 'gym_owner'] },
-      { label: 'Payments', icon: CreditCard, href: '/payments', roles: ['super_admin', 'gym_owner', 'staff'] },
-      { label: 'Orders', icon: ShoppingBag, href: '/orders', roles: ['super_admin', 'gym_owner', 'staff'] },
+      { label: 'Membership Plans', icon: Zap, href: '/plans', roles: ['gym_owner'] },
+      { label: 'Payments', icon: CreditCard, href: '/payments', roles: ['gym_owner', 'staff'] },
+      { label: 'Orders', icon: ShoppingBag, href: '/orders', roles: ['gym_owner', 'staff'] },
     ],
   },
   {
     group: 'Store & Equipment',
     items: [
-      // { label: 'Nutrition Store', icon: Package, href: '/nutrition', roles: ['super_admin', 'gym_owner', 'staff'] },
-      { label: 'Equipment', icon: Wrench, href: '/equipment', roles: ['super_admin', 'gym_owner', 'staff'] },
+      { label: 'Equipment', icon: Wrench, href: '/equipment', roles: ['gym_owner', 'staff'] },
     ],
   },
   {
     group: 'Insights',
     items: [
-      { label: 'Attendance', icon: Activity, href: '/attendance' },
-      { label: 'Analytics', icon: BarChart3, href: '/analytics', roles: ['super_admin', 'gym_owner'] },
-      { label: 'Reports', icon: FileText, href: '/reports', roles: ['super_admin', 'gym_owner'] },
-    ],
-  },
-  {
-    group: 'Super Admin',
-    items: [
-      { label: 'Manage Gyms', icon: Building2, href: '/super-admin/gyms', roles: ['super_admin'] },
-      { label: 'Manage Owners', icon: Crown, href: '/super-admin/owners', roles: ['super_admin'] },
-      { label: 'Platform Analytics', icon: BarChart3, href: '/super-admin/analytics', roles: ['super_admin'] },
+      { label: 'Attendance', icon: Activity, href: '/attendance', roles: ['gym_owner', 'staff', 'trainer'] },
+      { label: 'Analytics', icon: BarChart3, href: '/analytics', roles: ['gym_owner'] },
+      { label: 'Reports', icon: FileText, href: '/reports', roles: ['gym_owner'] },
     ],
   },
   {
@@ -89,11 +88,11 @@ export function Sidebar() {
   const [isMobile, setIsMobile] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     Overview: true,
+    'Platform Admin': true,
     Management: true,
     'Plans & Finance': true,
     'Store & Equipment': true,
     Insights: true,
-    'Super Admin': true,
     System: true,
   });
 
@@ -153,7 +152,9 @@ export function Sidebar() {
                 </div>
                 <div className="leading-tight">
                   <p className="text-xs font-semibold text-aura-muted tracking-[0.18em]">AURA APEX</p>
-                  <p className="text-sm font-semibold text-aura-text">Owner Console</p>
+                  <p className="text-sm font-semibold text-aura-text">
+                    {user?.role === 'super_admin' ? 'Super Admin' : 'Owner Console'}
+                  </p>
                 </div>
               </motion.div>
             )}
