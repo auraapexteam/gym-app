@@ -73,8 +73,23 @@ export function useDashboardStats() {
     queryFn: async () => {
       try {
         const res = await dashboardApi.getStats();
-        return res.data.data;
-      } catch {
+        const raw = res.data.data;
+        if (raw && typeof raw === 'object' && ('revenue' in raw || 'members' in raw)) {
+          return {
+            monthlyRevenue: raw.revenue?.thisMonth ?? 0,
+            revenueGrowth: 0,
+            todayCheckins: raw.attendance?.todayCheckIns ?? 0,
+            activeMembers: raw.members?.active ?? 0,
+            memberGrowth: 0,
+            membershipRenewals: raw.subscriptions?.expiringSoon ?? 0,
+            pendingPayments: 0,
+            classFillRate: 0,
+            nutritionOrders: 0,
+          };
+        }
+        return raw;
+      } catch (err) {
+        console.warn('Dashboard stats API call failed, falling back to mock data:', err);
         return mockStats;
       }
     },

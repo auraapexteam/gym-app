@@ -145,6 +145,13 @@ describe('Authentication Security', () => {
   // ─── Login security ───────────────────────────────────────────────────────
 
   it('returns 401 for wrong password (never 500)', async () => {
+    addMockProfile({
+      id:     ACTIVE_USER_ID,
+      email:  'someone@test.com',
+      role:   Role.CUSTOMER,
+      gym_id: null,
+      status: AccountStatus.ACTIVE,
+    });
     vi.mocked(supabaseAnon.auth.signInWithPassword).mockResolvedValueOnce({
       data: { session: null, user: null } as any,
       error: { message: 'Invalid login credentials', status: 400 } as any,
@@ -198,8 +205,13 @@ describe('Authentication Security', () => {
   });
 
   it('accepts registration with a strong password (Password123!)', async () => {
-    // Mock: email not already taken
-    mockTable('profiles', []);
+    addMockProfile({
+      id:     ACTIVE_USER_ID,
+      email:  'new@test.com',
+      role:   Role.CUSTOMER,
+      gym_id: null,
+      status: AccountStatus.ACTIVE,
+    });
     vi.mocked(supabase.auth.admin.createUser).mockResolvedValueOnce({
       data: { user: { id: ACTIVE_USER_ID, email: 'new@test.com' } } as any,
       error: null,

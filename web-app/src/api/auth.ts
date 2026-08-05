@@ -69,14 +69,11 @@ export const authApi = {
         data: { ...res.data, data: toAuthResponse(res.data.data) },
       })),
 
-  verifyOtp: (payload: OTPPayload) =>
-    axiosInstance.post<ApiResponse<AuthResponse>>('/auth/verify-otp', payload),
-
   forgotPassword: (email: string) =>
     axiosInstance.post<ApiResponse<null>>('/auth/forgot-password', { email }),
 
-  resetPassword: (token: string, password: string) =>
-    axiosInstance.post<ApiResponse<null>>('/auth/reset-password', { token, password }),
+  resetPassword: (accessToken: string, password: string) =>
+    axiosInstance.post<ApiResponse<null>>('/auth/reset-password', { accessToken, password }),
 
   logout: () => axiosInstance.post<ApiResponse<null>>('/auth/logout'),
 
@@ -85,6 +82,4 @@ export const authApi = {
       ...res,
       data: { ...res.data, data: toUser(res.data.data) },
     })),
-
-  refreshToken: () => axiosInstance.post<ApiResponse<{ token: string }>>('/auth/refresh'),
 };
