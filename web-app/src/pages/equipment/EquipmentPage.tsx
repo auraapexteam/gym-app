@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardContent, Badge, Button, SearchInput, StatCard, Modal, Input, Select } from '@/components/ui';
-import { Wrench, Plus, AlertTriangle, CheckCircle, Calendar, Trash2 } from 'lucide-react';
-import { formatDate, safeNewDate } from '@/utils';
+import { Wrench, Plus, AlertTriangle, CheckCircle, Calendar, Trash2, Upload, Image as ImageIcon } from 'lucide-react';
+import { formatDate, safeNewDate, uploadFileToGallery } from '@/utils';
 import { motion } from 'framer-motion';
 import { useEquipment, useCreateEquipment, useDeleteEquipment } from '@/hooks/useEquipment';
+import { toast } from 'sonner';
 
 const conditionVariantMap: Record<string, 'success' | 'default' | 'warning' | 'danger' | 'muted'> = {
   excellent: 'success',
@@ -24,6 +25,8 @@ export default function EquipmentPage() {
   const [category, setCategory] = useState('Strength');
   const [condition, setCondition] = useState<'excellent' | 'good' | 'fair' | 'poor'>('excellent');
   const [status, setStatus] = useState<'operational' | 'maintenance' | 'retired'>('operational');
+  const [imageUrl, setImageUrl] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
 
   const { data: equipment = [], isLoading } = useEquipment();
   const createMutation = useCreateEquipment();
@@ -39,6 +42,26 @@ export default function EquipmentPage() {
     return true;
   });
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const url = await uploadFileToGallery({
+        file,
+        entityType: 'equipment',
+        caption: `Equipment Photo: ${name || 'Item'}`,
+      });
+      setImageUrl(url);
+      toast.success('Equipment photo uploaded to Supabase.');
+    } catch {
+      toast.error('Image upload failed.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleAddEquipment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
@@ -49,6 +72,7 @@ export default function EquipmentPage() {
         category,
         condition,
         status,
+        imageUrl: imageUrl.trim() || undefined,
       },
       {
         onSuccess: () => {
@@ -57,6 +81,7 @@ export default function EquipmentPage() {
           setCategory('Strength');
           setCondition('excellent');
           setStatus('operational');
+          setImageUrl('');
         },
       }
     );
@@ -122,6 +147,7 @@ export default function EquipmentPage() {
             </thead>
             <tbody className="divide-y divide-aura-border">
               {filtered.map((eq, i) => {
+                const img = (eq as any).imageUrl || (eq as any).image_url;
                 return (
                   <motion.tr
                     key={eq.id}
@@ -131,10 +157,14 @@ export default function EquipmentPage() {
                     className="hover:bg-white/3 transition-colors"
                   >
                     <td className="px-4 py-3.5 pl-6">
-                      <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-md bg-aura-primary/10 flex items-center justify-center border border-aura-primary/20">
-                          <Wrench className="h-4 w-4 text-aura-primary" />
-                        </div>
+                      <div className="flex items-center gap-3">
+                        {img ? (
+                          <img src={img} alt={eq.name} className="h-9 w-9 rounded-md object-cover border border-aura-border shrink-0" />
+                        ) : (
+                          <div className="h-9 w-9 rounded-md bg-aura-primary/10 flex items-center justify-center border border-aura-primary/20 shrink-0">
+                            <Wrench className="h-4 w-4 text-aura-primary" />
+                          </div>
+                        )}
                         <span className="font-medium text-aura-text">{eq.name}</span>
                       </div>
                     </td>
@@ -206,11 +236,31 @@ export default function EquipmentPage() {
               />
             </div>
           </div>
+
+          {/* Photo Upload Input */}
+          <div>
+            <label className="block text-xs font-medium text-aura-text mb-1">Equipment Photo (Upload to Supabase)</label>
+            <div className="flex items-center gap-3">
+              {imageUrl ? (
+                <img src={imageUrl} alt="Preview" className="h-12 w-12 rounded-md object-cover border border-aura-border" />
+              ) : (
+                <div className="h-12 w-12 rounded-md bg-aura-card border border-aura-border flex items-center justify-center text-aura-muted">
+                  <ImageIcon className="h-5 w-5" />
+                </div>
+              )}
+              <label className="flex-1 flex items-center justify-center gap-2 border border-dashed border-aura-border rounded-md p-2.5 cursor-pointer hover:border-aura-primary/50 transition-colors text-xs text-aura-muted">
+                <Upload className="h-4 w-4 text-aura-primary" />
+                <span>{isUploading ? 'Uploading to Supabase...' : imageUrl ? 'Change Photo' : 'Upload Equipment Photo'}</span>
+                <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+              </label>
+            </div>
+          </div>
+
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => setShowAddModal(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary">
+            <Button type="submit" variant="primary" disabled={isUploading}>
               Register Equipment
             </Button>
           </div>

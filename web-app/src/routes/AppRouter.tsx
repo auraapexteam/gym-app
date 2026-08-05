@@ -39,6 +39,7 @@ const AttendancePage = lazy(() => import('@/pages/attendance/AttendancePage'));
 const AnalyticsPage = lazy(() => import('@/pages/analytics/AnalyticsPage'));
 const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'));
 const StaffPage = lazy(() => import('@/pages/staff/StaffPage'));
+const GalleryPage = lazy(() => import('@/pages/gallery/GalleryPage'));
 const NotificationsPage = lazy(() => import('@/pages/notifications/NotificationsPage'));
 const ReportsPage = lazy(() => import('@/pages/reports/ReportsPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
@@ -94,6 +95,7 @@ export function AppRouter() {
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/payments" element={<PaymentsPage />} />
           <Route path="/equipment" element={<EquipmentPage />} />
+          <Route path="/gallery" element={<GalleryPage />} />
           <Route path="/attendance" element={<AttendancePage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/settings" element={<SettingsPage />} />

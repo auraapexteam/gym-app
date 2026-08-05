@@ -61,6 +61,7 @@ const navConfig: NavGroup[] = [
     group: 'Store & Equipment',
     items: [
       { label: 'Equipment', icon: Wrench, href: '/equipment', roles: ['gym_owner', 'staff'] },
+      { label: 'Gym Gallery', icon: Activity, href: '/gallery', roles: ['gym_owner', 'staff'] },
     ],
   },
   {

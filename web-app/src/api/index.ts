@@ -7,4 +7,6 @@ export { equipmentApi } from './equipment';
 export { paymentsApi } from './payments';
 export { attendanceApi } from './attendance';
 export { adminApi } from './admin';
+export { staffApi } from './staff';
+export { galleryApi } from './gallery';
 export { default as axiosInstance } from './axios';

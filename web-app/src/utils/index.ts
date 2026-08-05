@@ -2,6 +2,8 @@ import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { format, formatDistanceToNow, isAfter, isBefore, addDays } from 'date-fns';
 
+export { uploadFileToGallery } from './upload';
+
 // ============================================================
 // TAILWIND UTILITY
 // ============================================================
