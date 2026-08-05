@@ -78,11 +78,15 @@ export default function CheckInsPage() {
             <CardContent className="p-6 pt-2">
               <div className="rounded-lg bg-aura-bg border border-aura-border p-6 flex flex-col items-center justify-center text-center">
                 <motion.div
-                  animate={{ scale: [1, 1.03, 1] }}
+                  animate={{ scale: [1, 1.02, 1] }}
                   transition={{ duration: 3, repeat: Infinity }}
-                  className="bg-white p-4 rounded-xl shadow-aura-md border border-aura-primary/30 mb-4"
+                  className="bg-white p-3 rounded-xl shadow-aura-md border border-aura-primary/30 mb-4"
                 >
-                  <QrCode className="h-32 w-32 text-black" />
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(activeQr?.qrValue || 'AURA-APEX-ACTIVE-QR-TOKEN')}`}
+                    alt="Live Scannable Gym QR Code"
+                    className="h-44 w-44 rounded object-contain"
+                  />
                 </motion.div>
                 
                 <p className="text-xs text-aura-muted mb-1">Scan with Customer Mobile App to Check In</p>
