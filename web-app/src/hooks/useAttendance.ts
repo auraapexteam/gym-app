@@ -7,12 +7,8 @@ export function useAttendance(params?: { page?: number; limit?: number }) {
   return useQuery({
     queryKey: ['attendance', params],
     queryFn: async () => {
-      try {
-        const res = await attendanceApi.getAll(params);
-        return res.data.data || [];
-      } catch {
-        return [];
-      }
+      const res = await attendanceApi.getAll(params);
+      return res.data.data || [];
     },
   });
 }
@@ -21,12 +17,8 @@ export function useAttendanceStats() {
   return useQuery({
     queryKey: ['attendance-stats'],
     queryFn: async () => {
-      try {
-        const res = await attendanceApi.stats();
-        return res.data.data;
-      } catch {
-        return null;
-      }
+      const res = await attendanceApi.stats();
+      return res.data.data;
     },
   });
 }
