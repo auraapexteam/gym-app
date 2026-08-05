@@ -4,42 +4,6 @@ import { X, Bell, CheckCheck, AlertTriangle, CheckCircle, Info, XCircle } from '
 import { formatRelativeTime } from '@/utils';
 import type { Notification } from '@/types';
 
-// Mock notifications for demo
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    title: 'Membership Expiring',
-    message: 'John Doe\'s membership expires in 3 days.',
-    type: 'warning',
-    isRead: false,
-    createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '2',
-    title: 'Payment Received',
-    message: 'Payment of ₹2,999 received from Sarah Smith.',
-    type: 'success',
-    isRead: false,
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '3',
-    title: 'Equipment Alert',
-    message: 'Treadmill #3 requires maintenance service.',
-    type: 'error',
-    isRead: true,
-    createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '4',
-    title: 'New Member Joined',
-    message: 'Alex Johnson has registered as a new member.',
-    type: 'info',
-    isRead: true,
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-  },
-];
-
 const typeConfig = {
   success: { icon: CheckCircle, color: 'text-aura-success', bg: 'bg-aura-success/10' },
   warning: { icon: AlertTriangle, color: 'text-aura-warning', bg: 'bg-aura-warning/10' },
@@ -49,7 +13,8 @@ const typeConfig = {
 
 export function NotificationDrawer() {
   const { notificationDrawerOpen, setNotificationDrawerOpen } = useUIStore();
-  const unreadCount = mockNotifications.filter((n) => !n.isRead).length;
+  const notifications: Notification[] = [];
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
     <AnimatePresence>
@@ -98,7 +63,7 @@ export function NotificationDrawer() {
 
             {/* Notifications */}
             <div className="flex-1 overflow-y-auto divide-y divide-aura-border">
-              {mockNotifications.map((notification) => {
+              {notifications.map((notification) => {
                 const config = typeConfig[notification.type];
                 const IconComp = config.icon;
                 return (

@@ -79,11 +79,15 @@ export default function PlansPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const benefitList = benefits.split('\n').filter((b) => b.trim() !== '');
     const payload = {
-      name,
+      name: name.trim(),
+      description: name.trim(),
       price: Number(price),
+      durationDays: Number(duration),
       duration: Number(duration),
-      benefits: benefits.split('\n').filter((b) => b.trim() !== ''),
+      features: benefitList,
+      benefits: benefitList,
       type,
       isActive,
     };
@@ -136,9 +140,12 @@ export default function PlansPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {plans.map((plan, i) => {
-            const Icon = planIcons[plan.type] ?? Zap;
-            const color = planColors[plan.type] ?? 'text-aura-primary';
-            const isPopular = plan.type === 'monthly' || plan.type === 'yearly';
+            const planType = plan.type || 'monthly';
+            const Icon = planIcons[planType] || Check;
+            const color = planColors[planType] || 'text-aura-primary';
+            const isPopular = planType === 'monthly' || planType === 'premium';
+            const planDuration = (plan as any).durationDays ?? (plan as any).duration ?? 30;
+            const benefitsList = (plan as any).benefits ?? (plan as any).features ?? [];
 
             return (
               <motion.div
@@ -177,17 +184,17 @@ export default function PlansPage() {
                     </div>
 
                     <h3 className="font-semibold text-aura-text mb-1">{plan.name}</h3>
-                    <p className="text-xs text-aura-muted mb-3 capitalize">{plan.duration} day{plan.duration > 1 ? 's' : ''}</p>
+                    <p className="text-xs text-aura-muted mb-3 capitalize">{planDuration} day{planDuration > 1 ? 's' : ''}</p>
 
                     <p className="text-2xl font-bold text-aura-text mb-4">
                       {formatCurrency(plan.price)}
                       <span className="text-sm text-aura-muted font-normal">
-                        /{plan.duration === 1 ? 'day' : plan.duration <= 7 ? 'week' : 'period'}
+                        /{planDuration === 1 ? 'day' : planDuration <= 7 ? 'week' : 'period'}
                       </span>
                     </p>
 
                     <ul className="space-y-1.5 mb-4">
-                      {plan.benefits.map((b) => (
+                      {benefitsList.map((b: string) => (
                         <li key={b} className="flex items-start gap-2 text-xs text-aura-muted">
                           <Check className="h-3.5 w-3.5 text-aura-primary shrink-0 mt-0.5" />
                           {b}
@@ -199,7 +206,7 @@ export default function PlansPage() {
                       <Badge variant={plan.isActive ? 'success' : 'muted'}>
                         {plan.isActive ? 'Active' : 'Inactive'}
                       </Badge>
-                      <span className="text-xs text-aura-muted capitalize">{plan.type}</span>
+                      <span className="text-xs text-aura-muted capitalize">{planType}</span>
                     </div>
                   </CardContent>
                 </Card>

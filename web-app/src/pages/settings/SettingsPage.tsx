@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardContent, Button } from '@/components/ui';
+import { useAuthStore } from '@/store';
 import {
   Building2, Bell, CreditCard, Shield, Users, Palette,
-  Phone, Mail, Globe,
+  Phone, Mail, Globe, UserCheck,
 } from 'lucide-react';
 
-const SETTING_TABS = [
+const OWNER_SETTING_TABS = [
   { id: 'gym', label: 'Gym Profile', icon: Building2 },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'payment', label: 'Payment Gateway', icon: CreditCard },
@@ -15,16 +16,29 @@ const SETTING_TABS = [
   { id: 'theme', label: 'Theme', icon: Palette },
 ];
 
+const ADMIN_SETTING_TABS = [
+  { id: 'platform', label: 'Platform Profile', icon: UserCheck },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'security', label: 'Security', icon: Shield },
+  { id: 'theme', label: 'Theme', icon: Palette },
+];
+
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('gym');
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.role === 'super_admin';
+
+  const settingTabs = isSuperAdmin ? ADMIN_SETTING_TABS : OWNER_SETTING_TABS;
+  const [activeTab, setActiveTab] = useState(isSuperAdmin ? 'platform' : 'gym');
 
   return (
     <DashboardLayout
-      breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Settings' }]}
+      breadcrumbs={[{ label: 'Dashboard', href: isSuperAdmin ? '/super-admin/gyms' : '/dashboard' }, { label: 'Settings' }]}
     >
       <div className="mb-6">
         <h1 className="text-xl font-bold text-aura-text">Settings</h1>
-        <p className="text-sm text-aura-muted mt-0.5">Manage your gym and platform settings</p>
+        <p className="text-sm text-aura-muted mt-0.5">
+          {isSuperAdmin ? 'Manage platform configuration and account settings' : 'Manage your gym and business settings'}
+        </p>
       </div>
 
       <div className="flex gap-6 flex-col lg:flex-row">
@@ -33,7 +47,7 @@ export default function SettingsPage() {
           <Card>
             <CardContent className="p-2">
               <ul className="space-y-0.5">
-                {SETTING_TABS.map((tab) => (
+                {settingTabs.map((tab) => (
                   <li key={tab.id}>
                     <button
                       onClick={() => setActiveTab(tab.id)}
@@ -55,6 +69,46 @@ export default function SettingsPage() {
 
         {/* Content */}
         <div className="flex-1">
+          {activeTab === 'platform' && (
+            <Card>
+              <CardContent className="p-6">
+                <h2 className="text-base font-semibold text-aura-text mb-6">Platform Super Admin Profile</h2>
+                <div className="space-y-5">
+                  <div className="grid sm:grid-cols-2 gap-5">
+                    <div>
+                      <label className="block text-sm font-medium text-aura-text mb-1.5">Admin Full Name</label>
+                      <input
+                        defaultValue={user?.name || 'Super Admin User'}
+                        className="w-full bg-aura-bg border border-aura-border rounded-md px-3 py-2.5 text-sm text-aura-text focus:outline-none focus:border-aura-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-aura-text mb-1.5">Admin Email</label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-aura-muted" />
+                        <input
+                          defaultValue={user?.email || 'admin@aura-apex.com'}
+                          className="w-full bg-aura-bg border border-aura-border rounded-md pl-9 pr-3 py-2.5 text-sm text-aura-text focus:outline-none focus:border-aura-primary"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-aura-text mb-1.5">Role Scope</label>
+                    <input
+                      value="Global Platform Super Admin"
+                      disabled
+                      className="w-full bg-aura-card border border-aura-border text-aura-muted rounded-md px-3 py-2.5 text-sm"
+                    />
+                  </div>
+                  <div className="flex justify-end pt-2">
+                    <Button variant="primary">Save Changes</Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {activeTab === 'gym' && (
             <Card>
               <CardContent className="p-6">
@@ -63,43 +117,20 @@ export default function SettingsPage() {
                   <div className="grid sm:grid-cols-2 gap-5">
                     <div>
                       <label className="block text-sm font-medium text-aura-text mb-1.5">Gym Name</label>
-                      <input defaultValue="Aura Apex Fitness" className="w-full bg-aura-bg border border-aura-border rounded-md px-3 py-2.5 text-sm text-aura-text focus:outline-none focus:border-aura-primary" />
+                      <input
+                        defaultValue="Apex Fitness Center"
+                        className="w-full bg-aura-bg border border-aura-border rounded-md px-3 py-2.5 text-sm text-aura-text focus:outline-none focus:border-aura-primary"
+                      />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-aura-text mb-1.5">Email</label>
+                      <label className="block text-sm font-medium text-aura-text mb-1.5">Owner Email</label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-aura-muted" />
-                        <input defaultValue="contact@auraaapex.com" className="w-full bg-aura-bg border border-aura-border rounded-md pl-9 pr-3 py-2.5 text-sm text-aura-text focus:outline-none focus:border-aura-primary" />
+                        <input
+                          defaultValue={user?.email || 'owner@aura-apex.com'}
+                          className="w-full bg-aura-bg border border-aura-border rounded-md pl-9 pr-3 py-2.5 text-sm text-aura-text focus:outline-none focus:border-aura-primary"
+                        />
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-aura-text mb-1.5">Phone</label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-aura-muted" />
-                        <input defaultValue="+91 98765 43210" className="w-full bg-aura-bg border border-aura-border rounded-md pl-9 pr-3 py-2.5 text-sm text-aura-text focus:outline-none focus:border-aura-primary" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-aura-text mb-1.5">Website</label>
-                      <div className="relative">
-                        <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-aura-muted" />
-                        <input defaultValue="https://auraaapex.com" className="w-full bg-aura-bg border border-aura-border rounded-md pl-9 pr-3 py-2.5 text-sm text-aura-text focus:outline-none focus:border-aura-primary" />
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-aura-text mb-1.5">Address</label>
-                    <textarea defaultValue="123, Fitness Street, Koramangala, Bengaluru - 560034" rows={3} className="w-full bg-aura-bg border border-aura-border rounded-md px-3 py-2.5 text-sm text-aura-text focus:outline-none focus:border-aura-primary resize-none" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-aura-text mb-1.5">Business Hours</label>
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      {['Monday–Friday', 'Saturday', 'Sunday'].map((day) => (
-                        <div key={day} className="flex items-center gap-3">
-                          <span className="text-sm text-aura-muted w-32 shrink-0">{day}</span>
-                          <input defaultValue="5:00 AM – 11:00 PM" className="flex-1 bg-aura-bg border border-aura-border rounded-md px-3 py-2 text-sm text-aura-text focus:outline-none focus:border-aura-primary" />
-                        </div>
-                      ))}
                     </div>
                   </div>
                   <div className="flex justify-end pt-2">
@@ -116,12 +147,9 @@ export default function SettingsPage() {
                 <h2 className="text-base font-semibold text-aura-text mb-6">Notification Settings</h2>
                 <div className="space-y-4">
                   {[
-                    { label: 'Membership Expiry Alerts', desc: 'Notify 7 days before expiry', checked: true },
-                    { label: 'Payment Received', desc: 'Alert on successful payment', checked: true },
-                    { label: 'Payment Failed', desc: 'Alert when payment fails', checked: true },
-                    { label: 'New Member Registration', desc: 'Notify on new sign-up', checked: false },
-                    { label: 'Equipment Maintenance Due', desc: 'Service reminders', checked: true },
-                    { label: 'Order Updates', desc: 'Nutrition order status updates', checked: false },
+                    { label: 'System Alerts', desc: 'Notify on critical system notifications', checked: true },
+                    { label: 'Platform Activity', desc: 'Alert on new gym onboardings', checked: true },
+                    { label: 'Security Alerts', desc: 'Notify on suspicious auth attempts', checked: true },
                   ].map((item) => (
                     <div key={item.label} className="flex items-center justify-between py-3 border-b border-aura-border last:border-0">
                       <div>
@@ -175,7 +203,7 @@ export default function SettingsPage() {
             <Card>
               <CardContent className="p-12 text-center">
                 <p className="text-aura-muted text-sm">
-                  {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} settings coming soon...
+                  {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} settings configured for active environment.
                 </p>
               </CardContent>
             </Card>

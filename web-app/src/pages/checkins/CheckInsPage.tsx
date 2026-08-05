@@ -5,35 +5,36 @@ import { UserCheck, Clock, Users, TrendingUp, QrCode, LogIn, LogOut } from 'luci
 import { formatDateTime, formatRelativeTime } from '@/utils';
 import { motion } from 'framer-motion';
 
-// Mock data
-const mockCheckins = [
-  { id: '1', memberId: 'm1', memberName: 'Arjun Sharma', checkInTime: new Date(Date.now() - 15 * 60000).toISOString(), checkOutTime: undefined, date: new Date().toDateString() },
-  { id: '2', memberId: 'm2', memberName: 'Priya Patel', checkInTime: new Date(Date.now() - 45 * 60000).toISOString(), checkOutTime: new Date(Date.now() - 10 * 60000).toISOString(), date: new Date().toDateString() },
-  { id: '3', memberId: 'm3', memberName: 'Rahul Gupta', checkInTime: new Date(Date.now() - 90 * 60000).toISOString(), checkOutTime: undefined, date: new Date().toDateString() },
-  { id: '4', memberId: 'm4', memberName: 'Sneha Singh', checkInTime: new Date(Date.now() - 120 * 60000).toISOString(), checkOutTime: new Date(Date.now() - 30 * 60000).toISOString(), date: new Date().toDateString() },
-  { id: '5', memberId: 'm5', memberName: 'Vikram Reddy', checkInTime: new Date(Date.now() - 180 * 60000).toISOString(), checkOutTime: new Date(Date.now() - 60 * 60000).toISOString(), date: new Date().toDateString() },
-];
-
-const stats = [
-  { title: "Today's Check-ins", value: 147, icon: UserCheck, iconColor: 'text-aura-success' },
-  { title: 'Currently Inside', value: 34, icon: Users, iconColor: 'text-blue-400' },
-  { title: 'Peak Hour', value: '6 PM', icon: Clock, iconColor: 'text-aura-warning' },
-  { title: 'Avg. Stay', value: '1.4h', icon: TrendingUp, iconColor: 'text-aura-primary' },
-];
+import { useAttendance, useManualCheckIn } from '@/hooks/useAttendance';
+import { useMembers } from '@/hooks/useMembers';
+import { Select } from '@/components/ui';
 
 export default function CheckInsPage() {
   const [search, setSearch] = useState('');
-  const [memberIdInput, setMemberIdInput] = useState('');
+  const [selectedMemberId, setSelectedMemberId] = useState('');
+  const { data: membersRes } = useMembers({ page: 1, limit: 100 });
+  const membersList = membersRes?.data || [];
 
-  const filtered = mockCheckins.filter((c) =>
-    c.memberName.toLowerCase().includes(search.toLowerCase()),
-  );
+  const { data: attendanceData = [], isLoading } = useAttendance();
+  const manualCheckinMutation = useManualCheckIn();
+
+  const filtered = (attendanceData || []).filter((c: any) => {
+    const name = c.memberName || c.memberFullName || c.memberId || '';
+    return name.toLowerCase().includes(search.toLowerCase());
+  });
 
   const handleManualCheckin = () => {
-    if (!memberIdInput.trim()) return;
-    alert(`Manual check-in for member: ${memberIdInput}`);
-    setMemberIdInput('');
+    if (!selectedMemberId) return;
+    manualCheckinMutation.mutate({ memberId: selectedMemberId });
+    setSelectedMemberId('');
   };
+
+  const stats = [
+    { title: "Today's Check-ins", value: attendanceData.length, icon: UserCheck, iconColor: 'text-aura-success' },
+    { title: 'Currently Inside', value: attendanceData.filter((c: any) => !c.checkOutTime).length, icon: Users, iconColor: 'text-blue-400' },
+    { title: 'Peak Hour', value: '6 PM', icon: Clock, iconColor: 'text-aura-warning' },
+    { title: 'Avg. Stay', value: '1.2h', icon: TrendingUp, iconColor: 'text-aura-primary' },
+  ];
 
   return (
     <DashboardLayout
@@ -88,24 +89,24 @@ export default function CheckInsPage() {
             </CardHeader>
             <CardContent className="p-6 pt-2">
               <div className="space-y-3">
-                <SearchInput
-                  value={memberIdInput}
-                  onChange={setMemberIdInput}
-                  placeholder="Enter member ID or name..."
+                <label className="block text-xs font-medium text-aura-muted mb-1">Select Member to Check In</label>
+                <Select
+                  value={selectedMemberId}
+                  onChange={(e) => setSelectedMemberId(e.target.value)}
+                  placeholder={membersList.length ? "Choose a member..." : "No members registered yet"}
+                  options={membersList.map((m: any) => ({
+                    value: m.id,
+                    label: `${m.name || m.fullName || 'Member'} (${m.email || 'No Email'})`,
+                  }))}
                 />
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleManualCheckin}
-                    className="flex-1 flex items-center justify-center gap-2 bg-aura-success/10 text-aura-success border border-aura-success/20 rounded-md py-2 text-sm font-medium hover:bg-aura-success/20 transition-colors"
-                  >
-                    <LogIn className="h-4 w-4" />
-                    Check In
-                  </button>
-                  <button className="flex-1 flex items-center justify-center gap-2 bg-aura-danger/10 text-aura-danger border border-aura-danger/20 rounded-md py-2 text-sm font-medium hover:bg-aura-danger/20 transition-colors">
-                    <LogOut className="h-4 w-4" />
-                    Check Out
-                  </button>
-                </div>
+                <button
+                  onClick={handleManualCheckin}
+                  disabled={!selectedMemberId}
+                  className="w-full flex items-center justify-center gap-2 bg-aura-primary text-aura-bg border border-aura-primary rounded-md py-2.5 text-sm font-semibold hover:bg-aura-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <LogIn className="h-4 w-4" />
+                  Check In Selected Member
+                </button>
               </div>
             </CardContent>
           </Card>

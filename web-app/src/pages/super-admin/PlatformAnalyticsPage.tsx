@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { DashboardLayout } from '@/components/layouts';
-import { useSuperAdmin } from '@/hooks/useSuperAdmin';
+import { useAdminGyms } from '@/hooks/useAdmin';
 import { Card, CardContent, CardHeader, CardTitle, Select } from '@/components/ui';
 import { 
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, 
@@ -11,7 +11,7 @@ import { BarChart3, TrendingUp, Users, DollarSign, Activity } from 'lucide-react
 const COLORS = ['#22C55E', '#3B82F6', '#F97316', '#EF4444'];
 
 export default function PlatformAnalyticsPage() {
-  const { gyms } = useSuperAdmin();
+  const { data: gyms = [] } = useAdminGyms();
   const [period, setPeriod] = useState<'month' | 'quarter' | 'year'>('month');
 
   // Compute statistics

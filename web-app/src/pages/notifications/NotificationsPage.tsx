@@ -5,16 +5,6 @@ import { formatRelativeTime } from '@/utils';
 import type { Notification } from '@/types';
 import { useState } from 'react';
 
-const mockNotifications: Notification[] = [
-  { id: '1', title: 'Membership Expiring', message: "John Doe's membership expires in 3 days. Consider sending a renewal reminder.", type: 'warning', isRead: false, createdAt: new Date(Date.now() - 30 * 60000).toISOString() },
-  { id: '2', title: 'Payment Received', message: 'Payment of ₹2,999 received from Sarah Smith for Premium Monthly membership.', type: 'success', isRead: false, createdAt: new Date(Date.now() - 2 * 3600000).toISOString() },
-  { id: '3', title: 'Equipment Alert', message: 'Treadmill #3 requires maintenance service. Schedule a service immediately.', type: 'error', isRead: false, createdAt: new Date(Date.now() - 5 * 3600000).toISOString() },
-  { id: '4', title: 'New Member Joined', message: 'Alex Johnson has registered as a new member with Monthly plan.', type: 'info', isRead: true, createdAt: new Date(Date.now() - 24 * 3600000).toISOString() },
-  { id: '5', title: 'Payment Failed', message: 'Payment of ₹4,999 from Vikram Reddy has failed. Please follow up.', type: 'error', isRead: true, createdAt: new Date(Date.now() - 36 * 3600000).toISOString() },
-  { id: '6', title: 'Class Full', message: 'Zumba Dance class on Friday 10 AM is now full with 7 members on waiting list.', type: 'info', isRead: true, createdAt: new Date(Date.now() - 48 * 3600000).toISOString() },
-  { id: '7', title: '5 Memberships Expiring', message: '5 memberships are expiring in the next 7 days. Review and send reminders.', type: 'warning', isRead: true, createdAt: new Date(Date.now() - 72 * 3600000).toISOString() },
-];
-
 const typeConfig = {
   success: { icon: CheckCircle, color: 'text-aura-success', bg: 'bg-aura-success/10', badge: 'success' as const },
   warning: { icon: AlertTriangle, color: 'text-aura-warning', bg: 'bg-aura-warning/10', badge: 'warning' as const },
@@ -26,7 +16,7 @@ const FILTER_TABS = ['All', 'Unread', 'Success', 'Warning', 'Error'];
 
 export default function NotificationsPage() {
   const [filter, setFilter] = useState('All');
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const markAllRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));

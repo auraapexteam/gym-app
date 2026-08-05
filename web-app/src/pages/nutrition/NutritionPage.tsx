@@ -6,17 +6,6 @@ import { formatCurrency } from '@/utils';
 import type { Product } from '@/types';
 import { motion } from 'framer-motion';
 
-const mockProducts: Product[] = [
-  { id: '1', name: 'Whey Protein Gold', category: 'protein', price: 2499, stock: 45, discount: 10, description: '2.2 lbs, Chocolate flavor', gymId: 'g1' },
-  { id: '2', name: 'Creatine Monohydrate', category: 'creatine', price: 799, stock: 30, description: '250g unflavored', gymId: 'g1' },
-  { id: '3', name: 'Mass Gainer XXL', category: 'mass_gainer', price: 3299, stock: 12, discount: 15, description: '6.6 lbs, Vanilla', gymId: 'g1' },
-  { id: '4', name: 'Pre-Workout Blast', category: 'protein', price: 1299, stock: 8, description: '200g, Fruit Punch', gymId: 'g1' },
-  { id: '5', name: '7-Day Meal Plan', category: 'meal_plan', price: 1999, stock: 999, description: 'Balanced macros, customized', gymId: 'g1' },
-  { id: '6', name: 'Gym Gloves Pro', category: 'accessory', price: 599, stock: 25, description: 'Anti-slip, breathable', gymId: 'g1' },
-  { id: '7', name: 'BCAA Amino Energy', category: 'protein', price: 1599, stock: 5, discount: 20, description: '300g, Mixed Berry', gymId: 'g1' },
-  { id: '8', name: 'Protein Shaker', category: 'accessory', price: 299, stock: 40, description: '700ml BPA-free bottle', gymId: 'g1' },
-];
-
 const CATEGORIES = ['All', 'protein', 'creatine', 'mass_gainer', 'meal_plan', 'accessory'];
 
 const categoryLabels: Record<string, string> = {
@@ -27,22 +16,23 @@ const categoryLabels: Record<string, string> = {
   accessory: 'Accessories',
 };
 
-const stats = [
-  { title: 'Total Products', value: mockProducts.length, icon: Package, iconColor: 'text-aura-primary' },
-  { title: 'Orders Today', value: 42, icon: ShoppingBag, iconColor: 'text-aura-success' },
-  { title: 'Low Stock Items', value: mockProducts.filter((p) => p.stock < 10).length, icon: AlertTriangle, iconColor: 'text-aura-warning' },
-  { title: 'Monthly Revenue', value: 184500, isCurrency: true, icon: Star, iconColor: 'text-yellow-400' },
-];
-
 export default function NutritionPage() {
+  const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
 
-  const filtered = mockProducts.filter((p) => {
+  const filtered = products.filter((p) => {
     if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (category !== 'All' && p.category !== category) return false;
     return true;
   });
+
+  const stats = [
+    { title: 'Total Products', value: products.length, icon: Package, iconColor: 'text-aura-primary' },
+    { title: 'Orders Today', value: 0, icon: ShoppingBag, iconColor: 'text-aura-success' },
+    { title: 'Low Stock Items', value: products.filter((p) => p.stock < 10).length, icon: AlertTriangle, iconColor: 'text-aura-warning' },
+    { title: 'Monthly Revenue', value: 0, isCurrency: true, icon: Star, iconColor: 'text-yellow-400' },
+  ];
 
   return (
     <DashboardLayout

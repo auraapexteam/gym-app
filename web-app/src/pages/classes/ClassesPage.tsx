@@ -6,24 +6,16 @@ import type { GymClass } from '@/types';
 import { formatDate } from '@/utils';
 import { motion } from 'framer-motion';
 
-const mockClasses: GymClass[] = [
-  { id: '1', name: 'Morning HIIT', trainerId: 't1', trainerName: 'Raj Kumar', capacity: 20, enrolled: 18, waitingList: 3, schedule: '6:00 AM', duration: 45, date: new Date().toISOString(), gymId: 'g1' },
-  { id: '2', name: 'Power Yoga', trainerId: 't2', trainerName: 'Meera Singh', capacity: 15, enrolled: 12, waitingList: 0, schedule: '8:00 AM', duration: 60, date: new Date().toISOString(), gymId: 'g1' },
-  { id: '3', name: 'Zumba Dance', trainerId: 't4', trainerName: 'Kavya Nair', capacity: 25, enrolled: 25, waitingList: 7, schedule: '10:00 AM', duration: 50, date: new Date().toISOString(), gymId: 'g1' },
-  { id: '4', name: 'Strength & Conditioning', trainerId: 't3', trainerName: 'Arjun Das', capacity: 12, enrolled: 8, waitingList: 0, schedule: '5:00 PM', duration: 75, date: new Date().toISOString(), gymId: 'g1' },
-  { id: '5', name: 'CrossFit WOD', trainerId: 't1', trainerName: 'Raj Kumar', capacity: 16, enrolled: 14, waitingList: 2, schedule: '6:00 PM', duration: 60, date: new Date().toISOString(), gymId: 'g1' },
-  { id: '6', name: 'Boxing Basics', trainerId: 't5', trainerName: 'Vikram Patel', capacity: 10, enrolled: 7, waitingList: 0, schedule: '7:00 PM', duration: 60, date: new Date().toISOString(), gymId: 'g1' },
-];
-
-const stats = [
-  { title: "Today's Classes", value: mockClasses.length, icon: Calendar, iconColor: 'text-aura-primary' },
-  { title: 'Total Enrolled', value: mockClasses.reduce((a, c) => a + c.enrolled, 0), icon: Users, iconColor: 'text-blue-400' },
-  { title: 'Avg Fill Rate', value: `${Math.round(mockClasses.reduce((a, c) => a + (c.enrolled / c.capacity) * 100, 0) / mockClasses.length)}%`, icon: Dumbbell, iconColor: 'text-aura-success' },
-  { title: 'Waiting List', value: mockClasses.reduce((a, c) => a + c.waitingList, 0), icon: Clock, iconColor: 'text-aura-warning' },
-];
-
 export default function ClassesPage() {
+  const [classes, setClasses] = useState<GymClass[]>([]);
   const [view, setView] = useState<'grid' | 'calendar'>('grid');
+
+  const stats = [
+    { title: "Today's Classes", value: classes.length, icon: Calendar, iconColor: 'text-aura-primary' },
+    { title: 'Total Enrolled', value: classes.reduce((a, c) => a + c.enrolled, 0), icon: Users, iconColor: 'text-blue-400' },
+    { title: 'Avg Fill Rate', value: `${classes.length ? Math.round(classes.reduce((a, c) => a + (c.enrolled / c.capacity) * 100, 0) / classes.length) : 0}%`, icon: Dumbbell, iconColor: 'text-aura-success' },
+    { title: 'Waiting List', value: classes.reduce((a, c) => a + c.waitingList, 0), icon: Clock, iconColor: 'text-aura-warning' },
+  ];
 
   return (
     <DashboardLayout
@@ -59,7 +51,7 @@ export default function ClassesPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {mockClasses.map((cls, i) => {
+        {classes.map((cls, i) => {
           const fillRate = Math.round((cls.enrolled / cls.capacity) * 100);
           const isFull = cls.enrolled >= cls.capacity;
           return (

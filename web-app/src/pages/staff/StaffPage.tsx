@@ -6,14 +6,6 @@ import type { Staff } from '@/types';
 import { formatDate } from '@/utils';
 import { motion } from 'framer-motion';
 
-const mockStaff: Staff[] = [
-  { id: '1', name: 'Divya Sharma', email: 'divya.s@gym.com', phone: '9876543210', role: 'receptionist', shift: 'Morning (6 AM – 2 PM)', salary: 28000, attendance: 96, gymId: 'g1', joinedAt: '2023-01-15' },
-  { id: '2', name: 'Amit Kumar', email: 'amit@gym.com', phone: '9765432109', role: 'manager', shift: 'Day (9 AM – 6 PM)', salary: 55000, attendance: 98, gymId: 'g1', joinedAt: '2022-07-01' },
-  { id: '3', name: 'Pooja Reddy', email: 'pooja@gym.com', phone: '9654321098', role: 'cashier', shift: 'Evening (2 PM – 10 PM)', salary: 26000, attendance: 94, gymId: 'g1', joinedAt: '2023-04-10' },
-  { id: '4', name: 'Suresh Nair', email: 'suresh@gym.com', phone: '9543210987', role: 'support', shift: 'Morning (6 AM – 2 PM)', salary: 24000, attendance: 92, gymId: 'g1', joinedAt: '2023-06-20' },
-  { id: '5', name: 'Preethi Menon', email: 'preethi@gym.com', phone: '9432109876', role: 'receptionist', shift: 'Evening (2 PM – 10 PM)', salary: 28000, attendance: 95, gymId: 'g1', joinedAt: '2023-09-01' },
-];
-
 const roleVariantMap: Record<string, 'success' | 'info' | 'warning' | 'default' | 'muted'> = {
   manager: 'success',
   receptionist: 'info',
@@ -21,20 +13,21 @@ const roleVariantMap: Record<string, 'success' | 'info' | 'warning' | 'default' 
   support: 'muted',
 };
 
-const stats = [
-  { title: 'Total Staff', value: mockStaff.length, icon: Users, iconColor: 'text-aura-primary' },
-  { title: 'On Duty', value: 3, icon: UserCog, iconColor: 'text-aura-success' },
-  { title: 'Morning Shift', value: mockStaff.filter((s) => s.shift.includes('Morning')).length, icon: Clock, iconColor: 'text-aura-warning' },
-  { title: 'Avg Attendance', value: `${Math.round(mockStaff.reduce((a, s) => a + s.attendance, 0) / mockStaff.length)}%`, icon: Users, iconColor: 'text-aura-info' },
-];
-
 export default function StaffPage() {
+  const [staffList, setStaffList] = useState<Staff[]>([]);
   const [search, setSearch] = useState('');
 
-  const filtered = mockStaff.filter((s) =>
+  const filtered = staffList.filter((s) =>
     s.name.toLowerCase().includes(search.toLowerCase()) ||
     s.role.toLowerCase().includes(search.toLowerCase()),
   );
+
+  const stats = [
+    { title: 'Total Staff', value: staffList.length, icon: Users, iconColor: 'text-aura-primary' },
+    { title: 'On Duty', value: 0, icon: UserCog, iconColor: 'text-aura-success' },
+    { title: 'Morning Shift', value: staffList.filter((s) => s.shift.includes('Morning')).length, icon: Clock, iconColor: 'text-aura-warning' },
+    { title: 'Avg Attendance', value: `${staffList.length ? Math.round(staffList.reduce((a, s) => a + s.attendance, 0) / staffList.length) : 0}%`, icon: Users, iconColor: 'text-aura-info' },
+  ];
 
   return (
     <DashboardLayout
@@ -43,7 +36,7 @@ export default function StaffPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-aura-text">Staff</h1>
-          <p className="text-sm text-aura-muted mt-0.5">{mockStaff.length} staff members</p>
+          <p className="text-sm text-aura-muted mt-0.5">{staffList.length} staff members</p>
         </div>
         <div className="flex items-center gap-2">
           <SearchInput value={search} onChange={setSearch} placeholder="Search staff..." className="w-56" />

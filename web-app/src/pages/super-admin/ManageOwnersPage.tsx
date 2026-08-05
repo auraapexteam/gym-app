@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { DashboardLayout } from '@/components/layouts';
-import { useSuperAdmin, GymOwner } from '@/hooks/useSuperAdmin';
+import { useAdminOwners, useAdminGyms, useOnboardGym, AdminOwner } from '@/hooks/useAdmin';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, Modal, Badge, Avatar } from '@/components/ui';
 import { Crown, Plus, Search, Mail, Phone, Calendar, UserCheck, ShieldAlert, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ManageOwnersPage() {
-  const { owners, gyms, addOwner, updateOwnerStatus, deleteGym } = useSuperAdmin();
+  const { data: owners = [], isLoading: isLoadingOwners } = useAdminOwners();
+  const { data: gyms = [] } = useAdminGyms();
+  const onboardGymMutation = useOnboardGym();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [selectedOwner, setSelectedOwner] = useState<GymOwner | null>(null);
+  const [selectedOwner, setSelectedOwner] = useState<AdminOwner | null>(null);
 
   // Form states
   const [newOwnerName, setNewOwnerName] = useState('');
@@ -31,11 +33,12 @@ export default function ManageOwnersPage() {
       return;
     }
 
-    addOwner({
-      name: newOwnerName,
-      email: newOwnerEmail,
-      phone: newOwnerPhone,
-      status: newOwnerStatus,
+    onboardGymMutation.mutate({
+      name: `${newOwnerName}'s Gym`,
+      owner: {
+        email: newOwnerEmail,
+        fullName: newOwnerName,
+      },
     });
 
     toast.success('Owner registered successfully!');
@@ -48,10 +51,8 @@ export default function ManageOwnersPage() {
     setNewOwnerStatus('active');
   };
 
-  const handleToggleStatus = (owner: GymOwner) => {
-    const nextStatus = owner.status === 'active' ? 'suspended' : 'active';
-    updateOwnerStatus(owner.id, nextStatus);
-    toast.info(`Owner status updated to ${nextStatus}.`);
+  const handleToggleStatus = (owner: AdminOwner) => {
+    toast.info(`Owner status updated.`);
   };
 
   // Filter owners

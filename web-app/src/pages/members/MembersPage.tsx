@@ -173,8 +173,13 @@ export default function MembersPage({ defaultShowAdd = false }: MembersPageProps
                       ))}
                     </tr>
                   ))
-                : data?.data.map((member) => {
-                    const expiring = isExpiringSoon(member.renewDate);
+                : (data?.data || []).map((member) => {
+                    const name = member.name || (member as any).fullName || 'Member';
+                    const email = member.email || '';
+                    const renewDate = member.renewDate || (member as any).createdAt || (member as any).created_at || new Date().toISOString();
+                    const membershipPlan = member.membershipPlan || (member as any).planName || 'Standard Plan';
+                    const membershipStatus = member.membershipStatus || (member as any).status || 'active';
+                    const expiring = isExpiringSoon(renewDate);
                     return (
                       <motion.tr
                         key={member.id}
@@ -185,22 +190,22 @@ export default function MembersPage({ defaultShowAdd = false }: MembersPageProps
                         {/* Member */}
                         <td className="px-4 py-3 pl-6">
                           <div className="flex items-center gap-3">
-                            <Avatar name={member.name} src={member.avatar} size="sm" />
+                            <Avatar name={name} src={member.avatar} size="sm" />
                             <div>
-                              <p className="font-medium text-aura-text">{member.name}</p>
-                              <p className="text-xs text-aura-muted">{member.email}</p>
+                              <p className="font-medium text-aura-text">{name}</p>
+                              <p className="text-xs text-aura-muted">{email}</p>
                             </div>
                           </div>
                         </td>
                         {/* Plan */}
                         <td className="px-4 py-3">
-                          <p className="text-aura-text">{member.membershipPlan}</p>
-                          <p className="text-xs text-aura-muted">{member.memberId}</p>
+                          <p className="text-aura-text">{membershipPlan}</p>
+                          <p className="text-xs text-aura-muted">{member.memberId || member.id.slice(0, 8)}</p>
                         </td>
                         {/* Status */}
                         <td className="px-4 py-3">
-                          <Badge variant={statusVariantMap[member.membershipStatus] ?? 'muted'} className="capitalize">
-                            {member.membershipStatus}
+                          <Badge variant={statusVariantMap[membershipStatus] ?? 'muted'} className="capitalize">
+                            {membershipStatus}
                           </Badge>
                         </td>
                         {/* Renew Date */}
@@ -208,35 +213,36 @@ export default function MembersPage({ defaultShowAdd = false }: MembersPageProps
                           <div className="flex items-center gap-1.5">
                             {expiring && <AlertTriangle className="h-3.5 w-3.5 text-aura-warning shrink-0" />}
                             <span className={expiring ? 'text-aura-warning' : 'text-aura-text'}>
-                              {formatDate(member.renewDate)}
+                              {formatDate(renewDate)}
                             </span>
                           </div>
                         </td>
                         {/* Attendance */}
                         <td className="px-4 py-3">
                           <div>
-                            <span className="text-aura-text font-medium">{member.attendance}%</span>
+                            <span className="text-aura-text font-medium">{member.attendance || 0}%</span>
                             <div className="w-16 h-1.5 bg-aura-bg rounded-full mt-1">
                               <div
-                                className="h-full rounded-full bg-aura-primary"
-                                style={{ width: `${member.attendance}%` }}
+                                className="h-full bg-aura-primary rounded-full"
+                                style={{ width: `${Math.min(100, member.attendance || 0)}%` }}
                               />
                             </div>
                           </div>
                         </td>
                         {/* Trainer */}
                         <td className="px-4 py-3 text-aura-muted">
-                          {member.trainerName ?? '—'}
+                          {(member as any).assignedTrainer || (member as any).trainerName || 'Unassigned'}
                         </td>
                         {/* Actions */}
                         <td className="px-4 py-3">
-                          <div className="relative">
+                          <div className="relative flex justify-end">
                             <button
                               onClick={() => setOpenMenu(openMenu === member.id ? null : member.id)}
-                              className="p-1.5 rounded-md text-aura-muted hover:text-aura-text hover:bg-white/5 transition-colors"
+                              className="p-1 text-aura-muted hover:text-aura-text rounded-md hover:bg-white/5 transition-colors"
                             >
                               <MoreHorizontal className="h-4 w-4" />
                             </button>
+
                             {openMenu === member.id && (
                               <div className="absolute right-0 z-10 mt-1 w-40 bg-aura-card border border-aura-border rounded-lg shadow-aura-lg overflow-hidden">
                                 {[
@@ -263,7 +269,7 @@ export default function MembersPage({ defaultShowAdd = false }: MembersPageProps
                   })}
             </tbody>
           </table>
-          {!isLoading && !data?.data.length && (
+          {!isLoading && (!data?.data || data.data.length === 0) && (
             <EmptyListState entity="members" onAdd={() => setShowAddModal(true)} />
           )}
         </div>

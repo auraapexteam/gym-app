@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { DashboardLayout } from '@/components/layouts';
-import { useSuperAdmin, GymWithOwner } from '@/hooks/useSuperAdmin';
+import { useAdminGyms, useAdminOwners, useOnboardGym, useUpdateGymStatus, AdminGym } from '@/hooks/useAdmin';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, Modal, Badge } from '@/components/ui';
 import { 
   Building2, Plus, Search, MapPin, Users, DollarSign, 
@@ -11,22 +11,21 @@ import {
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'sonner';
 
-// Chart mock data
 const chartData = [
-  { month: 'Jan', active: 3, revenue: 580 },
-  { month: 'Feb', active: 4, revenue: 820 },
-  { month: 'Mar', active: 5, revenue: 1165 },
-  { month: 'Apr', active: 5, revenue: 1165 },
-  { month: 'May', active: 6, revenue: 1260 },
-  { month: 'Jun', active: 7, revenue: 1355 },
-  { month: 'Jul', active: 8, revenue: 1650 },
+  { month: 'Jan', active: 1, revenue: 580 },
+  { month: 'Feb', active: 1, revenue: 820 },
+  { month: 'Mar', active: 1, revenue: 1165 },
 ];
 
 export default function ManageGymsPage() {
-  const { gyms, owners, addGym, updateGymStatus, deleteGym } = useSuperAdmin();
+  const { data: gyms = [], isLoading: isLoadingGyms } = useAdminGyms();
+  const { data: owners = [] } = useAdminOwners();
+  const onboardGymMutation = useOnboardGym();
+  const updateStatusMutation = useUpdateGymStatus();
+
   const [filter, setFilter] = useState<'all' | 'active' | 'expired' | 'suspended' | 'pending'>('all');
   const [search, setSearch] = useState('');
-  const [selectedGym, setSelectedGym] = useState<GymWithOwner | null>(null);
+  const [selectedGym, setSelectedGym] = useState<AdminGym | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Map refs
@@ -39,10 +38,12 @@ export default function ManageGymsPage() {
   const [newGymAddress, setNewGymAddress] = useState('');
   const [newGymPhone, setNewGymPhone] = useState('');
   const [newGymEmail, setNewGymEmail] = useState('');
-  const [newGymOwnerId, setNewGymOwnerId] = useState('');
+  const [ownerFullName, setOwnerFullName] = useState('');
+  const [ownerEmail, setOwnerEmail] = useState('');
+  const [ownerPassword, setOwnerPassword] = useState('Password123!');
   const [newGymLat, setNewGymLat] = useState('12.9716');
   const [newGymLng, setNewGymLng] = useState('77.5946');
-  const [newGymStatus, setNewGymStatus] = useState<GymWithOwner['status']>('active');
+  const [newGymStatus, setNewGymStatus] = useState<AdminGym['status']>('active');
 
   // Initialize Map
   useEffect(() => {
@@ -142,31 +143,23 @@ export default function ManageGymsPage() {
 
   const handleAddGym = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newGymName || !newGymAddress || !newGymOwnerId) {
-      toast.error('Please fill in all required fields.');
+    if (!newGymName || !newGymAddress || !ownerFullName || !ownerEmail) {
+      toast.error('Please fill in Gym Name, Address, Owner Name, and Owner Email.');
       return;
     }
 
-    const selectedOwner = owners.find(o => o.id === newGymOwnerId);
-    if (!selectedOwner) return;
-
-    addGym({
-      name: newGymName,
-      address: newGymAddress,
-      phone: newGymPhone,
-      email: newGymEmail,
-      ownerId: newGymOwnerId,
-      ownerName: selectedOwner.name,
-      totalMembers: 0,
-      activeMembers: 0,
-      monthlyRevenue: 0,
-      isActive: newGymStatus === 'active',
-      lat: parseFloat(newGymLat) || 12.9716,
-      lng: parseFloat(newGymLng) || 77.5946,
-      status: newGymStatus,
+    onboardGymMutation.mutate({
+      name: newGymName.trim(),
+      address: newGymAddress.trim(),
+      phone: newGymPhone.trim() || undefined,
+      email: newGymEmail.trim() || undefined,
+      owner: {
+        fullName: ownerFullName.trim(),
+        email: ownerEmail.trim(),
+        password: ownerPassword || 'Password123!',
+      },
     });
 
-    toast.success('Gym added successfully!');
     setIsAddModalOpen(false);
 
     // Reset Form
@@ -174,7 +167,9 @@ export default function ManageGymsPage() {
     setNewGymAddress('');
     setNewGymPhone('');
     setNewGymEmail('');
-    setNewGymOwnerId('');
+    setOwnerFullName('');
+    setOwnerEmail('');
+    setOwnerPassword('Password123!');
     setNewGymLat('12.9716');
     setNewGymLng('77.5946');
     setNewGymStatus('active');
@@ -359,9 +354,8 @@ export default function ManageGymsPage() {
                       variant="primary" 
                       size="sm"
                       onClick={() => {
-                        updateGymStatus(selectedGym.id, 'active');
-                        setSelectedGym(prev => prev ? { ...prev, status: 'active', isActive: true } : null);
-                        toast.success('Subscription activated successfully.');
+                        updateStatusMutation.mutate({ id: selectedGym.id, status: 'active' });
+                        setSelectedGym(prev => prev ? { ...prev, status: 'active' } : null);
                       }}
                       className="text-xs h-7 py-0 px-2.5"
                     >
@@ -373,9 +367,8 @@ export default function ManageGymsPage() {
                       variant="outline" 
                       size="sm"
                       onClick={() => {
-                        updateGymStatus(selectedGym.id, 'suspended');
-                        setSelectedGym(prev => prev ? { ...prev, status: 'suspended', isActive: false } : null);
-                        toast.warning('Gym subscription suspended.');
+                        updateStatusMutation.mutate({ id: selectedGym.id, status: 'suspended' });
+                        setSelectedGym(prev => prev ? { ...prev, status: 'suspended' } : null);
                       }}
                       className="text-xs h-7 py-0 px-2.5 border-aura-warning/30 text-aura-warning hover:bg-aura-warning/10"
                     >
@@ -386,10 +379,9 @@ export default function ManageGymsPage() {
                     variant="danger" 
                     size="sm"
                     onClick={() => {
-                      if (confirm(`Are you sure you want to remove ${selectedGym.name}?`)) {
-                        deleteGym(selectedGym.id);
+                      if (confirm(`Are you sure you want to suspend ${selectedGym.name}?`)) {
+                        updateStatusMutation.mutate({ id: selectedGym.id, status: 'suspended' });
                         setSelectedGym(null);
-                        toast.error('Gym removed successfully.');
                       }
                     }}
                     className="text-xs h-7 py-0 px-2.5"
@@ -545,18 +537,45 @@ export default function ManageGymsPage() {
               />
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-aura-text mb-1">Owner *</label>
-              <Select
+          <div className="border-t border-aura-border pt-3 mt-3">
+            <h4 className="text-xs font-semibold text-aura-primary mb-3">Owner Account Details</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-aura-text mb-1">Owner Full Name *</label>
+                <Input
+                  type="text"
+                  required
+                  placeholder="e.g. Jack Miller"
+                  value={ownerFullName}
+                  onChange={(e) => setOwnerFullName(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-aura-text mb-1">Owner Email *</label>
+                <Input
+                  type="email"
+                  required
+                  placeholder="e.g. owner@ironparadise.com"
+                  value={ownerEmail}
+                  onChange={(e) => setOwnerEmail(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+            </div>
+            <div className="mt-3">
+              <label className="block text-xs font-medium text-aura-text mb-1">Owner Password *</label>
+              <Input
+                type="text"
                 required
-                value={newGymOwnerId}
-                onChange={(e) => setNewGymOwnerId(e.target.value)}
-                className="text-xs"
-                placeholder="Select Owner"
-                options={owners.map(owner => ({ value: owner.id, label: owner.name }))}
+                placeholder="Password123!"
+                value={ownerPassword}
+                onChange={(e) => setOwnerPassword(e.target.value)}
+                className="text-xs font-mono"
               />
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-aura-text mb-1">Latitude *</label>
               <Input

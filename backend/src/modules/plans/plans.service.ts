@@ -46,14 +46,21 @@ export class PlanService {
     return row;
   }
 
-  static async create(gymId: string, input: CreatePlanInput): Promise<PlanDto> {
+  static async create(gymId: string, input: any): Promise<PlanDto> {
+    const durationDays = Number(input.durationDays ?? input.duration ?? 30);
+    const features = Array.isArray(input.features)
+      ? input.features
+      : Array.isArray(input.benefits)
+        ? input.benefits
+        : [];
+
     const row = await planRepository.create({
       gym_id: gymId,
       name: input.name,
       description: input.description ?? null,
-      price: input.price,
-      duration_days: input.durationDays,
-      features: input.features ?? [],
+      price: Number(input.price),
+      duration_days: durationDays,
+      features,
       is_active: input.isActive ?? true,
     });
     return toPlanDto(row);

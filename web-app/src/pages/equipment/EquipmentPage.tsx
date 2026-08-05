@@ -1,22 +1,10 @@
 import { useState } from 'react';
 import { DashboardLayout } from '@/components/layouts';
-import { Card, CardContent, Badge, Button, SearchInput, StatCard } from '@/components/ui';
-import { Wrench, Plus, AlertTriangle, CheckCircle, Calendar } from 'lucide-react';
+import { Card, CardContent, Badge, Button, SearchInput, StatCard, Modal, Input, Select } from '@/components/ui';
+import { Wrench, Plus, AlertTriangle, CheckCircle, Calendar, Trash2 } from 'lucide-react';
 import { formatDate, safeNewDate } from '@/utils';
-import type { Equipment } from '@/types';
-import { EQUIPMENT_CONDITION_COLORS } from '@/constants';
 import { motion } from 'framer-motion';
-
-const mockEquipment: Equipment[] = [
-  { id: '1', name: 'Treadmill #1', category: 'Cardio', condition: 'excellent', purchaseDate: '2023-01-15', warrantyExpiry: '2026-01-15', nextService: new Date(Date.now() + 30 * 24 * 3600000).toISOString(), usageHours: 1240, gymId: 'g1', serviceHistory: [] },
-  { id: '2', name: 'Treadmill #2', category: 'Cardio', condition: 'good', purchaseDate: '2022-06-01', warrantyExpiry: '2025-06-01', nextService: new Date(Date.now() + 15 * 24 * 3600000).toISOString(), usageHours: 2180, gymId: 'g1', serviceHistory: [] },
-  { id: '3', name: 'Treadmill #3', category: 'Cardio', condition: 'maintenance', purchaseDate: '2021-11-20', warrantyExpiry: '2024-11-20', nextService: new Date(Date.now() - 2 * 24 * 3600000).toISOString(), usageHours: 3450, gymId: 'g1', serviceHistory: [] },
-  { id: '4', name: 'Elliptical #1', category: 'Cardio', condition: 'good', purchaseDate: '2023-03-10', warrantyExpiry: '2026-03-10', nextService: new Date(Date.now() + 45 * 24 * 3600000).toISOString(), usageHours: 890, gymId: 'g1', serviceHistory: [] },
-  { id: '5', name: 'Bench Press Station', category: 'Strength', condition: 'excellent', purchaseDate: '2023-07-01', warrantyExpiry: '2026-07-01', nextService: new Date(Date.now() + 60 * 24 * 3600000).toISOString(), usageHours: 540, gymId: 'g1', serviceHistory: [] },
-  { id: '6', name: 'Cable Machine', category: 'Strength', condition: 'fair', purchaseDate: '2021-05-15', warrantyExpiry: '2024-05-15', nextService: new Date(Date.now() + 5 * 24 * 3600000).toISOString(), usageHours: 4200, gymId: 'g1', serviceHistory: [] },
-  { id: '7', name: 'Rowing Machine', category: 'Cardio', condition: 'good', purchaseDate: '2022-09-01', warrantyExpiry: '2025-09-01', nextService: new Date(Date.now() + 20 * 24 * 3600000).toISOString(), usageHours: 1680, gymId: 'g1', serviceHistory: [] },
-  { id: '8', name: 'Power Rack', category: 'Strength', condition: 'excellent', purchaseDate: '2023-02-20', warrantyExpiry: '2028-02-20', nextService: new Date(Date.now() + 90 * 24 * 3600000).toISOString(), usageHours: 320, gymId: 'g1', serviceHistory: [] },
-];
+import { useEquipment, useCreateEquipment, useDeleteEquipment } from '@/hooks/useEquipment';
 
 const conditionVariantMap: Record<string, 'success' | 'default' | 'warning' | 'danger' | 'muted'> = {
   excellent: 'success',
@@ -26,26 +14,59 @@ const conditionVariantMap: Record<string, 'success' | 'default' | 'warning' | 'd
   maintenance: 'muted',
 };
 
-import { useEquipment } from '@/hooks/useEquipment';
-
 export default function EquipmentPage() {
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('All');
-  const { data: equipment = [], isLoading } = useEquipment();
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [showAddModal, setShowAddModal] = useState(false);
 
-  const categories = ['All', ...Array.from(new Set(equipment.map((e) => e.category)))];
+  // Form states
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('Strength');
+  const [condition, setCondition] = useState<'excellent' | 'good' | 'fair' | 'poor'>('excellent');
+  const [status, setStatus] = useState<'operational' | 'maintenance' | 'retired'>('operational');
+
+  const { data: equipment = [], isLoading } = useEquipment();
+  const createMutation = useCreateEquipment();
+  const deleteMutation = useDeleteEquipment();
+
+  const categories = ['All', ...Array.from(new Set((equipment || []).map((e) => e.category || 'General')))];
   
-  const filtered = equipment.filter((e) => {
-    if (search && !e.name.toLowerCase().includes(search.toLowerCase())) return false;
-    if (category !== 'All' && e.category !== category) return false;
+  const filtered = (equipment || []).filter((e) => {
+    const eqName = e.name || 'Equipment';
+    const eqCat = e.category || 'General';
+    if (search && !eqName.toLowerCase().includes(search.toLowerCase())) return false;
+    if (categoryFilter !== 'All' && eqCat !== categoryFilter) return false;
     return true;
   });
 
+  const handleAddEquipment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+
+    createMutation.mutate(
+      {
+        name: name.trim(),
+        category,
+        condition,
+        status,
+      },
+      {
+        onSuccess: () => {
+          setShowAddModal(false);
+          setName('');
+          setCategory('Strength');
+          setCondition('excellent');
+          setStatus('operational');
+        },
+      }
+    );
+  };
+
   const stats = [
-    { title: 'Total Equipment', value: equipment.length, icon: Wrench, iconColor: 'text-aura-primary' },
-    { title: 'Needs Service', value: equipment.filter((e) => e.condition === 'maintenance').length, icon: AlertTriangle, iconColor: 'text-aura-danger' },
-    { title: 'Service Due Soon', value: equipment.filter((e) => { const days = (safeNewDate(e.nextService).getTime() - Date.now()) / (1000 * 3600 * 24); return days <= 14 && days >= 0; }).length, icon: Calendar, iconColor: 'text-aura-warning' },
-    { title: 'Excellent Condition', value: equipment.filter((e) => e.condition === 'excellent').length, icon: CheckCircle, iconColor: 'text-aura-success' },
+    { title: 'Total Equipment', value: (equipment || []).length, icon: Wrench, iconColor: 'text-aura-primary' },
+    { title: 'Needs Service', value: (equipment || []).filter((e) => e.condition === 'maintenance').length, icon: AlertTriangle, iconColor: 'text-aura-danger' },
+    { title: 'Service Due Soon', value: (equipment || []).filter((e) => { const days = (safeNewDate(e.nextService || new Date()).getTime() - Date.now()) / (1000 * 3600 * 24); return days <= 14 && days >= 0; }).length, icon: Calendar, iconColor: 'text-aura-warning' },
+    { title: 'Excellent Condition', value: (equipment || []).filter((e) => e.condition === 'excellent').length, icon: CheckCircle, iconColor: 'text-aura-success' },
   ];
 
   return (
@@ -55,9 +76,9 @@ export default function EquipmentPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-aura-text">Equipment</h1>
-          <p className="text-sm text-aura-muted mt-0.5">Track gym equipment and maintenance</p>
+          <p className="text-sm text-aura-muted mt-0.5">Track gym machinery and maintenance logs</p>
         </div>
-        <Button variant="primary">
+        <Button variant="primary" onClick={() => setShowAddModal(true)} className="gap-2">
           <Plus className="h-4 w-4" /> Add Equipment
         </Button>
       </div>
@@ -75,9 +96,9 @@ export default function EquipmentPage() {
           {categories.map((cat) => (
             <button
               key={cat}
-              onClick={() => setCategory(cat)}
+              onClick={() => setCategoryFilter(cat)}
               className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-                category === cat ? 'bg-aura-primary text-aura-bg' : 'text-aura-muted hover:text-aura-text'
+                categoryFilter === cat ? 'bg-aura-primary text-aura-bg' : 'text-aura-muted hover:text-aura-text'
               }`}
             >
               {cat}
@@ -86,13 +107,14 @@ export default function EquipmentPage() {
         </div>
       </div>
 
+      {/* Equipment Table */}
       <Card>
         <CardContent className="p-0">
           <table className="w-full text-sm">
             <thead>
-              <tr>
-                {['Equipment', 'Category', 'Condition', 'Usage Hours', 'Next Service', 'Warranty', 'Actions'].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-aura-muted uppercase tracking-wider first:pl-6">
+              <tr className="border-b border-aura-border text-left">
+                {['Equipment Name', 'Category', 'Condition', 'Usage', 'Next Service', 'Actions'].map((h) => (
+                  <th key={h} className="px-4 py-3.5 text-xs font-semibold text-aura-muted uppercase tracking-wider first:pl-6">
                     {h}
                   </th>
                 ))}
@@ -100,7 +122,6 @@ export default function EquipmentPage() {
             </thead>
             <tbody className="divide-y divide-aura-border">
               {filtered.map((eq, i) => {
-                const daysToService = Math.round((safeNewDate(eq.nextService).getTime() - Date.now()) / (1000 * 3600 * 24));
                 return (
                   <motion.tr
                     key={eq.id}
@@ -123,16 +144,15 @@ export default function EquipmentPage() {
                         {eq.condition}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3.5 text-aura-text">{eq.usageHours.toLocaleString()} hrs</td>
+                    <td className="px-4 py-3.5 text-aura-text">{(eq.usageHours || 0).toLocaleString()} hrs</td>
+                    <td className="px-4 py-3.5 text-aura-muted text-xs">{formatDate(eq.nextService || new Date())}</td>
                     <td className="px-4 py-3.5">
-                      <div className={daysToService <= 0 ? 'text-aura-danger' : daysToService <= 14 ? 'text-aura-warning' : 'text-aura-text'}>
-                        {daysToService <= 0 ? 'Overdue' : `${daysToService}d`}
-                        <div className="text-xs text-aura-muted mt-0.5">{formatDate(eq.nextService)}</div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5 text-aura-muted text-xs">{formatDate(eq.warrantyExpiry)}</td>
-                    <td className="px-4 py-3.5">
-                      <button className="text-xs text-aura-primary hover:underline">Schedule Service</button>
+                      <button
+                        onClick={() => deleteMutation.mutate(eq.id)}
+                        className="p-1.5 text-aura-muted hover:text-aura-danger rounded-md hover:bg-aura-danger/10 transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </td>
                   </motion.tr>
                 );
@@ -141,6 +161,61 @@ export default function EquipmentPage() {
           </table>
         </CardContent>
       </Card>
+
+      {/* Add Equipment Modal */}
+      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Add Gym Equipment">
+        <form onSubmit={handleAddEquipment} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-aura-text mb-1">Equipment Name *</label>
+            <Input
+              type="text"
+              required
+              placeholder="e.g. Olympic Barbell 20kg"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="text-xs"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-aura-text mb-1">Category *</label>
+              <Select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="text-xs"
+                options={[
+                  { value: 'Strength', label: 'Strength' },
+                  { value: 'Cardio', label: 'Cardio' },
+                  { value: 'Free Weights', label: 'Free Weights' },
+                  { value: 'Accessories', label: 'Accessories' },
+                ]}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-aura-text mb-1">Condition *</label>
+              <Select
+                value={condition}
+                onChange={(e) => setCondition(e.target.value as any)}
+                className="text-xs"
+                options={[
+                  { value: 'excellent', label: 'Excellent' },
+                  { value: 'good', label: 'Good' },
+                  { value: 'fair', label: 'Fair' },
+                  { value: 'poor', label: 'Poor' },
+                ]}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setShowAddModal(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary">
+              Register Equipment
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </DashboardLayout>
   );
 }

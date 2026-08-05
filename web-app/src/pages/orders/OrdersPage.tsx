@@ -5,14 +5,6 @@ import { ShoppingBag, Clock, CheckCircle, XCircle, Download } from 'lucide-react
 import { formatCurrency, formatDateTime } from '@/utils';
 import type { Order } from '@/types';
 
-const mockOrders: Order[] = [
-  { id: '1', orderId: 'ORD-2024-001', memberId: 'm1', memberName: 'Arjun Sharma', items: [{ productId: 'p1', productName: 'Whey Protein Gold', quantity: 1, price: 2249 }], total: 2249, status: 'delivered', paymentStatus: 'completed', createdAt: new Date(Date.now() - 2 * 3600000).toISOString() },
-  { id: '2', orderId: 'ORD-2024-002', memberId: 'm2', memberName: 'Priya Patel', items: [{ productId: 'p2', productName: 'Creatine Monohydrate', quantity: 2, price: 799 }], total: 1598, status: 'processing', paymentStatus: 'completed', createdAt: new Date(Date.now() - 4 * 3600000).toISOString() },
-  { id: '3', orderId: 'ORD-2024-003', memberId: 'm3', memberName: 'Rahul Gupta', items: [{ productId: 'p3', productName: 'Mass Gainer XXL', quantity: 1, price: 2804 }], total: 2804, status: 'pending', paymentStatus: 'pending', createdAt: new Date(Date.now() - 6 * 3600000).toISOString() },
-  { id: '4', orderId: 'ORD-2024-004', memberId: 'm4', memberName: 'Sneha Singh', items: [{ productId: 'p5', productName: '7-Day Meal Plan', quantity: 1, price: 1999 }], total: 1999, status: 'cancelled', paymentStatus: 'refunded', createdAt: new Date(Date.now() - 24 * 3600000).toISOString() },
-  { id: '5', orderId: 'ORD-2024-005', memberId: 'm5', memberName: 'Vikram Reddy', items: [{ productId: 'p6', productName: 'Gym Gloves Pro', quantity: 1, price: 599 }, { productId: 'p8', productName: 'Protein Shaker', quantity: 2, price: 299 }], total: 1197, status: 'delivered', paymentStatus: 'completed', createdAt: new Date(Date.now() - 48 * 3600000).toISOString() },
-];
-
 const statusVariantMap: Record<string, 'success' | 'danger' | 'warning' | 'info' | 'muted'> = {
   pending: 'warning',
   processing: 'info',
@@ -23,22 +15,23 @@ const statusVariantMap: Record<string, 'success' | 'danger' | 'warning' | 'info'
 
 const TABS = ['All', 'Pending', 'Processing', 'Delivered', 'Cancelled'];
 
-const stats = [
-  { title: 'Total Orders', value: mockOrders.length, icon: ShoppingBag, iconColor: 'text-aura-primary' },
-  { title: 'Pending', value: mockOrders.filter((o) => o.status === 'pending').length, icon: Clock, iconColor: 'text-aura-warning' },
-  { title: 'Delivered', value: mockOrders.filter((o) => o.status === 'delivered').length, icon: CheckCircle, iconColor: 'text-aura-success' },
-  { title: 'Cancelled', value: mockOrders.filter((o) => o.status === 'cancelled').length, icon: XCircle, iconColor: 'text-aura-danger' },
-];
-
 export default function OrdersPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('All');
 
-  const filtered = mockOrders.filter((o) => {
+  const filtered = orders.filter((o) => {
     if (search && !o.memberName.toLowerCase().includes(search.toLowerCase()) && !o.orderId.toLowerCase().includes(search.toLowerCase())) return false;
     if (activeTab !== 'All' && o.status !== activeTab.toLowerCase()) return false;
     return true;
   });
+
+  const stats = [
+    { title: 'Total Orders', value: orders.length, icon: ShoppingBag, iconColor: 'text-aura-primary' },
+    { title: 'Pending', value: orders.filter((o) => o.status === 'pending').length, icon: Clock, iconColor: 'text-aura-warning' },
+    { title: 'Delivered', value: orders.filter((o) => o.status === 'delivered').length, icon: CheckCircle, iconColor: 'text-aura-success' },
+    { title: 'Cancelled', value: orders.filter((o) => o.status === 'cancelled').length, icon: XCircle, iconColor: 'text-aura-danger' },
+  ];
 
   return (
     <DashboardLayout
