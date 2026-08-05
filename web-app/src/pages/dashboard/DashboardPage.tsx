@@ -16,7 +16,14 @@ import { formatCurrency } from '@/utils';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
-  const { data: stats, isLoading } = useDashboardStats();
+  const { data: stats, isLoading, isError, error } = useDashboardStats();
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
 
   const statCards = [
     {
@@ -81,12 +88,24 @@ export default function DashboardPage() {
       {/* Greeting */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-aura-text">
-          Good morning, {user?.name?.split(' ')[0]} 👋
+          {getGreeting()}, {user?.name?.split(' ')[0]} 👋
         </h1>
         <p className="text-aura-muted mt-1">
           Here's what's happening at your gym today.
         </p>
       </div>
+
+      {isError && (
+        <div className="mb-6 p-4 rounded-lg bg-aura-danger/10 border border-aura-danger/20 flex items-center gap-3 text-aura-danger text-sm">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <div>
+            <p className="font-semibold">Backend Connection / API Error</p>
+            <p className="text-xs text-aura-danger/80">
+              {(error as any)?.response?.data?.message || (error as any)?.message || 'Failed to fetch live stats from backend API.'}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
