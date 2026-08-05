@@ -1,3 +1,4 @@
+import { Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts';
 import { StatCard, StatCardSkeleton } from '@/components/ui';
 import { RevenueChart } from './charts/RevenueChart';
@@ -16,6 +17,11 @@ import { formatCurrency } from '@/utils';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
+
+  if (user?.role === 'super_admin') {
+    return <Navigate to="/super-admin/gyms" replace />;
+  }
+
   const { data: stats, isLoading, isError, error } = useDashboardStats();
 
   const getGreeting = () => {

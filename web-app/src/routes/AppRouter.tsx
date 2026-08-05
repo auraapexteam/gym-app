@@ -58,8 +58,26 @@ export function AppRouter() {
         <Route path="/" element={<SplashPage />} />
 
         {/* Auth routes */}
-        <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
-        <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <RegisterPage />} />
+        <Route
+          path="/login"
+          element={
+            isAuthenticated ? (
+              <Navigate to={useAuthStore.getState().user?.role === 'super_admin' ? '/super-admin/gyms' : '/dashboard'} replace />
+            ) : (
+              <LoginPage />
+            )
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            isAuthenticated ? (
+              <Navigate to={useAuthStore.getState().user?.role === 'super_admin' ? '/super-admin/gyms' : '/dashboard'} replace />
+            ) : (
+              <RegisterPage />
+            )
+          }
+        />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
         {/* Protected routes */}

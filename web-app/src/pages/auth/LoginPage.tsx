@@ -39,7 +39,11 @@ export default function LoginPage() {
     onSuccess: ({ user, token }) => {
       setAuth(user, token);
       toast.success(`Welcome back, ${user.name}!`);
-      navigate('/dashboard', { replace: true });
+      if (user.role === 'super_admin') {
+        navigate('/super-admin/gyms', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     },
     onError: (err: any) => {
       const errorMsg = err.response?.data?.message || err?.message || 'Invalid credentials. Please try again.';
