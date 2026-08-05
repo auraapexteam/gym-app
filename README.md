@@ -278,7 +278,7 @@ gradle.beforeProject { project ->
     }
 }
 ```
-
+#
 If you ever run into Ninja loop issues or lockouts, simply clean your build cache:
 ```bash
 # In a powershell terminal
