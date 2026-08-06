@@ -12,6 +12,7 @@ import { useDashboardStats } from '@/hooks/useDashboard';
 import { useAuthStore } from '@/store';
 import { useJoinRequestStatus, useGymDirectory } from '@/hooks/useGyms';
 import { useAttendance, useQrCheckIn } from '@/hooks/useAttendance';
+import { useMySubscriptions } from '@/hooks/useSubscriptions';
 import { formatDate } from '@/utils';
 import {
   DollarSign, Users, UserCheck, RefreshCw,
