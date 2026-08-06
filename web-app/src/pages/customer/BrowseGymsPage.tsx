@@ -36,6 +36,12 @@ export default function BrowseGymsPage() {
   const activeSubscription = mySubscriptions.find((s: any) => s.status === 'active');
   const hasActivePlan = !!activeSubscription;
 
+  const endDate = activeSubscription?.end_date || activeSubscription?.endDate;
+  const startDate = activeSubscription?.start_date || activeSubscription?.startDate || activeSubscription?.created_at;
+  const remainingDays = endDate ? Math.max(0, Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 3600 * 24))) : 0;
+  const totalDays = activeSubscription?.plan?.duration_days || activeSubscription?.plan?.durationDays || 30;
+  const progressPercent = Math.min(100, Math.max(0, Math.round((remainingDays / totalDays) * 100)));
+
   const qrPassToken = `MEMBER-${user?.id?.substring(0, 8).toUpperCase() || 'PASS'}`;
   const qrPassImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrPassToken)}`;
 
@@ -117,16 +123,41 @@ export default function BrowseGymsPage() {
                 {/* Membership Overview & Attendance History */}
                 <div className="lg:col-span-2 space-y-6">
                   {/* Stats */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="bg-aura-card border border-aura-border rounded-xl p-4">
-                      <p className="text-xs text-aura-muted mb-1">Active Plan</p>
-                      <p className="text-base font-bold text-aura-text">{activeSubscription?.plan?.name || 'Active Package'}</p>
-                      <p className="text-xs text-aura-success mt-1 font-semibold">Active Membership</p>
+                      <p className="text-xs text-aura-muted mb-1">Active Package</p>
+                      <p className="text-base font-bold text-aura-text truncate">{activeSubscription?.plan?.name || 'Active Package'}</p>
+                      <p className="text-xs text-aura-success mt-1 font-semibold flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" /> Active
+                      </p>
+                    </div>
+                    <div className="bg-aura-card border border-aura-border rounded-xl p-4">
+                      <p className="text-xs text-aura-muted mb-1">Plan Validity</p>
+                      <p className="text-lg font-extrabold text-aura-success">{remainingDays} Days Left</p>
+                      <p className="text-xs text-aura-muted mt-1 truncate">
+                        {endDate ? `Expires ${formatDate(endDate)}` : 'Active'}
+                      </p>
                     </div>
                     <div className="bg-aura-card border border-aura-border rounded-xl p-4">
                       <p className="text-xs text-aura-muted mb-1">Total Visits</p>
-                      <p className="text-xl font-extrabold text-aura-primary">{userAttendance.length}</p>
+                      <p className="text-lg font-extrabold text-aura-primary">{userAttendance.length}</p>
                       <p className="text-xs text-aura-muted mt-1">Recorded check-ins</p>
+                    </div>
+                  </div>
+
+                  {/* Subscription Progress Bar */}
+                  <div className="bg-aura-card border border-aura-border rounded-xl p-4 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-aura-muted flex items-center gap-1.5 font-medium">
+                        <Clock className="h-3.5 w-3.5 text-aura-primary" /> Plan Validity Progress
+                      </span>
+                      <span className="font-bold text-aura-success">{remainingDays} of {totalDays} Days Remaining</span>
+                    </div>
+                    <div className="w-full h-2.5 bg-aura-bg border border-aura-border rounded-full overflow-hidden p-0.5">
+                      <div
+                        className="h-full bg-gradient-to-r from-aura-primary via-aura-success to-aura-success transition-all duration-500 rounded-full"
+                        style={{ width: `${progressPercent}%` }}
+                      />
                     </div>
                   </div>
 

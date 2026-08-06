@@ -5,6 +5,7 @@ import { usePlans } from '@/hooks/usePlans';
 import { useCreateManualSubscription, useMySubscriptions } from '@/hooks/useSubscriptions';
 import { useJoinRequestStatus, useGymDirectory } from '@/hooks/useGyms';
 import { useAuthStore } from '@/store';
+import { formatDate } from '@/utils';
 import { Zap, CheckCircle2, CreditCard, ShieldCheck, Building2, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -112,8 +113,16 @@ export default function CustomerPlansPage() {
 
                     <div className="p-6 pt-0">
                       {isCurrentActivePlan ? (
-                        <div className="w-full py-2.5 rounded-xl bg-aura-success/20 border border-aura-success/40 text-aura-success text-xs font-extrabold flex items-center justify-center gap-2">
-                          <CheckCircle2 className="h-4 w-4" /> Active Membership Package
+                        <div className="w-full py-3 rounded-xl bg-aura-success/20 border border-aura-success/40 text-aura-success text-xs font-extrabold flex flex-col items-center justify-center gap-1 text-center">
+                          <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4" /> Active Membership Package</span>
+                          <span className="text-[11px] text-aura-success/90 font-semibold">
+                            {(() => {
+                              const activeSub = (mySubscriptions || []).find((s: any) => (s.planId === plan.id || s.plan?.id === plan.id) && s.status === 'active');
+                              const subEndDate = activeSub?.end_date || activeSub?.endDate;
+                              const remDays = subEndDate ? Math.max(0, Math.ceil((new Date(subEndDate).getTime() - Date.now()) / (1000 * 3600 * 24))) : 0;
+                              return `${remDays} Days Remaining ${subEndDate ? `(Expires ${formatDate(subEndDate)})` : ''}`;
+                            })()}
+                          </span>
                         </div>
                       ) : (
                         <Button
