@@ -305,8 +305,8 @@ export default function MembersPage({ defaultShowAdd = false }: MembersPageProps
                     const name = member.name || (member as any).fullName || 'Member';
                     const email = member.email || '';
                     const renewDate = member.renewDate || (member as any).createdAt || (member as any).created_at || new Date().toISOString();
-                    const membershipPlan = member.membershipPlan || (member as any).planName || 'Standard Plan';
-                    const membershipStatus = member.membershipStatus || (member as any).status || 'active';
+                    const membershipStatus = member.membershipStatus || (member as any).status || 'inactive';
+                    const membershipPlan = (member as any).planName || member.membershipPlan || 'No Active Plan';
                     const expiring = isExpiringSoon(renewDate);
                     return (
                       <motion.tr

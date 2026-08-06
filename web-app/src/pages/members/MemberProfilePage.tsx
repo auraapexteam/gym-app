@@ -6,7 +6,7 @@ import { useMember, useUpdateMember } from '@/hooks/useMembers';
 import { useAttendance } from '@/hooks/useAttendance';
 import { usePlans } from '@/hooks/usePlans';
 import { useCreateManualSubscription } from '@/hooks/useSubscriptions';
-import { paymentsApi } from '@/api';
+import { paymentsApi, subscriptionsApi } from '@/api';
 import { useQuery } from '@tanstack/react-query';
 import { formatDate, formatCurrency, isExpiringSoon } from '@/utils';
 import {
@@ -56,6 +56,23 @@ export default function MemberProfilePage() {
     },
     enabled: !!id,
   });
+
+  // Live member subscriptions
+  const { data: subscriptionsData = [] } = useQuery({
+    queryKey: ['member-subscriptions', id],
+    queryFn: async () => {
+      if (!id) return [];
+      const res = await subscriptionsApi.list({ memberId: id });
+      return Array.isArray(res.data.data) ? res.data.data : [];
+    },
+    enabled: !!id,
+  });
+
+  const activeSub = (subscriptionsData || []).find((s: any) => s.status === 'active');
+  const hasActiveSub = !!activeSub;
+  const actualPlanName = activeSub?.plan?.name || activeSub?.planName || 'No Active Plan';
+  const actualRenewDate = activeSub?.end_date || activeSub?.endDate || member?.renewDate;
+  const actualStatus = hasActiveSub ? 'active' : (member?.membershipStatus === 'suspended' ? 'suspended' : 'inactive');
 
   const { data: plansData } = usePlans();
   const activePlans = Array.isArray(plansData) ? plansData : (plansData as any)?.data || [];
@@ -145,8 +162,8 @@ export default function MemberProfilePage() {
               <div className="flex-1">
                 <div className="flex items-center gap-3 flex-wrap mb-1">
                   <h1 className="text-xl font-bold text-aura-text">{member.name}</h1>
-                  <Badge variant={statusVariantMap[member.membershipStatus] ?? 'muted'} className="capitalize">
-                    {member.membershipStatus}
+                  <Badge variant={statusVariantMap[actualStatus] ?? 'muted'} className="capitalize">
+                    {actualStatus}
                   </Badge>
                   {expiring && (
                     <Badge variant="warning">Expiring soon</Badge>
@@ -178,8 +195,8 @@ export default function MemberProfilePage() {
         {/* Quick Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           {[
-            { label: 'Membership Plan', value: member.membershipPlan },
-            { label: 'Renew Date', value: formatDate(member.renewDate), highlight: expiring },
+            { label: 'Membership Plan', value: actualPlanName },
+            { label: 'Renew Date', value: formatDate(actualRenewDate), highlight: expiring },
             { label: 'Total Check-ins', value: attendanceData.length.toString() },
             { label: 'Total Invoices', value: paymentsData.length.toString() },
           ].map((stat, i) => (
@@ -242,9 +259,9 @@ export default function MemberProfilePage() {
                   <h3 className="text-sm font-semibold text-aura-text mb-3">Membership Details</h3>
                   <dl className="space-y-2 text-sm">
                     {[
-                      { label: 'Plan', value: member.membershipPlan },
-                      { label: 'Status', value: <Badge variant={statusVariantMap[member.membershipStatus] ?? 'muted'} className="capitalize">{member.membershipStatus}</Badge> },
-                      { label: 'Renew Date', value: formatDate(member.renewDate) },
+                      { label: 'Plan', value: actualPlanName },
+                      { label: 'Status', value: <Badge variant={statusVariantMap[actualStatus] ?? 'muted'} className="capitalize">{actualStatus}</Badge> },
+                      { label: 'Renew Date', value: formatDate(actualRenewDate) },
                       { label: 'Assigned Trainer', value: member.trainerName || 'Unassigned' },
                     ].map((item) => (
                       <div key={item.label} className="flex justify-between items-center">
