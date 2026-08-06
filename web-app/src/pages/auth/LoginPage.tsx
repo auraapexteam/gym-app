@@ -41,6 +41,8 @@ export default function LoginPage() {
       toast.success(`Welcome back, ${user.name}!`);
       if (user.role === 'super_admin') {
         navigate('/super-admin/gyms', { replace: true });
+      } else if (user.role === 'customer') {
+        navigate('/browse-gyms', { replace: true });
       } else {
         navigate('/dashboard', { replace: true });
       }

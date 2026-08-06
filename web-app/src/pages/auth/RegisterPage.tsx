@@ -45,7 +45,11 @@ export default function RegisterPage() {
     onSuccess: ({ user, token }) => {
       setAuth(user, token);
       toast.success('Account created successfully!');
-      navigate('/dashboard', { replace: true });
+      if (user.role === 'customer') {
+        navigate('/browse-gyms', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     },
     onError: (err: any) => {
       const errorMsg = err.response?.data?.message || err?.message || 'Registration failed. Please try again.';

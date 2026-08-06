@@ -39,6 +39,7 @@ const StaffPage = lazy(() => import('@/pages/staff/StaffPage'));
 const GalleryPage = lazy(() => import('@/pages/gallery/GalleryPage'));
 const NotificationsPage = lazy(() => import('@/pages/notifications/NotificationsPage'));
 const ReportsPage = lazy(() => import('@/pages/reports/ReportsPage'));
+const BrowseGymsPage = lazy(() => import('@/pages/customer/BrowseGymsPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
 // Super Admin Pages
@@ -60,7 +61,7 @@ export function AppRouter() {
           path="/login"
           element={
             isAuthenticated ? (
-              <Navigate to={useAuthStore.getState().user?.role === 'super_admin' ? '/super-admin/gyms' : '/dashboard'} replace />
+              <Navigate to={useAuthStore.getState().user?.role === 'super_admin' ? '/super-admin/gyms' : useAuthStore.getState().user?.role === 'customer' ? '/browse-gyms' : '/dashboard'} replace />
             ) : (
               <LoginPage />
             )
@@ -70,7 +71,7 @@ export function AppRouter() {
           path="/register"
           element={
             isAuthenticated ? (
-              <Navigate to={useAuthStore.getState().user?.role === 'super_admin' ? '/super-admin/gyms' : '/dashboard'} replace />
+              <Navigate to={useAuthStore.getState().user?.role === 'super_admin' ? '/super-admin/gyms' : useAuthStore.getState().user?.role === 'customer' ? '/browse-gyms' : '/dashboard'} replace />
             ) : (
               <RegisterPage />
             )
@@ -96,6 +97,7 @@ export function AppRouter() {
           <Route path="/staff" element={<StaffPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/browse-gyms" element={<BrowseGymsPage />} />
 
           {/* Super Admin Protected routes */}
           <Route element={<ProtectedRoute allowedRoles={['super_admin']} />}>

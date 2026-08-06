@@ -11,4 +11,5 @@ export { staffApi } from './staff';
 export { galleryApi } from './gallery';
 export { qrApi } from './qr';
 export { subscriptionsApi } from './subscriptions';
+export { gymsApi } from './gyms';
 export { default as axiosInstance } from './axios';

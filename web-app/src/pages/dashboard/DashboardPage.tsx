@@ -21,6 +21,9 @@ export default function DashboardPage() {
   if (user?.role === 'super_admin') {
     return <Navigate to="/super-admin/gyms" replace />;
   }
+  if (user?.role === 'customer') {
+    return <Navigate to="/browse-gyms" replace />;
+  }
 
   const { data: stats, isLoading, isError, error } = useDashboardStats();
 

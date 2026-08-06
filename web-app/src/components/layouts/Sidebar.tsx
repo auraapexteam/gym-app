@@ -40,6 +40,12 @@ const navConfig: NavGroup[] = [
     ],
   },
   {
+    group: 'Customer Portal',
+    items: [
+      { label: 'Browse Gyms', icon: Building2, href: '/browse-gyms', roles: ['customer'] },
+    ],
+  },
+  {
     group: 'Management',
     items: [
       { label: 'Members', icon: Users, href: '/members', roles: ['gym_owner', 'staff'] },
@@ -152,7 +158,7 @@ export function Sidebar() {
                 <div className="leading-tight">
                   <p className="text-xs font-semibold text-aura-muted tracking-[0.18em]">AURA APEX</p>
                   <p className="text-sm font-semibold text-aura-text">
-                    {user?.role === 'super_admin' ? 'Super Admin' : 'Owner Console'}
+                    {user?.role === 'super_admin' ? 'Super Admin' : user?.role === 'customer' ? 'Customer Portal' : 'Owner Console'}
                   </p>
                 </div>
               </motion.div>

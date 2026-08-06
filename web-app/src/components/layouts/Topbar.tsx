@@ -20,6 +20,7 @@ export function Topbar({ title, breadcrumbs }: TopbarProps) {
   });
 
   const isSuperAdmin = user?.role === 'super_admin';
+  const isCustomer = user?.role === 'customer';
 
   return (
     <header className="min-h-20 bg-aura-bg/95 backdrop-blur-xl border-b border-aura-border flex items-center justify-between gap-4 px-6 sticky top-0 z-20">
@@ -44,7 +45,7 @@ export function Topbar({ title, breadcrumbs }: TopbarProps) {
               </span>
             </div>
             <p className="mt-1 text-sm text-aura-muted">
-              {formattedDate} · {isSuperAdmin ? 'Aura Apex Platform' : 'Apex Fitness Center'}
+              {formattedDate} · {isSuperAdmin ? 'Aura Apex Platform' : isCustomer ? 'Customer Portal' : 'Apex Fitness Center'}
             </p>
           </div>
         ) : (
@@ -57,7 +58,7 @@ export function Topbar({ title, breadcrumbs }: TopbarProps) {
         <div className="hidden lg:flex h-10 w-72 items-center gap-2 rounded-md border border-aura-border bg-aura-card px-3 text-aura-muted">
           <Search className="h-4 w-4" />
           <span className="text-sm">
-            {isSuperAdmin ? 'Search gyms, owners...' : 'Search members, plans...'}
+            {isSuperAdmin ? 'Search gyms, owners...' : isCustomer ? 'Search gyms...' : 'Search members, plans...'}
           </span>
         </div>
 
@@ -88,6 +89,15 @@ export function Topbar({ title, breadcrumbs }: TopbarProps) {
           >
             <Building2 className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Onboard Gym</span>
+          </Link>
+        ) : isCustomer ? (
+          <Link
+            to="/browse-gyms"
+            className="h-10 w-10 sm:w-auto sm:px-4 rounded-md flex items-center justify-center gap-2 bg-aura-primary text-sm font-semibold text-aura-bg hover:bg-aura-primary/90 transition-colors"
+            aria-label="Explore Gyms"
+          >
+            <Building2 className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Explore Gyms</span>
           </Link>
         ) : (
           <Link
