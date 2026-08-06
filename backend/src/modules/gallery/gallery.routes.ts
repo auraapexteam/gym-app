@@ -6,12 +6,12 @@ import {
   listGallerySchema,
   galleryIdSchema,
 } from '@/modules/gallery/gallery.validation';
-import { authenticate, requirePermission, validate, asyncHandler } from '@/shared/middleware';
+import { authenticate, requireGym, requirePermission, validate, asyncHandler } from '@/shared/middleware';
 import { Permission } from '@/shared/rbac';
 
 const router = Router();
 
-router.use(authenticate);
+router.use(authenticate, requireGym);
 
 router.get(
   '/',

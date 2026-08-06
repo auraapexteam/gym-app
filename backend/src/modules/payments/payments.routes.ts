@@ -9,6 +9,7 @@ import {
 } from '@/modules/payments/payments.validation';
 import {
   authenticate,
+  requireGym,
   requirePermission,
   validate,
   asyncHandler,
@@ -35,9 +36,10 @@ router.post(
   asyncHandler(PaymentController.verify),
 );
 
-// Revenue / payment records (owner & permitted staff).
+// Revenue / payment records (owner & permitted staff require active gym context).
 router.get(
   '/',
+  requireGym,
   requirePermission(Permission.PAYMENT_READ),
   validate(listPaymentsSchema),
   asyncHandler(PaymentController.list),

@@ -75,7 +75,7 @@ export abstract class BaseRepository<TRow extends { id: string }> {
   async findById(id: string, gymId?: string | null, select?: string): Promise<TRow | null> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query: any = this.client.from(this.table).select(select ?? this.defaultSelect).eq('id', id);
-    if (gymId) query = query.eq(this.tenantColumn, gymId);
+    if (gymId !== undefined) query = query.eq(this.tenantColumn, gymId || '00000000-0000-0000-0000-000000000000');
     if (this.softDelete) query = query.is('deleted_at', null);
 
     const { data, error } = await query.maybeSingle();
@@ -87,7 +87,7 @@ export abstract class BaseRepository<TRow extends { id: string }> {
   async findOneBy(column: string, value: unknown, gymId?: string | null): Promise<TRow | null> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query: any = this.client.from(this.table).select(this.defaultSelect).eq(column, value);
-    if (gymId) query = query.eq(this.tenantColumn, gymId);
+    if (gymId !== undefined) query = query.eq(this.tenantColumn, gymId || '00000000-0000-0000-0000-000000000000');
     if (this.softDelete) query = query.is('deleted_at', null);
 
     const { data, error } = await query.limit(1).maybeSingle();
@@ -102,7 +102,7 @@ export abstract class BaseRepository<TRow extends { id: string }> {
       .from(this.table)
       .select(params.select ?? this.defaultSelect, { count: 'exact' });
 
-    if (params.gymId) query = query.eq(this.tenantColumn, params.gymId);
+    if (params.gymId !== undefined) query = query.eq(this.tenantColumn, params.gymId || '00000000-0000-0000-0000-000000000000');
     if (this.softDelete) query = query.is('deleted_at', null);
 
     query = this.applyFilters(query, params.filters);
@@ -127,7 +127,7 @@ export abstract class BaseRepository<TRow extends { id: string }> {
   async count(gymId?: string | null, filters?: Record<string, unknown>): Promise<number> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query: any = this.client.from(this.table).select('id', { count: 'exact', head: true });
-    if (gymId) query = query.eq(this.tenantColumn, gymId);
+    if (gymId !== undefined) query = query.eq(this.tenantColumn, gymId || '00000000-0000-0000-0000-000000000000');
     if (this.softDelete) query = query.is('deleted_at', null);
     query = this.applyFilters(query, filters);
 
@@ -161,7 +161,7 @@ export abstract class BaseRepository<TRow extends { id: string }> {
   async update(id: string, patch: Partial<TRow>, gymId?: string | null): Promise<TRow | null> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query: any = (this.client.from(this.table) as any).update(patch).eq('id', id);
-    if (gymId) query = query.eq(this.tenantColumn, gymId);
+    if (gymId !== undefined) query = query.eq(this.tenantColumn, gymId || '00000000-0000-0000-0000-000000000000');
     if (this.softDelete) query = query.is('deleted_at', null);
 
     const { data, error } = await query.select(this.defaultSelect).maybeSingle();
@@ -186,7 +186,7 @@ export abstract class BaseRepository<TRow extends { id: string }> {
   async hardDelete(id: string, gymId?: string | null): Promise<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query: any = this.client.from(this.table).delete().eq('id', id);
-    if (gymId) query = query.eq(this.tenantColumn, gymId);
+    if (gymId !== undefined) query = query.eq(this.tenantColumn, gymId || '00000000-0000-0000-0000-000000000000');
 
     const { error, count } = await query.select('id', { count: 'exact' });
     if (error) this.fail(`Failed to delete ${this.table}`, error);

@@ -7,6 +7,7 @@ import {
 } from '@/modules/attendance/attendance.validation';
 import {
   authenticate,
+  requireGym,
   requirePermission,
   validate,
   asyncHandler,
@@ -37,6 +38,7 @@ router.get(
 // Staff manual check-in.
 router.post(
   '/manual',
+  requireGym,
   requirePermission(Permission.ATTENDANCE_CREATE),
   validate(manualCheckInSchema),
   asyncHandler(AttendanceController.manualCheckIn),
@@ -45,6 +47,7 @@ router.post(
 // Owner/staff gym-wide reads.
 router.get(
   '/',
+  requireGym,
   requirePermission(Permission.ATTENDANCE_READ),
   validate(listAttendanceSchema),
   asyncHandler(AttendanceController.list),
@@ -52,6 +55,7 @@ router.get(
 
 router.get(
   '/stats',
+  requireGym,
   requirePermission(Permission.ATTENDANCE_READ),
   asyncHandler(AttendanceController.stats),
 );

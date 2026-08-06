@@ -5,7 +5,7 @@ import {
   createManualSubscriptionSchema,
   subscriptionIdSchema,
 } from '@/modules/subscriptions/subscriptions.validation';
-import { authenticate, requirePermission, validate, asyncHandler } from '@/shared/middleware';
+import { authenticate, requireGym, requirePermission, validate, asyncHandler } from '@/shared/middleware';
 import { Permission } from '@/shared/rbac';
 
 const router = Router();
@@ -22,6 +22,7 @@ router.get(
 // Owner/staff: manage gym subscriptions.
 router.get(
   '/',
+  requireGym,
   requirePermission(Permission.SUBSCRIPTION_READ),
   validate(listSubscriptionsSchema),
   asyncHandler(SubscriptionController.list),

@@ -42,13 +42,15 @@ export async function uploadFileToGallery({
       }).catch(() => undefined);
     }
 
-    // 3. Register image metadata record in PostgreSQL (use dataUrl as caption/path fallback if needed)
+    const cleanEntityId = entityId && entityId.trim() !== '' ? entityId : undefined;
+
+    // 3. Register image metadata record in PostgreSQL
     await galleryApi.registerImage({
       path: publicUrl || path || dataUrl,
-      mimeType: file.type,
+      mimeType: file.type || 'image/jpeg',
       size: file.size,
       entityType,
-      entityId,
+      entityId: cleanEntityId,
       caption,
     }).catch(() => undefined);
 

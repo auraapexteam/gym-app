@@ -14,11 +14,11 @@ export const createUploadUrlSchema = z.object({
 
 export const registerImageSchema = z.object({
   body: z.object({
-    path: z.string().min(1).max(500),
+    path: z.string().min(1),
     mimeType: z.string().max(100).optional(),
     size: z.number().int().nonnegative().optional(),
     entityType: entityType.optional(),
-    entityId: z.string().uuid().optional(),
+    entityId: z.string().uuid().optional().nullable().or(z.literal('')),
     caption: z.string().max(500).optional(),
   }),
 });
