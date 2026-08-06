@@ -77,27 +77,29 @@ export default function CheckInsPage() {
             color: #000000 !important;
             margin: 0 !important;
             padding: 0 !important;
-            overflow: visible !important;
           }
-          #root, .fixed, [role="dialog"], header, nav, sidebar {
-            display: none !important;
+          body * {
+            visibility: hidden !important;
+          }
+          #printable-a4-pdf-standalone, #printable-a4-pdf-standalone * {
+            visibility: visible !important;
           }
           #printable-a4-pdf-standalone {
             display: flex !important;
-            flex-direction: column;
-            justify-content: space-between;
-            align-items: center;
-            position: absolute !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            position: fixed !important;
             top: 0 !important;
             left: 0 !important;
             width: 210mm !important;
             height: 297mm !important;
-            margin: 0 auto !important;
-            padding: 20mm 15mm !important;
+            margin: 0 !important;
+            padding: 15mm !important;
             background: #ffffff !important;
             color: #000000 !important;
             box-sizing: border-box !important;
-            z-index: 9999999 !important;
+            z-index: 99999999 !important;
           }
         }
         @media screen {
