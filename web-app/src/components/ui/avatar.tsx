@@ -24,19 +24,16 @@ const statusColors = {
 
 export function Avatar({ src, name, size = 'md', className, status }: AvatarProps) {
   return (
-    <div className={cn('relative inline-flex shrink-0', className)}>
+    <div className={cn('relative inline-flex items-center justify-center shrink-0 rounded-full', sizeMap[size], className)}>
       {src ? (
         <img
           src={src}
           alt={name}
-          className={cn('rounded-full object-cover', sizeMap[size])}
+          className="h-full w-full rounded-full object-cover"
         />
       ) : (
         <div
-          className={cn(
-            'rounded-full bg-aura-primary/10 text-aura-primary font-semibold flex items-center justify-center border border-aura-primary/20',
-            sizeMap[size],
-          )}
+          className="h-full w-full rounded-full bg-aura-primary/10 text-aura-primary font-bold flex items-center justify-center border border-aura-primary/20"
         >
           {name ? getInitials(name) : '?'}
         </div>

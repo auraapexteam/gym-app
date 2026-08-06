@@ -26,33 +26,33 @@ export function Topbar({ title, breadcrumbs }: TopbarProps) {
   const isCustomer = user?.role === 'customer';
 
   return (
-    <header className="min-h-20 bg-aura-bg/95 backdrop-blur-xl border-b border-aura-border flex items-center justify-between gap-4 px-6 sticky top-0 z-20">
+    <header className="min-h-16 sm:min-h-20 bg-aura-bg/95 backdrop-blur-xl border-b border-aura-border flex items-center justify-between gap-3 px-3 sm:px-6 sticky top-0 z-20">
       {/* Left: Hamburger menu + breadcrumbs / title */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2.5 sm:gap-4 min-w-0">
         <button
           onClick={toggleMobileMenu}
-          className="h-10 w-10 rounded-md flex items-center justify-center text-aura-muted hover:text-aura-text bg-aura-card border border-aura-border transition-colors lg:hidden"
+          className="h-9 w-9 sm:h-10 sm:w-10 rounded-md flex items-center justify-center text-aura-muted hover:text-aura-text bg-aura-card border border-aura-border transition-colors lg:hidden shrink-0"
           aria-label="Toggle Menu"
         >
           <Menu className="h-5 w-5" />
         </button>
 
         {breadcrumbs && breadcrumbs.length > 0 ? (
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-aura-text">
+              <h1 className="text-lg sm:text-2xl font-bold text-aura-text truncate">
                 {breadcrumbs[breadcrumbs.length - 1].label}
               </h1>
-              <span className="rounded-full border border-aura-primary/30 bg-aura-primary/10 px-2 py-0.5 text-xs font-medium text-aura-primary">
+              <span className="rounded-full border border-aura-primary/30 bg-aura-primary/10 px-2 py-0.5 text-[10px] sm:text-xs font-medium text-aura-primary shrink-0">
                 Live
               </span>
             </div>
-            <p className="mt-1 text-sm text-aura-muted">
+            <p className="mt-0.5 text-xs sm:text-sm text-aura-muted truncate">
               {formattedDate} · {isSuperAdmin ? 'Aura Apex Platform' : isCustomer ? 'Customer Portal' : 'Apex Fitness Center'}
             </p>
           </div>
         ) : (
-          <h1 className="text-base font-semibold text-aura-text">{title}</h1>
+          <h1 className="text-base font-semibold text-aura-text truncate">{title}</h1>
         )}
       </div>
 

@@ -33,7 +33,7 @@ export function DashboardLayout({ children, title, breadcrumbs }: DashboardLayou
         className="flex flex-col min-h-screen"
       >
         <Topbar title={title} breadcrumbs={breadcrumbs} />
-        <main className="flex-1 p-6 overflow-auto">
+        <main className="flex-1 p-3 sm:p-6 overflow-x-hidden">
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}

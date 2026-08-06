@@ -46,13 +46,13 @@ export function Modal({ open, onClose, title, description, children, size = 'md'
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 sm:p-6 overflow-y-auto">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
             onClick={onClose}
           />
           {/* Modal */}
@@ -62,30 +62,30 @@ export function Modal({ open, onClose, title, description, children, size = 'md'
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.2 }}
             className={cn(
-              'relative w-full bg-aura-card border border-aura-border rounded-lg shadow-aura-lg z-10 max-h-[90vh] overflow-y-auto',
+              'relative w-full bg-aura-card border border-aura-border rounded-xl shadow-aura-lg z-10 max-h-[90vh] flex flex-col my-auto overflow-hidden',
               sizeMap[size],
               className,
             )}
           >
             {(title || description) && (
-              <div className="flex items-start justify-between p-6 border-b border-aura-border">
+              <div className="flex items-start justify-between p-4 sm:p-6 border-b border-aura-border shrink-0">
                 <div>
-                  {title && <h2 className="text-lg font-semibold text-aura-text">{title}</h2>}
-                  {description && <p className="mt-1 text-sm text-aura-muted">{description}</p>}
+                  {title && <h2 className="text-base sm:text-lg font-semibold text-aura-text">{title}</h2>}
+                  {description && <p className="mt-1 text-xs sm:text-sm text-aura-muted">{description}</p>}
                 </div>
                 <button
                   onClick={onClose}
-                  className="text-aura-muted hover:text-aura-text transition-colors ml-4 mt-0.5"
+                  className="text-aura-muted hover:text-aura-text transition-colors ml-4 mt-0.5 p-1 rounded-md hover:bg-white/5"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
             )}
-            <div className={cn(!title && !description && 'relative')}>
+            <div className={cn('overflow-y-auto flex-1', !title && !description && 'relative')}>
               {!title && !description && (
                 <button
                   onClick={onClose}
-                  className="absolute right-4 top-4 z-10 text-aura-muted hover:text-aura-text transition-colors"
+                  className="absolute right-4 top-4 z-10 text-aura-muted hover:text-aura-text transition-colors p-1 rounded-md hover:bg-white/5"
                 >
                   <X className="h-5 w-5" />
                 </button>
