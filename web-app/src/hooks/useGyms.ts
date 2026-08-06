@@ -77,3 +77,29 @@ export function useRejectJoinRequest() {
     },
   });
 }
+
+export function useMyGymProfile() {
+  return useQuery({
+    queryKey: ['my-gym-profile'],
+    queryFn: async () => {
+      const res = await gymsApi.getMine();
+      return res.data.data || null;
+    },
+  });
+}
+
+export function useUpdateMyGymProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => gymsApi.updateMine(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['my-gym-profile'] });
+      qc.invalidateQueries({ queryKey: ['gym-directory'] });
+      toast.success('Gym profile updated successfully!');
+    },
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || 'Failed to update gym profile.';
+      toast.error(msg);
+    },
+  });
+}

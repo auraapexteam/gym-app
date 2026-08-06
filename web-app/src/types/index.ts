@@ -178,6 +178,8 @@ export interface Equipment {
   name: string;
   category: string;
   condition: EquipmentCondition;
+  status?: string;
+  imageUrl?: string;
   purchaseDate: string;
   warrantyExpiry: string;
   nextService: string;

@@ -33,6 +33,9 @@ export const gymsApi = {
   getMine: () =>
     axiosInstance.get<ApiResponse<any>>('/gyms/me'),
 
+  updateMine: (data: any) =>
+    axiosInstance.patch<ApiResponse<any>>('/gyms/me', data),
+
   createJoinRequest: (data: { gymId: string; notes?: string }) =>
     axiosInstance.post<ApiResponse<JoinRequest>>('/gyms/join-request', data),
 

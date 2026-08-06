@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardContent, Badge, Button, SearchInput, StatCard, Modal, Input, Select } from '@/components/ui';
-import { Wrench, Plus, AlertTriangle, CheckCircle, Calendar, Trash2, Upload, Image as ImageIcon } from 'lucide-react';
+import { Wrench, Plus, AlertTriangle, CheckCircle, Calendar, Trash2, Upload, Image as ImageIcon, Edit3 } from 'lucide-react';
 import { formatDate, safeNewDate, uploadFileToGallery } from '@/utils';
 import { motion } from 'framer-motion';
-import { useEquipment, useCreateEquipment, useDeleteEquipment } from '@/hooks/useEquipment';
+import { useEquipment, useCreateEquipment, useUpdateEquipment, useDeleteEquipment } from '@/hooks/useEquipment';
 import { toast } from 'sonner';
+import type { Equipment } from '@/types';
 
 const conditionVariantMap: Record<string, 'success' | 'default' | 'warning' | 'danger' | 'muted'> = {
   excellent: 'success',
@@ -19,21 +20,23 @@ export default function EquipmentPage() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
 
-  // Form states
+  // Form states (Add/Edit)
   const [name, setName] = useState('');
   const [category, setCategory] = useState('Strength');
-  const [condition, setCondition] = useState<'excellent' | 'good' | 'fair' | 'poor'>('excellent');
+  const [condition, setCondition] = useState<'excellent' | 'good' | 'fair' | 'poor' | 'maintenance'>('excellent');
   const [status, setStatus] = useState<'operational' | 'maintenance' | 'retired'>('operational');
   const [imageUrl, setImageUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
 
   const { data: equipment = [], isLoading } = useEquipment();
   const createMutation = useCreateEquipment();
+  const updateMutation = useUpdateEquipment();
   const deleteMutation = useDeleteEquipment();
 
   const categories = ['All', ...Array.from(new Set((equipment || []).map((e) => e.category || 'General')))];
-  
+
   const filtered = (equipment || []).filter((e) => {
     const eqName = e.name || 'Equipment';
     const eqCat = e.category || 'General';
@@ -54,7 +57,7 @@ export default function EquipmentPage() {
         caption: `Equipment Photo: ${name || 'Item'}`,
       });
       setImageUrl(url);
-      toast.success('Equipment photo uploaded to Supabase.');
+      toast.success('Equipment photo uploaded successfully.');
     } catch {
       toast.error('Image upload failed.');
     } finally {
@@ -62,29 +65,55 @@ export default function EquipmentPage() {
     }
   };
 
-  const handleAddEquipment = (e: React.FormEvent) => {
+  const openAddModal = () => {
+    setEditingEquipment(null);
+    setName('');
+    setCategory('Strength');
+    setCondition('excellent');
+    setStatus('operational');
+    setImageUrl('');
+    setShowAddModal(true);
+  };
+
+  const openEditModal = (eq: Equipment) => {
+    setEditingEquipment(eq);
+    setName(eq.name || '');
+    setCategory(eq.category || 'Strength');
+    setCondition((eq.condition as any) || 'excellent');
+    setStatus((eq.status as any) || 'operational');
+    setImageUrl(eq.imageUrl || '');
+    setShowAddModal(true);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    createMutation.mutate(
-      {
-        name: name.trim(),
-        category,
-        condition,
-        status,
-        imageUrl: imageUrl.trim() || undefined,
-      },
-      {
+    const payload = {
+      name: name.trim(),
+      category,
+      condition,
+      status,
+      imageUrl: imageUrl.trim() || undefined,
+    };
+
+    if (editingEquipment) {
+      updateMutation.mutate(
+        { id: editingEquipment.id, data: payload },
+        {
+          onSuccess: () => {
+            setShowAddModal(false);
+            setEditingEquipment(null);
+          },
+        }
+      );
+    } else {
+      createMutation.mutate(payload, {
         onSuccess: () => {
           setShowAddModal(false);
-          setName('');
-          setCategory('Strength');
-          setCondition('excellent');
-          setStatus('operational');
-          setImageUrl('');
         },
-      }
-    );
+      });
+    }
   };
 
   const stats = [
@@ -101,9 +130,9 @@ export default function EquipmentPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-aura-text">Equipment</h1>
-          <p className="text-sm text-aura-muted mt-0.5">Track gym machinery and maintenance logs</p>
+          <p className="text-sm text-aura-muted mt-0.5">Track gym machinery, photos, and maintenance logs</p>
         </div>
-        <Button variant="primary" onClick={() => setShowAddModal(true)} className="gap-2">
+        <Button variant="primary" onClick={openAddModal} className="gap-2">
           <Plus className="h-4 w-4" /> Add Equipment
         </Button>
       </div>
@@ -147,7 +176,7 @@ export default function EquipmentPage() {
             </thead>
             <tbody className="divide-y divide-aura-border">
               {filtered.map((eq, i) => {
-                const img = (eq as any).imageUrl || (eq as any).image_url;
+                const img = eq.imageUrl || (eq as any).image_url || (eq as any).path;
                 return (
                   <motion.tr
                     key={eq.id}
@@ -159,13 +188,23 @@ export default function EquipmentPage() {
                     <td className="px-4 py-3.5 pl-6">
                       <div className="flex items-center gap-3">
                         {img ? (
-                          <img src={img} alt={eq.name} className="h-9 w-9 rounded-md object-cover border border-aura-border shrink-0" />
+                          <img
+                            src={img}
+                            alt={eq.name}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=200&q=80';
+                            }}
+                            className="h-10 w-10 rounded-md object-cover border border-aura-border shrink-0"
+                          />
                         ) : (
-                          <div className="h-9 w-9 rounded-md bg-aura-primary/10 flex items-center justify-center border border-aura-primary/20 shrink-0">
-                            <Wrench className="h-4 w-4 text-aura-primary" />
+                          <div className="h-10 w-10 rounded-md bg-aura-primary/10 flex items-center justify-center border border-aura-primary/20 shrink-0">
+                            <Wrench className="h-5 w-5 text-aura-primary" />
                           </div>
                         )}
-                        <span className="font-medium text-aura-text">{eq.name}</span>
+                        <div>
+                          <span className="font-medium text-aura-text block">{eq.name}</span>
+                          <span className="text-xs text-aura-muted capitalize">{eq.status || 'Operational'}</span>
+                        </div>
                       </div>
                     </td>
                     <td className="px-4 py-3.5 text-aura-muted">{eq.category}</td>
@@ -177,12 +216,22 @@ export default function EquipmentPage() {
                     <td className="px-4 py-3.5 text-aura-text">{(eq.usageHours || 0).toLocaleString()} hrs</td>
                     <td className="px-4 py-3.5 text-aura-muted text-xs">{formatDate(eq.nextService || new Date())}</td>
                     <td className="px-4 py-3.5">
-                      <button
-                        onClick={() => deleteMutation.mutate(eq.id)}
-                        className="p-1.5 text-aura-muted hover:text-aura-danger rounded-md hover:bg-aura-danger/10 transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openEditModal(eq)}
+                          className="p-1.5 text-aura-muted hover:text-aura-primary rounded-md hover:bg-aura-primary/10 transition-colors"
+                          title="Edit Equipment"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => deleteMutation.mutate(eq.id)}
+                          className="p-1.5 text-aura-muted hover:text-aura-danger rounded-md hover:bg-aura-danger/10 transition-colors"
+                          title="Delete Equipment"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   </motion.tr>
                 );
@@ -192,20 +241,25 @@ export default function EquipmentPage() {
         </CardContent>
       </Card>
 
-      {/* Add Equipment Modal */}
-      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Add Gym Equipment">
-        <form onSubmit={handleAddEquipment} className="space-y-4">
+      {/* Add / Edit Equipment Modal */}
+      <Modal
+        open={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        title={editingEquipment ? 'Edit Gym Equipment' : 'Add Gym Equipment'}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-aura-text mb-1">Equipment Name *</label>
             <Input
               type="text"
               required
-              placeholder="e.g. Olympic Barbell 20kg"
+              placeholder="e.g. Leg Press 3 in 1"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="text-xs"
             />
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-aura-text mb-1">Category *</label>
@@ -232,14 +286,29 @@ export default function EquipmentPage() {
                   { value: 'good', label: 'Good' },
                   { value: 'fair', label: 'Fair' },
                   { value: 'poor', label: 'Poor' },
+                  { value: 'maintenance', label: 'Maintenance' },
                 ]}
               />
             </div>
           </div>
 
+          <div>
+            <label className="block text-xs font-medium text-aura-text mb-1">Status</label>
+            <Select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as any)}
+              className="text-xs"
+              options={[
+                { value: 'operational', label: 'Operational' },
+                { value: 'maintenance', label: 'In Maintenance' },
+                { value: 'retired', label: 'Retired / Out of Order' },
+              ]}
+            />
+          </div>
+
           {/* Photo Upload Input */}
           <div>
-            <label className="block text-xs font-medium text-aura-text mb-1">Equipment Photo (Upload to Supabase)</label>
+            <label className="block text-xs font-medium text-aura-text mb-1">Equipment Photo</label>
             <div className="flex items-center gap-3">
               {imageUrl ? (
                 <img src={imageUrl} alt="Preview" className="h-12 w-12 rounded-md object-cover border border-aura-border" />
@@ -260,8 +329,8 @@ export default function EquipmentPage() {
             <Button type="button" variant="outline" onClick={() => setShowAddModal(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" disabled={isUploading}>
-              Register Equipment
+            <Button type="submit" variant="primary" disabled={isUploading || createMutation.isPending || updateMutation.isPending}>
+              {editingEquipment ? 'Save Changes' : 'Register Equipment'}
             </Button>
           </div>
         </form>
