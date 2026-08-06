@@ -29,10 +29,7 @@ const MembersPage = lazy(() => import('@/pages/members/MembersPage'));
 const MemberProfilePage = lazy(() => import('@/pages/members/MemberProfilePage'));
 const CheckInsPage = lazy(() => import('@/pages/checkins/CheckInsPage'));
 const PlansPage = lazy(() => import('@/pages/plans/PlansPage'));
-const ClassesPage = lazy(() => import('@/pages/classes/ClassesPage'));
 const TrainersPage = lazy(() => import('@/pages/trainers/TrainersPage'));
-const NutritionPage = lazy(() => import('@/pages/nutrition/NutritionPage'));
-const OrdersPage = lazy(() => import('@/pages/orders/OrdersPage'));
 const PaymentsPage = lazy(() => import('@/pages/payments/PaymentsPage'));
 const EquipmentPage = lazy(() => import('@/pages/equipment/EquipmentPage'));
 const AttendancePage = lazy(() => import('@/pages/attendance/AttendancePage'));
@@ -89,10 +86,7 @@ export function AppRouter() {
           <Route path="/members/:id" element={<MemberProfilePage />} />
           <Route path="/checkins" element={<CheckInsPage />} />
           <Route path="/plans" element={<PlansPage />} />
-          <Route path="/classes" element={<ClassesPage />} />
           <Route path="/trainers" element={<TrainersPage />} />
-          <Route path="/nutrition" element={<NutritionPage />} />
-          <Route path="/orders" element={<OrdersPage />} />
           <Route path="/payments" element={<PaymentsPage />} />
           <Route path="/equipment" element={<EquipmentPage />} />
           <Route path="/gallery" element={<GalleryPage />} />

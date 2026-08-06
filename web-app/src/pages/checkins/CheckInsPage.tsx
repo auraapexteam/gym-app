@@ -1,25 +1,30 @@
 import { useState } from 'react';
 import { DashboardLayout } from '@/components/layouts';
-import { Card, CardContent, CardHeader, CardTitle, SearchInput, Badge, StatCard, Select } from '@/components/ui';
-import { UserCheck, Clock, Users, TrendingUp, QrCode, LogIn, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, SearchInput, Badge, StatCard, Select, Modal, Button } from '@/components/ui';
+import { UserCheck, Users, QrCode, LogIn, RefreshCw, ShieldCheck, Printer, Download, Sparkles, Building2 } from 'lucide-react';
 import { formatDateTime } from '@/utils';
 import { motion } from 'framer-motion';
+import { useAuthStore } from '@/store';
 
 import { useAttendance, useManualCheckIn } from '@/hooks/useAttendance';
 import { useMembers } from '@/hooks/useMembers';
 import { useActiveQr, useGenerateQr } from '@/hooks/useQr';
 
 export default function CheckInsPage() {
+  const { user } = useAuthStore();
   const [search, setSearch] = useState('');
   const [selectedMemberId, setSelectedMemberId] = useState('');
+  const [showPrintModal, setShowPrintModal] = useState(false);
 
   const { data: membersRes } = useMembers({ page: 1, limit: 100 });
   const membersList = membersRes?.data || [];
 
   const { data: attendanceData = [], isLoading } = useAttendance();
-  const { data: activeQr, isLoading: qrLoading } = useActiveQr();
+  const { data: activeQr } = useActiveQr();
   const generateQrMutation = useGenerateQr();
   const manualCheckinMutation = useManualCheckIn();
+
+  const gymName = user?.gymName || 'Apex Fitness Center';
 
   const filtered = (attendanceData || []).filter((c: any) => {
     const name = c.memberName || c.memberFullName || c.memberId || '';
@@ -36,25 +41,59 @@ export default function CheckInsPage() {
     generateQrMutation.mutate('Daily Reception Token');
   };
 
+  const handlePrintStandee = () => {
+    window.print();
+  };
+
+  // 100% Dynamic Calculated Metrics
+  const todayTotal = (attendanceData || []).length;
+  const currentlyInside = (attendanceData || []).filter((c: any) => !c.checkOutTime).length;
+  const qrScans = (attendanceData || []).filter((c: any) => c.method === 'qr').length;
+  const manualCheckins = (attendanceData || []).filter((c: any) => c.method === 'manual').length;
+
   const stats = [
-    { title: "Today's Check-ins", value: attendanceData.length, icon: UserCheck, iconColor: 'text-aura-success' },
-    { title: 'Currently Inside', value: attendanceData.filter((c: any) => !c.checkOutTime).length, icon: Users, iconColor: 'text-blue-400' },
-    { title: 'Peak Hour', value: '6 PM', icon: Clock, iconColor: 'text-aura-warning' },
-    { title: 'Avg. Stay', value: '1.2h', icon: TrendingUp, iconColor: 'text-aura-primary' },
+    { title: "Today's Total Check-ins", value: todayTotal, icon: UserCheck, iconColor: 'text-aura-success' },
+    { title: 'Currently Inside', value: currentlyInside, icon: Users, iconColor: 'text-blue-400' },
+    { title: 'QR Code Scans', value: qrScans, icon: QrCode, iconColor: 'text-aura-primary' },
+    { title: 'Desk Manual Check-ins', value: manualCheckins, icon: ShieldCheck, iconColor: 'text-aura-warning' },
   ];
+
+  const qrToken = activeQr?.qrValue || 'AURA-APEX-ACTIVE-QR-TOKEN';
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrToken)}`;
 
   return (
     <DashboardLayout
       breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Check-ins' }]}
     >
+      {/* Hide rest of UI when printing A4 poster */}
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          #printable-a4-standee, #printable-a4-standee * { visibility: visible; }
+          #printable-a4-standee {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: white !important;
+            color: black !important;
+            padding: 2rem;
+          }
+        }
+      `}</style>
+
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-aura-text">Reception Check-in Station</h1>
           <p className="text-sm text-aura-muted mt-0.5">Live gym reception QR display and real-time attendance feed</p>
         </div>
+        <Button variant="primary" onClick={() => setShowPrintModal(true)} className="gap-2">
+          <Printer className="h-4 w-4" /> Download / Print A4 Standee
+        </Button>
       </div>
 
-      {/* Stats */}
+      {/* Dynamic Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {stats.map((s, i) => (
           <StatCard key={s.title} {...s} index={i} />
@@ -83,7 +122,7 @@ export default function CheckInsPage() {
                   className="bg-white p-3 rounded-xl shadow-aura-md border border-aura-primary/30 mb-4"
                 >
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(activeQr?.qrValue || 'AURA-APEX-ACTIVE-QR-TOKEN')}`}
+                    src={qrImageUrl}
                     alt="Live Scannable Gym QR Code"
                     className="h-44 w-44 rounded object-contain"
                   />
@@ -91,17 +130,26 @@ export default function CheckInsPage() {
                 
                 <p className="text-xs text-aura-muted mb-1">Scan with Customer Mobile App to Check In</p>
                 <div className="font-mono text-xs font-semibold text-aura-primary bg-aura-primary/10 border border-aura-primary/20 px-3 py-1 rounded-md mb-4 max-w-full truncate">
-                  {activeQr?.qrValue || 'QR-DAILY-ACTIVE-TOKEN'}
+                  {qrToken}
                 </div>
 
-                <button
-                  onClick={handleRotateQr}
-                  disabled={generateQrMutation.isPending}
-                  className="w-full flex items-center justify-center gap-2 bg-aura-card border border-aura-border hover:border-aura-primary/50 text-aura-text text-xs font-semibold py-2.5 rounded-md transition-colors"
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 text-aura-primary ${generateQrMutation.isPending ? 'animate-spin' : ''}`} />
-                  Rotate Daily QR Token
-                </button>
+                <div className="grid grid-cols-2 gap-2 w-full">
+                  <button
+                    onClick={handleRotateQr}
+                    disabled={generateQrMutation.isPending}
+                    className="flex items-center justify-center gap-1.5 bg-aura-card border border-aura-border hover:border-aura-primary/50 text-aura-text text-xs font-semibold py-2 rounded-md transition-colors"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 text-aura-primary ${generateQrMutation.isPending ? 'animate-spin' : ''}`} />
+                    Rotate QR
+                  </button>
+                  <button
+                    onClick={() => setShowPrintModal(true)}
+                    className="flex items-center justify-center gap-1.5 bg-aura-primary/10 border border-aura-primary/20 text-aura-primary text-xs font-semibold py-2 rounded-md hover:bg-aura-primary/20 transition-colors"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    Print A4
+                  </button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -210,6 +258,62 @@ export default function CheckInsPage() {
           </Card>
         </div>
       </div>
+
+      {/* Printable A4 Reception QR Standee Modal */}
+      <Modal open={showPrintModal} onClose={() => setShowPrintModal(false)} title="Printable A4 Reception QR Poster">
+        <div className="space-y-4">
+          {/* Printable Container */}
+          <div id="printable-a4-standee" className="bg-white text-black p-8 rounded-xl border border-gray-300 flex flex-col items-center justify-between text-center space-y-6">
+            {/* Header */}
+            <div className="flex flex-col items-center gap-2 border-b-2 border-black/10 pb-4 w-full">
+              <div className="h-14 w-14 rounded-2xl bg-black text-white flex items-center justify-center font-black text-2xl shadow-md">
+                {gymName.charAt(0)}
+              </div>
+              <h2 className="text-2xl font-extrabold uppercase tracking-wide text-gray-900">{gymName}</h2>
+              <p className="text-xs font-semibold text-gray-600 uppercase tracking-widest">Official Member Check-in Station</p>
+            </div>
+
+            {/* QR Graphic */}
+            <div className="bg-gray-50 p-6 rounded-2xl border-2 border-black shadow-inner flex flex-col items-center">
+              <img src={qrImageUrl} alt="A4 Scannable QR Code" className="h-60 w-60 object-contain" />
+              <p className="font-mono text-xs font-bold text-gray-700 mt-3 bg-gray-200 px-3 py-1 rounded">
+                Token: {qrToken}
+              </p>
+            </div>
+
+            {/* Instructions */}
+            <div className="space-y-2 max-w-sm text-left bg-gray-50 p-4 rounded-xl border border-gray-200 w-full text-xs text-gray-800">
+              <p className="font-bold uppercase tracking-wider text-center text-gray-900 mb-2">How To Check In:</p>
+              <div className="flex items-center gap-2">
+                <span className="h-5 w-5 rounded-full bg-black text-white flex items-center justify-center font-bold text-xs shrink-0">1</span>
+                <span>Open <strong>Aura Apex Mobile App</strong> on your phone.</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-5 w-5 rounded-full bg-black text-white flex items-center justify-center font-bold text-xs shrink-0">2</span>
+                <span>Tap <strong>QR Check-in Scanner</strong> on your dashboard.</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-5 w-5 rounded-full bg-black text-white flex items-center justify-center font-bold text-xs shrink-0">3</span>
+                <span>Point your phone camera at this reception poster.</span>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="text-center pt-2 border-t border-gray-200 w-full">
+              <p className="text-[10px] text-gray-500 uppercase tracking-widest font-mono">Powered by Aura Apex Gym Platform</p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowPrintModal(false)}>
+              Close
+            </Button>
+            <Button variant="primary" onClick={handlePrintStandee} className="gap-2">
+              <Printer className="h-4 w-4" /> Print / Save PDF
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </DashboardLayout>
   );
 }

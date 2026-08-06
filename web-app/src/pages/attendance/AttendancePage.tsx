@@ -29,11 +29,14 @@ export default function AttendancePage() {
         { day: 'Sun', checkins: 0 },
       ];
 
+  const qrScans = (attendanceData || []).filter((c: any) => c.method === 'qr').length;
+  const manualLogs = (attendanceData || []).filter((c: any) => c.method === 'manual').length;
+
   const stats = [
-    { title: 'Today Total', value: todayCount, icon: Users, iconColor: 'text-aura-primary' },
+    { title: "Today's Total Check-ins", value: todayCount, icon: Users, iconColor: 'text-aura-primary' },
     { title: 'Currently Inside', value: currentlyInside, icon: TrendingUp, iconColor: 'text-aura-success' },
-    { title: 'Peak Hour', value: '6 PM', icon: Clock, iconColor: 'text-aura-warning' },
-    { title: 'Total Logged', value: attendanceData.length, icon: AlertTriangle, iconColor: 'text-aura-danger' },
+    { title: 'QR Code Scans', value: qrScans, icon: Clock, iconColor: 'text-aura-warning' },
+    { title: 'Desk Manual Logs', value: manualLogs, icon: AlertTriangle, iconColor: 'text-aura-danger' },
   ];
 
   return (

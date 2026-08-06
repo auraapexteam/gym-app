@@ -2,7 +2,7 @@ import axiosInstance from './axios';
 import type { CheckIn, ApiResponse, PaginatedResponse, PaginationParams } from '@/types';
 
 export const attendanceApi = {
-  getAll: (params?: PaginationParams) =>
+  getAll: (params?: PaginationParams & { memberId?: string; dateFrom?: string; dateTo?: string }) =>
     axiosInstance.get<PaginatedResponse<CheckIn>>('/attendance', { params }),
 
   stats: () =>

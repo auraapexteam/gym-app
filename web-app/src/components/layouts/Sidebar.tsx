@@ -44,7 +44,6 @@ const navConfig: NavGroup[] = [
     items: [
       { label: 'Members', icon: Users, href: '/members', roles: ['gym_owner', 'staff'] },
       { label: 'Check-ins', icon: UserCheck, href: '/checkins', roles: ['gym_owner', 'staff', 'trainer'] },
-      { label: 'Classes', icon: Calendar, href: '/classes', roles: ['gym_owner', 'staff', 'trainer'] },
       { label: 'Trainers', icon: Dumbbell, href: '/trainers', roles: ['gym_owner', 'staff'] },
       { label: 'Staff', icon: UserCog, href: '/staff', roles: ['gym_owner'] },
     ],
@@ -54,7 +53,6 @@ const navConfig: NavGroup[] = [
     items: [
       { label: 'Membership Plans', icon: Zap, href: '/plans', roles: ['gym_owner'] },
       { label: 'Payments', icon: CreditCard, href: '/payments', roles: ['gym_owner', 'staff'] },
-      { label: 'Orders', icon: ShoppingBag, href: '/orders', roles: ['gym_owner', 'staff'] },
     ],
   },
   {

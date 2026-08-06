@@ -3,7 +3,7 @@ import { attendanceApi } from '@/api';
 import { toast } from 'sonner';
 import type { CheckIn } from '@/types';
 
-export function useAttendance(params?: { page?: number; limit?: number }) {
+export function useAttendance(params?: { page?: number; limit?: number; memberId?: string }) {
   return useQuery({
     queryKey: ['attendance', params],
     queryFn: async () => {

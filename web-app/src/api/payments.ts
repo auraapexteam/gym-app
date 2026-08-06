@@ -2,7 +2,7 @@ import axiosInstance from './axios';
 import type { Payment, ApiResponse, PaginatedResponse, PaginationParams } from '@/types';
 
 export const paymentsApi = {
-  getAll: (params?: PaginationParams) =>
+  getAll: (params?: PaginationParams & { memberId?: string; status?: string }) =>
     axiosInstance.get<PaginatedResponse<Payment>>('/payments', { params }),
 
   getById: (id: string) =>
