@@ -184,16 +184,16 @@ export default function ManageGymsPage() {
     <DashboardLayout breadcrumbs={[{ label: 'Super Admin' }, { label: 'Manage Gyms' }]}>
       
       {/* 1. Horizontal Sliding Metrics Marquee */}
-      <div className="w-full bg-[#131518] border border-aura-border rounded-xl p-3 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 overflow-hidden shadow-aura-sm">
-        <div className="flex items-center gap-2 border-b md:border-b-0 md:border-r border-aura-border/60 pb-2 md:pb-0 md:pr-4 shrink-0 w-full md:w-auto">
+      <div className="w-full bg-[#131518] border border-aura-border rounded-xl p-3 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 overflow-hidden shadow-aura-sm">
+        <div className="flex items-center gap-2 border-b sm:border-b-0 sm:border-r border-aura-border/60 pb-2 sm:pb-0 sm:pr-4 shrink-0 w-full sm:w-auto">
           <span className="relative flex h-2.5 w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-aura-success opacity-75" />
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-aura-success" />
           </span>
-          <span className="text-xs font-bold text-aura-success tracking-wider uppercase">LIVE STATUS</span>
+          <span className="text-xs font-bold text-aura-success tracking-wider uppercase whitespace-nowrap">LIVE STATUS</span>
         </div>
         <div className="flex-1 w-full overflow-x-auto no-scrollbar py-0.5">
-          <div className="flex items-center gap-4 min-w-max text-xs text-aura-muted">
+          <div className="flex items-center gap-2.5 sm:gap-4 min-w-max text-xs text-aura-muted">
             <span className="flex items-center gap-1.5 bg-white/5 border border-aura-border/40 px-2.5 py-1 rounded-lg">
               <Building2 className="h-3.5 w-3.5 text-aura-primary shrink-0" />
               Active Gyms: <strong className="text-aura-text font-bold ml-0.5">{activeGymsCount}</strong>
@@ -222,13 +222,13 @@ export default function ManageGymsPage() {
         
         {/* Left main: Map and Header */}
         <div className="flex-1 flex flex-col gap-4 min-w-0">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-aura-card border border-aura-border p-4 rounded-xl shadow-aura-sm">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-aura-card border border-aura-border p-4 sm:p-5 rounded-xl shadow-aura-sm">
             <div>
-              <h2 className="text-lg font-bold text-aura-text">Subscribed Gyms Live Map</h2>
+              <h2 className="text-base sm:text-lg font-bold text-aura-text">Subscribed Gyms Live Map</h2>
               <p className="text-xs text-aura-muted mt-0.5">Track branch locations, subscription status, and performance</p>
             </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
-              <div className="relative w-full sm:w-56 shrink-0">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
+              <div className="relative w-full sm:w-48 lg:w-56">
                 <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-aura-muted" />
                 <input
                   type="text"
@@ -241,7 +241,7 @@ export default function ManageGymsPage() {
               <Select
                 value={filter}
                 onChange={(e) => setFilter(e.target.value as any)}
-                containerClassName="w-full sm:w-36 shrink-0"
+                containerClassName="w-full sm:w-36"
                 className="py-1.5 text-xs bg-aura-bg"
                 options={[
                   { value: 'all', label: 'All Status' },
@@ -255,7 +255,7 @@ export default function ManageGymsPage() {
                 variant="primary" 
                 size="sm"
                 onClick={() => setIsAddModalOpen(true)}
-                className="gap-1.5 text-xs shrink-0 whitespace-nowrap"
+                className="gap-1.5 text-xs whitespace-nowrap justify-center"
               >
                 <Plus className="h-3.5 w-3.5" /> Add Gym
               </Button>
@@ -263,13 +263,13 @@ export default function ManageGymsPage() {
           </div>
 
           {/* Leaflet Map container */}
-          <div className="relative h-[380px] sm:h-[480px] bg-aura-card border border-aura-border rounded-xl overflow-hidden shadow-aura-md">
+          <div className="relative h-[320px] sm:h-[480px] bg-aura-card border border-aura-border rounded-xl overflow-hidden shadow-aura-md">
             
             {/* Map Div */}
             <div ref={mapRef} className="w-full h-full z-10" />
 
             {/* Custom Map Floating Controls */}
-            <div className="absolute top-4 left-4 flex flex-col gap-2 z-[400]">
+            <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex flex-col gap-2 z-[400]">
               <button 
                 onClick={handleZoomIn}
                 className="h-8 w-8 bg-[#1B1D22]/90 border border-aura-border rounded-md flex items-center justify-center text-aura-text hover:text-aura-primary hover:bg-[#2A2D35] transition-colors"
@@ -294,7 +294,7 @@ export default function ManageGymsPage() {
             </div>
 
             {/* Map Legend */}
-            <div className="absolute bottom-4 right-4 bg-[#1B1D22]/90 border border-aura-border px-3 py-2 rounded-lg z-[400] flex gap-3 text-[10px] text-aura-muted">
+            <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 bg-[#1B1D22]/90 border border-aura-border px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg z-[400] flex flex-wrap gap-2 sm:gap-3 text-[9px] sm:text-[10px] text-aura-muted">
               <span className="flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full bg-aura-success" /> Active
               </span>
@@ -311,10 +311,10 @@ export default function ManageGymsPage() {
 
             {/* Floating details overlay */}
             {selectedGym && (
-              <div className="absolute bottom-4 left-4 right-4 sm:right-auto sm:w-80 bg-[#1B1D22]/95 backdrop-blur-xl border border-aura-border p-4 rounded-xl shadow-aura-lg z-[500] animate-[fade-in_0.2s_ease-out]">
+              <div className="absolute bottom-3 left-3 right-3 sm:right-auto sm:w-80 bg-[#1B1D22]/95 backdrop-blur-xl border border-aura-border p-3 sm:p-4 rounded-xl shadow-aura-lg z-[500] max-h-[80%] overflow-y-auto animate-[fade-in_0.2s_ease-out]">
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    <h3 className="font-bold text-sm text-aura-text">{selectedGym.name}</h3>
+                    <h3 className="font-bold text-xs sm:text-sm text-aura-text">{selectedGym.name}</h3>
                     <p className="text-[10px] text-aura-muted mt-0.5 flex items-center gap-1">
                       <MapPin className="h-3 w-3 text-aura-primary shrink-0" />
                       {selectedGym.address.split(',')[0]}
@@ -497,7 +497,7 @@ export default function ManageGymsPage() {
         title="Register New Gym"
         size="lg"
       >
-        <form onSubmit={handleAddGym} className="p-6 space-y-4">
+        <form onSubmit={handleAddGym} className="p-4 sm:p-6 space-y-4">
           <div>
             <label className="block text-xs font-medium text-aura-text mb-1">Gym Name *</label>
             <Input
@@ -520,7 +520,7 @@ export default function ManageGymsPage() {
               className="text-xs"
             />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-xs font-medium text-aura-text mb-1">Phone Number</label>
               <Input
@@ -545,7 +545,7 @@ export default function ManageGymsPage() {
 
           <div className="border-t border-aura-border pt-4 mt-2">
             <h4 className="text-xs font-bold text-aura-primary uppercase tracking-wider mb-3">Owner Account Details</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="block text-xs font-medium text-aura-text mb-1">Owner Full Name *</label>
                 <Input
@@ -569,7 +569,7 @@ export default function ManageGymsPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mt-3">
               <div>
                 <label className="block text-xs font-medium text-aura-text mb-1">Owner Password *</label>
                 <Input
@@ -599,7 +599,7 @@ export default function ManageGymsPage() {
 
           <div className="border-t border-aura-border pt-4 mt-2">
             <h4 className="text-xs font-bold text-aura-muted uppercase tracking-wider mb-3">Location Mapping</h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="block text-xs font-medium text-aura-text mb-1">Latitude *</label>
                 <Input
@@ -625,11 +625,11 @@ export default function ManageGymsPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-aura-border mt-6">
-            <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)} className="text-xs">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 pt-4 border-t border-aura-border mt-6 pb-2">
+            <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)} className="text-xs w-full sm:w-auto justify-center">
               Cancel
             </Button>
-            <Button type="submit" variant="primary" className="text-xs">
+            <Button type="submit" variant="primary" className="text-xs w-full sm:w-auto justify-center">
               Register Gym
             </Button>
           </div>
