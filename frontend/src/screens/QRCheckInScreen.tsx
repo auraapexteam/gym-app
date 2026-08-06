@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
   SafeAreaView,
   Animated,
@@ -15,13 +14,15 @@ import {
 import Svg, { Circle } from 'react-native-svg';
 import { Camera } from 'react-native-camera-kit';
 import { apiClient } from '../api/client';
+import { useTheme } from '../context/ThemeContext';
 import { QrCode, Check } from 'lucide-react-native';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export function QRCheckInScreen({ navigation }: any) {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const [token, setToken] = useState('');
-  const [loading, setLoading] = useState(false);
   const [phase, setPhase] = useState<'idle' | 'scanning' | 'success'>('idle');
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
 
@@ -57,7 +58,7 @@ export function QRCheckInScreen({ navigation }: any) {
           // iOS prompts automatically on Camera mounting
           setHasPermission(true);
         }
-      } catch (err) {
+      } catch {
         setHasPermission(false);
       }
     };
@@ -85,6 +86,7 @@ export function QRCheckInScreen({ navigation }: any) {
       spinValue.setValue(0);
       progressValue.setValue(0);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Animated.Value refs are stable by design
   }, [phase]);
 
   const handleStartCheckIn = async (scannedToken?: string) => {
@@ -100,7 +102,6 @@ export function QRCheckInScreen({ navigation }: any) {
     // Wait 2.2 seconds to simulate scanning animation
     setTimeout(async () => {
       try {
-        setLoading(true);
         const response = await apiClient.post('/attendance/check-in', {
           token: activeToken.trim(),
         });
@@ -109,7 +110,7 @@ export function QRCheckInScreen({ navigation }: any) {
           setPhase('success');
           // Autohide success screen and navigate back
           setTimeout(() => {
-            navigation.navigate('HomeTab');
+            navigation.navigate('MainTabs', { screen: 'HomeTab' });
           }, 1600);
         }
       } catch (error: any) {
@@ -120,8 +121,6 @@ export function QRCheckInScreen({ navigation }: any) {
         } else {
           Alert.alert('Check-in Failed', error.response?.data?.message || 'Invalid or expired QR token.');
         }
-      } finally {
-        setLoading(false);
       }
     }, 2200);
   };
@@ -153,7 +152,7 @@ export function QRCheckInScreen({ navigation }: any) {
               cx={size / 2}
               cy={size / 2}
               r={r}
-              stroke="rgba(255, 255, 255, 0.08)"
+              stroke={isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)'}
               strokeWidth={strokeWidth}
               fill="none"
             />
@@ -163,7 +162,7 @@ export function QRCheckInScreen({ navigation }: any) {
                 cx={size / 2}
                 cy={size / 2}
                 r={r}
-                stroke="#6366f1"
+                stroke={colors.primary}
                 strokeWidth={strokeWidth}
                 fill="none"
                 strokeDasharray={`${circ} ${circ}`}
@@ -186,12 +185,12 @@ export function QRCheckInScreen({ navigation }: any) {
                 }}
               />
             ) : phase === 'idle' ? (
-              <QrCode size={90} color="#a1a5b7" strokeWidth={1.5} />
+              <QrCode size={90} color={colors.mutedForeground} strokeWidth={1.5} />
             ) : null}
 
             {phase === 'scanning' && (
               <Animated.View style={{ transform: [{ rotate: spinAngle }] }}>
-                <QrCode size={90} color="#6366f1" strokeWidth={1.8} />
+                <QrCode size={90} color={colors.primary} strokeWidth={1.8} />
               </Animated.View>
             )}
 
@@ -209,8 +208,8 @@ export function QRCheckInScreen({ navigation }: any) {
             ? 'Hold steady near the reader. Code refreshes every 30 seconds.'
             : phase === 'success'
             ? 'Enjoy your session!'
-            : hasPermission 
-            ? 'Point the camera at the reception check-in QR code.' 
+            : hasPermission
+            ? 'Point the camera at the reception check-in QR code.'
             : 'Enter the active gym token below and initiate scan.'}
         </Text>
 
@@ -220,7 +219,7 @@ export function QRCheckInScreen({ navigation }: any) {
             <TextInput
               style={styles.tokenInput}
               placeholder="Enter active Gym Token manually"
-              placeholderTextColor="#a1a5b7"
+              placeholderTextColor={colors.mutedForeground}
               value={token}
               onChangeText={setToken}
               autoCapitalize="none"
@@ -250,10 +249,10 @@ export function QRCheckInScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b0f19',
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
@@ -264,14 +263,14 @@ const styles = StyleSheet.create({
   gymHeaderSub: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
     textTransform: 'uppercase',
     letterSpacing: 1.5,
   },
   gymHeaderTitle: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#f5f6fa',
+    color: colors.foreground,
     marginTop: 4,
     marginBottom: 40,
   },
@@ -294,16 +293,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
   },
   successCircle: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#10b981',
+    backgroundColor: colors.success,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#10b981',
+    shadowColor: colors.success,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 10,
@@ -311,7 +310,7 @@ const styles = StyleSheet.create({
   },
   helperText: {
     fontSize: 14,
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
     textAlign: 'center',
     lineHeight: 20,
     maxWidth: 280,
@@ -322,24 +321,24 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   tokenInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: colors.border,
     borderRadius: 18,
     height: 52,
     paddingHorizontal: 16,
     fontSize: 15,
-    color: '#f5f6fa',
+    color: colors.foreground,
     fontWeight: '600',
     textAlign: 'center',
   },
   actionBtn: {
-    backgroundColor: '#6366f1',
+    backgroundColor: colors.primary,
     borderRadius: 9999,
     height: 52,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#6366f1',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.45,
     shadowRadius: 12,
@@ -358,6 +357,6 @@ const styles = StyleSheet.create({
   closeBtnText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#a1a5b7',
+    color: colors.mutedForeground,
   },
 });

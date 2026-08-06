@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View, FlatList, ActivityIndicator, SafeAreaView, Alert, TouchableOpacity } from 'react-native';
-import { COLORS, SHADOWS } from '../theme/tokens';
-import { Award, Clock, Calendar, ShieldCheck, XCircle } from 'lucide-react-native';
+import { useTheme } from '../context/ThemeContext';
+import { Award, Calendar, XCircle } from 'lucide-react-native';
 import { apiClient } from '../api/client';
 
 export function SubscriptionHistoryScreen() {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -67,43 +69,51 @@ export function SubscriptionHistoryScreen() {
     <SafeAreaView style={styles.container}>
       {loading && history.length === 0 ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
           data={history}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
-            <View style={[styles.card, item.status === 'active' ? styles.activeCard : styles.inactiveCard]}>
-              <View style={styles.headerRow}>
-                <Award size={18} color={item.status === 'active' ? COLORS.success : COLORS.textSecondary} />
-                <Text style={styles.planName}>{item.plans?.name || 'Gym Plan'}</Text>
-                <Text style={[styles.statusText, item.status === 'active' ? styles.activeText : styles.inactiveText]}>
-                  {item.status?.toUpperCase()}
-                </Text>
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => {
+            const isActive = item.status === 'active';
+            return (
+              <View style={styles.card}>
+                <View style={styles.headerRow}>
+                  <View style={[styles.iconBadge, { backgroundColor: isActive ? colors.successSoft : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)') }]}>
+                    <Award size={16} color={isActive ? colors.success : colors.mutedForeground} />
+                  </View>
+                  <Text style={styles.planName}>{item.plans?.name || 'Gym Plan'}</Text>
+                  <View style={[styles.statusPill, { backgroundColor: isActive ? colors.successSoft : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)') }]}>
+                    <Text style={[styles.statusText, { color: isActive ? colors.success : colors.mutedForeground }]}>
+                      {item.status?.toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.divider} />
+
+                <View style={styles.row}>
+                  <Calendar size={14} color={colors.mutedForeground} style={{ marginRight: 6 }} />
+                  <Text style={styles.dateText}>
+                    {formatDate(item.start_date)} - {formatDate(item.end_date)}
+                  </Text>
+                </View>
+
+                {isActive && (
+                  <TouchableOpacity
+                    style={styles.cancelBtn}
+                    onPress={() => handleCancelSubscription(item.id)}
+                  >
+                    <XCircle size={14} color={colors.destructive} style={{ marginRight: 6 }} />
+                    <Text style={styles.cancelText}>Cancel Subscription</Text>
+                  </TouchableOpacity>
+                )}
               </View>
-
-              <View style={styles.divider} />
-
-              <View style={styles.row}>
-                <Calendar size={14} color={COLORS.textSecondary} style={{ marginRight: 6 }} />
-                <Text style={styles.dateText}>
-                  {formatDate(item.start_date)} - {formatDate(item.end_date)}
-                </Text>
-              </View>
-
-              {item.status === 'active' && (
-                <TouchableOpacity
-                  style={styles.cancelBtn}
-                  onPress={() => handleCancelSubscription(item.id)}
-                >
-                  <XCircle size={14} color={COLORS.danger} style={{ marginRight: 6 }} />
-                  <Text style={styles.cancelText}>Cancel Subscription</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
+            );
+          }}
           ListEmptyComponent={
             <View style={styles.center}>
               <Text style={styles.emptyText}>No subscription history found.</Text>
@@ -115,39 +125,48 @@ export function SubscriptionHistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   list: { padding: 16 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.small,
+    borderColor: colors.border,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: isDark ? 0 : 0.04,
+    shadowRadius: 8,
+    elevation: isDark ? 0 : 1,
   },
-  activeCard: { borderLeftWidth: 4, borderLeftColor: COLORS.success },
-  inactiveCard: { borderLeftWidth: 4, borderLeftColor: COLORS.textSecondary },
   headerRow: { flexDirection: 'row', alignItems: 'center' },
-  planName: { fontSize: 16, fontWeight: '700', color: COLORS.textPrimary, flex: 1, marginLeft: 8 },
-  statusText: { fontSize: 11, fontWeight: '800' },
-  activeText: { color: COLORS.success },
-  inactiveText: { color: COLORS.textSecondary },
-  divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 12 },
+  iconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  planName: { fontSize: 15, fontWeight: '700', color: colors.foreground, flex: 1 },
+  statusPill: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 99 },
+  statusText: { fontSize: 10, fontWeight: '800' },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: 12 },
   row: { flexDirection: 'row', alignItems: 'center' },
-  dateText: { fontSize: 13, color: COLORS.textPrimary },
+  dateText: { fontSize: 13, color: colors.foreground, fontWeight: '600' },
   cancelBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 14,
     alignSelf: 'flex-start',
-    backgroundColor: COLORS.danger + '10',
+    backgroundColor: colors.destructiveSoft,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 6,
+    borderRadius: 8,
   },
-  cancelText: { fontSize: 12, fontWeight: '700', color: COLORS.danger },
-  emptyText: { color: COLORS.textSecondary, fontSize: 15 },
+  cancelText: { fontSize: 12, fontWeight: '700', color: colors.destructive },
+  emptyText: { color: colors.mutedForeground, fontSize: 15 },
 });

@@ -34,15 +34,13 @@ export function PlansScreen({ navigation }: any) {
   const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
 
   // Checkout sheet states
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [payMethod, setPayMethod] = useState<'upi' | 'card'>('upi');
   const [payPhase, setPayPhase] = useState<'form' | 'loading' | 'success'>('form');
 
-  const { user, loadSubscription, subscription } = useAuthStore();
+  const { user, userProfile, loadSubscription, subscription } = useAuthStore();
 
   useEffect(() => {
     fetchPlans();
@@ -81,75 +79,69 @@ export function PlansScreen({ navigation }: any) {
 
   const handlePay = async () => {
     if (!selectedPlan) return;
-    
+
     try {
       setPayPhase('loading');
 
-      // 1. Create a subscription session on the backend
-      const response = await apiClient.post('/subscriptions', {
+      // 1. Create a Razorpay order on the backend for this plan.
+      const orderRes = await apiClient.post('/payments/orders', {
         planId: selectedPlan.id,
       });
 
-      if (!response.data || !response.data.success) {
-        throw new Error(response.data.message || 'Failed to initiate subscription');
+      if (!orderRes.data || !orderRes.data.success) {
+        throw new Error(orderRes.data?.message || 'Failed to create payment order');
       }
 
-      const { razorpaySubscriptionId } = response.data.data;
+      const { orderId, amountInPaise, currency, razorpayKeyId } = orderRes.data.data;
 
-      // Calculate checkout price based on toggle
-      const calculatedPrice = billingCycle === 'annual' 
-        ? Math.round(selectedPlan.price * 12 * 0.8) 
-        : selectedPlan.price;
-
-      // 2. Configure Razorpay details
+      // 2. Open Razorpay's native one-time checkout for that order.
       const options = {
         description: selectedPlan.description,
-        currency: 'INR',
-        key: 'rzp_test_TCESM9ZshcU5Ul', // Test Key
-        subscription_id: razorpaySubscriptionId,
+        currency,
+        key: razorpayKeyId,
+        amount: amountInPaise,
+        order_id: orderId,
         name: 'Aura Apex Gym',
         prefill: {
           email: user?.email || '',
           contact: '9876543210',
-          name: 'Gym Customer',
+          name: userProfile?.full_name || 'Gym Customer',
         },
-        theme: { color: '#6366f1' },
+        theme: { color: colors.primary },
       };
 
-      // 3. Open Razorpay native widget
-      RazorpayCheckout.open(options)
-        .then(() => {
-          // Success
-          setPayPhase('success');
-          loadSubscription();
-          
-          // Delayed close
-          setTimeout(() => {
-            setCheckoutOpen(false);
-            navigation.navigate('HomeTab');
-          }, 1800);
-        })
-        .catch((error: any) => {
-          console.warn('Razorpay Checkout failed:', error);
-          setPayPhase('form');
-          Alert.alert('Payment Failed', error.description || 'Checkout closed or failed.');
-        });
+      const result = await RazorpayCheckout.open(options);
+
+      // 3. Verify the signature server-side — this is what actually activates
+      // the subscription. Never treat the Razorpay callback alone as success.
+      const verifyRes = await apiClient.post('/payments/verify', {
+        orderId: result.razorpay_order_id,
+        paymentId: result.razorpay_payment_id,
+        signature: result.razorpay_signature,
+      });
+
+      if (!verifyRes.data || !verifyRes.data.success) {
+        throw new Error(verifyRes.data?.message || 'Payment verification failed');
+      }
+
+      setPayPhase('success');
+      loadSubscription();
+
+      // Delayed close
+      setTimeout(() => {
+        setCheckoutOpen(false);
+        navigation.navigate('HomeTab');
+      }, 1800);
     } catch (error: any) {
       setPayPhase('form');
-      Alert.alert('Error', error.message || 'An error occurred during subscription checkout.');
+      Alert.alert(
+        'Payment Failed',
+        error.response?.data?.message || error.description || error.message || 'Checkout closed or failed.'
+      );
     }
   };
 
-  const getPrice = (plan: Plan) => {
-    if (billingCycle === 'annual') {
-      return Math.round(plan.price * 12 * 0.8);
-    }
-    return plan.price;
-  };
-
-  const getIntervalLabel = () => {
-    return billingCycle === 'annual' ? '/yr' : '/mo';
-  };
+  const getIntervalLabel = (plan: Plan) => (plan.billing_interval === 'year' ? '/yr' : '/mo');
 
   const isCurrentPlan = (plan: Plan) => {
     return subscription?.plans?.id === plan.id;
@@ -162,35 +154,6 @@ export function PlansScreen({ navigation }: any) {
         <View style={styles.screenHeader}>
           <Text style={styles.screenTitle}>Choose your plan</Text>
           <Text style={styles.screenSubtitle}>Cancel or switch tiers anytime.</Text>
-        </View>
-
-        {/* Toggle Segment Billing */}
-        <View style={styles.segmentedRow}>
-          <View style={styles.segmentedBg}>
-            <TouchableOpacity
-              onPress={() => setBillingCycle('monthly')}
-              activeOpacity={0.8}
-              style={[styles.segmentBtn, billingCycle === 'monthly' && styles.segmentBtnActive]}
-            >
-              <Text style={[styles.segmentText, billingCycle === 'monthly' && styles.segmentTextActive]}>
-                Monthly
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setBillingCycle('annual')}
-              activeOpacity={0.8}
-              style={[styles.segmentBtn, billingCycle === 'annual' && styles.segmentBtnActive]}
-            >
-              <Text style={[styles.segmentText, billingCycle === 'annual' && styles.segmentTextActive]}>
-                Annual
-              </Text>
-            </TouchableOpacity>
-          </View>
-          {billingCycle === 'annual' && (
-            <View style={styles.mintBadge}>
-              <Text style={styles.mintBadgeText}>Save 20%</Text>
-            </View>
-          )}
         </View>
 
         {/* Swipe Carousel of plan cards */}
@@ -230,10 +193,10 @@ export function PlansScreen({ navigation }: any) {
                   
                   <View style={styles.priceRow}>
                     <Text style={[styles.tierPrice, isElite ? styles.textWhite : styles.textWhite]}>
-                      ₹{getPrice(p).toLocaleString()}
+                      ₹{p.price.toLocaleString()}
                     </Text>
                     <Text style={[styles.tierInterval, isElite ? styles.textMuted : styles.textMuted]}>
-                      {getIntervalLabel()}
+                      {getIntervalLabel(p)}
                     </Text>
                   </View>
 
@@ -297,14 +260,14 @@ export function PlansScreen({ navigation }: any) {
                   </TouchableOpacity>
                 </View>
 
-                {/* Amount Row Box */}
                 <View style={styles.checkoutAmountCard}>
                   <View>
                     <Text style={styles.checkoutPlanSub}>
-                      Aura Apex · {selectedPlan.name} ({billingCycle})
+                      Aura Apex · {selectedPlan.name}
                     </Text>
                     <Text style={styles.checkoutAmountVal}>
-                      ₹{getPrice(selectedPlan).toLocaleString()}
+                      ₹{selectedPlan.price.toLocaleString()}
+                      <Text style={styles.checkoutAmountPeriod}>{getIntervalLabel(selectedPlan)}</Text>
                     </Text>
                   </View>
                   <View style={styles.checkoutGatewayBadge}>
@@ -312,40 +275,11 @@ export function PlansScreen({ navigation }: any) {
                   </View>
                 </View>
 
-                {/* Method selector Segment */}
-                <View style={styles.methodSegmentBg}>
-                  <TouchableOpacity
-                    onPress={() => setPayMethod('upi')}
-                    activeOpacity={0.8}
-                    style={[styles.methodBtn, payMethod === 'upi' && styles.methodBtnActive]}
-                  >
-                    <Text style={[styles.methodText, payMethod === 'upi' && styles.methodTextActive]}>
-                      UPI
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setPayMethod('card')}
-                    activeOpacity={0.8}
-                    style={[styles.methodBtn, payMethod === 'card' && styles.methodBtnActive]}
-                  >
-                    <Text style={[styles.methodText, payMethod === 'card' && styles.methodTextActive]}>
-                      Card
-                    </Text>
-                  </TouchableOpacity>
+                <View style={styles.methodDetailBox}>
+                  <Text style={styles.methodDetailNote}>
+                    You'll choose UPI, card, netbanking, or wallet on the next screen.
+                  </Text>
                 </View>
-
-                {/* Detail Box */}
-                {payMethod === 'upi' ? (
-                  <View style={styles.methodDetailBox}>
-                    <Text style={styles.methodDetailLabel}>UPI ID</Text>
-                    <Text style={styles.methodDetailValue}>aarav@okhdfc</Text>
-                  </View>
-                ) : (
-                  <View style={styles.methodDetailBox}>
-                    <Text style={styles.methodDetailLabel}>Card Number</Text>
-                    <Text style={styles.methodDetailValue}>•••• •••• •••• 4242</Text>
-                  </View>
-                )}
 
                 {/* Checkout Trigger */}
                 <TouchableOpacity
@@ -354,7 +288,7 @@ export function PlansScreen({ navigation }: any) {
                   style={styles.payBtn}
                 >
                   <Text style={styles.payBtnText}>
-                    Pay ₹{getPrice(selectedPlan).toLocaleString()}
+                    Pay ₹{selectedPlan.price.toLocaleString()}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -405,48 +339,6 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontSize: 14,
     color: colors.mutedForeground,
     marginTop: 4,
-  },
-  segmentedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 24,
-  },
-  segmentedBg: {
-    flexDirection: 'row',
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 9999,
-    padding: 3,
-  },
-  segmentBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 9999,
-  },
-  segmentBtnActive: {
-    backgroundColor: colors.primary,
-  },
-  segmentText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.mutedForeground,
-  },
-  segmentTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  mintBadge: {
-    backgroundColor: colors.successSoft,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 99,
-  },
-  mintBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: colors.success,
   },
   centerLoader: {
     height: 250,
@@ -624,6 +516,11 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     color: colors.foreground,
     marginTop: 2,
   },
+  checkoutAmountPeriod: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.mutedForeground,
+  },
   checkoutGatewayBadge: {
     backgroundColor: colors.primarySoft,
     paddingHorizontal: 8,
@@ -636,30 +533,6 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     color: colors.primary,
     textTransform: 'uppercase',
   },
-  methodSegmentBg: {
-    flexDirection: 'row',
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.02)',
-    borderRadius: 14,
-    padding: 3,
-  },
-  methodBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 12,
-  },
-  methodBtnActive: {
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
-  },
-  methodText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.mutedForeground,
-  },
-  methodTextActive: {
-    color: colors.foreground,
-    fontWeight: '800',
-  },
   methodDetailBox: {
     backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
     borderWidth: 1,
@@ -667,17 +540,11 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     borderRadius: 18,
     padding: 16,
   },
-  methodDetailLabel: {
-    fontSize: 10,
+  methodDetailNote: {
+    fontSize: 12,
     color: colors.mutedForeground,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  methodDetailValue: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.foreground,
-    marginTop: 4,
+    fontWeight: '600',
+    lineHeight: 17,
   },
   payBtn: {
     backgroundColor: colors.primary,
