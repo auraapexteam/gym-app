@@ -6,7 +6,7 @@ import { useAttendance } from '@/hooks/useAttendance';
 import { useAuthStore } from '@/store';
 import { formatDate } from '@/utils';
 import {
-  Building2, MapPin, Phone, Mail, CheckCircle2, Clock, XCircle, QrCode, Sparkles, UserCheck, Dumbbell, ShieldCheck
+  Building2, MapPin, Phone, Mail, CheckCircle2, Clock, XCircle, QrCode, UserCheck, ShieldCheck
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -25,16 +25,24 @@ export default function BrowseGymsPage() {
   );
 
   const isApprovedMember = joinStatus?.status === 'approved';
+  const isPendingMember = joinStatus?.status === 'pending';
   const approvedGym = isApprovedMember ? gyms.find((g) => g.id === joinStatus?.gymId) : null;
+  const pendingGym = isPendingMember ? gyms.find((g) => g.id === joinStatus?.gymId) : null;
+
   const qrPassToken = `MEMBER-${user?.id?.substring(0, 8).toUpperCase() || 'PASS'}`;
   const qrPassImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrPassToken)}`;
 
   return (
-    <DashboardLayout breadcrumbs={[{ label: 'Customer Portal', href: '/browse-gyms' }, { label: isApprovedMember ? 'My Gym Dashboard' : 'Browse Gyms' }]}>
+    <DashboardLayout
+      breadcrumbs={[
+        { label: 'Customer Portal', href: '/browse-gyms' },
+        { label: isApprovedMember ? 'My Gym Dashboard' : isPendingMember ? 'Application Status' : 'Browse Gyms' },
+      ]}
+    >
       <div className="max-w-6xl mx-auto space-y-6">
-        
-        {/* IF APPROVED: Render Customer Member Dashboard */}
-        {isApprovedMember ? (
+
+        {/* 1. IF APPROVED: Customer Member Dashboard */}
+        {isApprovedMember && (
           <div className="space-y-6">
             {/* Active Membership Banner */}
             <motion.div
@@ -84,7 +92,7 @@ export default function BrowseGymsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-aura-card border border-aura-border rounded-xl p-4">
                     <p className="text-xs text-aura-muted mb-1">Active Membership</p>
-                    <p className="text-base font-bold text-aura-text">{approvedGym?.name || 'Iron Paradise Gym'}</p>
+                    <p className="text-base font-bold text-aura-text">{approvedGym?.name || joinStatus?.gymName || 'Gym Center'}</p>
                     <p className="text-xs text-aura-success mt-1 font-semibold">Standard Access Plan</p>
                   </div>
                   <div className="bg-aura-card border border-aura-border rounded-xl p-4">
@@ -130,130 +138,147 @@ export default function BrowseGymsPage() {
                 </Card>
               </div>
             </div>
-
-            <div className="border-t border-aura-border pt-6">
-              <h3 className="text-lg font-bold text-aura-text mb-4">Explore Other Gym Directory Locations</h3>
-            </div>
           </div>
-        ) : (
-          /* IF PENDING OR NOT APPLIED: Banner */
-          joinStatus && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`p-4 rounded-xl border flex items-center justify-between gap-4 ${
-                joinStatus.status === 'pending'
-                  ? 'bg-aura-warning/10 border-aura-warning/30 text-aura-warning'
-                  : 'bg-aura-danger/10 border-aura-danger/30 text-aura-danger'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                {joinStatus.status === 'pending' && <Clock className="h-6 w-6 shrink-0 animate-pulse" />}
-                {joinStatus.status === 'rejected' && <XCircle className="h-6 w-6 shrink-0" />}
-                <div>
-                  <p className="font-semibold text-sm">
-                    {joinStatus.status === 'pending' && 'Application Pending Owner Approval'}
-                    {joinStatus.status === 'rejected' && 'Application Request Update'}
-                  </p>
-                  <p className="text-xs opacity-90 mt-0.5">
-                    {joinStatus.status === 'pending' && `Your join application to ${joinStatus.gymName || 'the gym'} is under review by the gym owner.`}
-                    {joinStatus.status === 'rejected' && 'Your previous join request was not approved. You can choose another gym below.'}
-                  </p>
+        )}
+
+        {/* 2. IF PENDING: Dedicated Pending Application Status Card */}
+        {isPendingMember && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="space-y-6"
+          >
+            <Card className="border-aura-warning/40 bg-gradient-to-b from-aura-warning/10 via-aura-card to-aura-card p-8">
+              <CardContent className="p-0 text-center max-w-xl mx-auto flex flex-col items-center">
+                <div className="h-20 w-20 rounded-3xl bg-aura-warning/20 border-2 border-aura-warning/40 flex items-center justify-center text-aura-warning shadow-lg mb-6">
+                  <Clock className="h-10 w-10 animate-pulse" />
                 </div>
+
+                <Badge variant="warning" className="text-xs px-3 py-1 font-bold mb-3 uppercase tracking-wider">
+                  Application Under Review
+                </Badge>
+
+                <h2 className="text-2xl font-extrabold text-aura-text mb-2">
+                  Application Pending Owner Approval
+                </h2>
+
+                <p className="text-sm text-aura-muted leading-relaxed mb-6">
+                  Your request to join <span className="font-bold text-white">{pendingGym?.name || joinStatus?.gymName || 'the gym'}</span> is currently being reviewed by gym management. Once approved by the gym owner, your active membership portal will unlock automatically.
+                </p>
+
+                <div className="w-full bg-[#0d0f12] border border-aura-border/80 rounded-2xl p-5 text-left space-y-3 mb-4">
+                  <div className="flex items-center justify-between text-xs border-b border-aura-border/60 pb-3">
+                    <span className="text-aura-muted">Target Gym:</span>
+                    <span className="font-bold text-white flex items-center gap-1.5">
+                      <Building2 className="h-3.5 w-3.5 text-aura-primary" />
+                      {pendingGym?.name || joinStatus?.gymName || 'Gym Center'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs border-b border-aura-border/60 pb-3">
+                    <span className="text-aura-muted">Applicant Name:</span>
+                    <span className="font-medium text-aura-text">{user?.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-aura-muted">Application Date:</span>
+                    <span className="font-medium text-aura-text">{formatDate(joinStatus?.createdAt || new Date())}</span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-aura-muted italic">
+                  Need assistance? Contact reception directly or wait for approval notification.
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* 3. IF NO APPLICATION OR REJECTED: Show Directory Grid */}
+        {!isApprovedMember && !isPendingMember && (
+          <div className="space-y-6">
+            {joinStatus?.status === 'rejected' && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 rounded-xl border border-aura-danger/30 bg-aura-danger/10 text-aura-danger flex items-center gap-3 text-sm"
+              >
+                <XCircle className="h-5 w-5 shrink-0" />
+                <div>
+                  <p className="font-bold">Previous Join Request Update</p>
+                  <p className="text-xs opacity-90 mt-0.5">Your previous join request was not approved. You may select another gym below to apply.</p>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Hero Header */}
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-aura-card border border-aura-border p-6 rounded-2xl">
+              <div>
+                <h1 className="text-2xl font-bold text-aura-text">Explore & Join Fitness Centers</h1>
+                <p className="text-sm text-aura-muted mt-1">Select a verified gym to submit your member join application</p>
               </div>
-              <Badge variant={joinStatus.status === 'pending' ? 'warning' : 'danger'}>
-                {joinStatus.status.toUpperCase()}
-              </Badge>
-            </motion.div>
-          )
-        )}
-
-        {/* Hero Header */}
-        {!isApprovedMember && (
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-aura-card border border-aura-border p-6 rounded-2xl">
-            <div>
-              <h1 className="text-2xl font-bold text-aura-text">Explore & Join Fitness Centers</h1>
-              <p className="text-sm text-aura-muted mt-1">Select a verified gym to submit your member join application</p>
+              <SearchInput
+                value={search}
+                onChange={setSearch}
+                placeholder="Search gym by name or city..."
+                className="w-full md:w-72"
+              />
             </div>
-            <SearchInput
-              value={search}
-              onChange={setSearch}
-              placeholder="Search gym by name or city..."
-              className="w-full md:w-72"
-            />
-          </div>
-        )}
 
-        {/* Gym Directory Cards Grid */}
-        {gymsLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Skeleton className="h-64 rounded-2xl" />
-            <Skeleton className="h-64 rounded-2xl" />
-            <Skeleton className="h-64 rounded-2xl" />
-          </div>
-        ) : filteredGyms.length === 0 ? (
-          <Card className="p-12 text-center">
-            <Building2 className="h-12 w-12 text-aura-muted mx-auto mb-3" />
-            <h3 className="text-lg font-semibold text-aura-text">No Gyms Found</h3>
-            <p className="text-sm text-aura-muted mt-1">No registered gyms match your current search terms.</p>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredGyms.map((gym, i) => {
-              const isApplied = joinStatus?.gymId === gym.id;
-              const isPending = isApplied && joinStatus?.status === 'pending';
-              const isApproved = isApplied && joinStatus?.status === 'approved';
+            {/* Gym Directory Cards Grid */}
+            {gymsLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <Skeleton className="h-64 rounded-2xl" />
+                <Skeleton className="h-64 rounded-2xl" />
+                <Skeleton className="h-64 rounded-2xl" />
+              </div>
+            ) : filteredGyms.length === 0 ? (
+              <Card className="p-12 text-center">
+                <Building2 className="h-12 w-12 text-aura-muted mx-auto mb-3" />
+                <h3 className="text-lg font-semibold text-aura-text">No Gyms Found</h3>
+                <p className="text-sm text-aura-muted mt-1">No registered gyms match your current search terms.</p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredGyms.map((gym, i) => (
+                  <motion.div
+                    key={gym.id}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                  >
+                    <Card className="h-full flex flex-col justify-between hover:border-aura-primary/40 transition-all duration-300">
+                      <CardContent className="p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="h-12 w-12 rounded-xl bg-aura-primary/10 border border-aura-primary/20 flex items-center justify-center font-bold text-lg text-aura-primary shrink-0">
+                            {gym.name.charAt(0)}
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-aura-text text-base leading-snug">{gym.name}</h3>
+                            <p className="text-xs text-aura-muted flex items-center gap-1 mt-0.5">
+                              <MapPin className="h-3 w-3 text-aura-primary" /> {gym.city || gym.address || 'India'}
+                            </p>
+                          </div>
+                        </div>
 
-              return (
-                <motion.div
-                  key={gym.id}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                >
-                  <Card className="h-full flex flex-col justify-between hover:border-aura-primary/40 transition-all duration-300">
-                    <CardContent className="p-6">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="h-12 w-12 rounded-xl bg-aura-primary/10 border border-aura-primary/20 flex items-center justify-center font-bold text-lg text-aura-primary shrink-0">
-                          {gym.name.charAt(0)}
+                        <div className="space-y-2 text-xs text-aura-muted border-t border-aura-border pt-4 mb-4">
+                          {gym.address && (
+                            <p className="flex items-center gap-2 truncate">
+                              <Building2 className="h-3.5 w-3.5 text-aura-muted shrink-0" /> {gym.address}
+                            </p>
+                          )}
+                          {gym.phone && (
+                            <p className="flex items-center gap-2">
+                              <Phone className="h-3.5 w-3.5 text-aura-muted shrink-0" /> {gym.phone}
+                            </p>
+                          )}
+                          {gym.email && (
+                            <p className="flex items-center gap-2 truncate">
+                              <Mail className="h-3.5 w-3.5 text-aura-muted shrink-0" /> {gym.email}
+                            </p>
+                          )}
                         </div>
-                        <div>
-                          <h3 className="font-bold text-aura-text text-base leading-snug">{gym.name}</h3>
-                          <p className="text-xs text-aura-muted flex items-center gap-1 mt-0.5">
-                            <MapPin className="h-3 w-3 text-aura-primary" /> {gym.city || gym.address || 'India'}
-                          </p>
-                        </div>
-                      </div>
+                      </CardContent>
 
-                      <div className="space-y-2 text-xs text-aura-muted border-t border-aura-border pt-4 mb-4">
-                        {gym.address && (
-                          <p className="flex items-center gap-2 truncate">
-                            <Building2 className="h-3.5 w-3.5 text-aura-muted shrink-0" /> {gym.address}
-                          </p>
-                        )}
-                        {gym.phone && (
-                          <p className="flex items-center gap-2">
-                            <Phone className="h-3.5 w-3.5 text-aura-muted shrink-0" /> {gym.phone}
-                          </p>
-                        )}
-                        {gym.email && (
-                          <p className="flex items-center gap-2 truncate">
-                            <Mail className="h-3.5 w-3.5 text-aura-muted shrink-0" /> {gym.email}
-                          </p>
-                        )}
-                      </div>
-                    </CardContent>
-
-                    <div className="p-6 pt-0">
-                      {isApproved ? (
-                        <div className="w-full py-2.5 rounded-lg bg-aura-success/10 border border-aura-success/30 text-aura-success text-xs font-bold flex items-center justify-center gap-2">
-                          <CheckCircle2 className="h-4 w-4" /> Joined Gym — Active Member
-                        </div>
-                      ) : isPending ? (
-                        <div className="w-full py-2.5 rounded-lg bg-aura-warning/10 border border-aura-warning/30 text-aura-warning text-xs font-bold flex items-center justify-center gap-2">
-                          <Clock className="h-4 w-4 animate-pulse" /> Pending Approval
-                        </div>
-                      ) : (
+                      <div className="p-6 pt-0">
                         <Button
                           variant="primary"
                           disabled={applyMutation.isPending}
@@ -262,14 +287,15 @@ export default function BrowseGymsPage() {
                         >
                           <ShieldCheck className="h-4 w-4" /> Apply to Join Gym
                         </Button>
-                      )}
-                    </div>
-                  </Card>
-                </motion.div>
-              );
-            })}
+                      </div>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </div>
         )}
+
       </div>
     </DashboardLayout>
   );
