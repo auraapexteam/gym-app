@@ -118,9 +118,9 @@ export default function EquipmentPage() {
 
   const stats = [
     { title: 'Total Equipment', value: (equipment || []).length, icon: Wrench, iconColor: 'text-aura-primary' },
-    { title: 'Needs Service', value: (equipment || []).filter((e) => e.condition === 'maintenance').length, icon: AlertTriangle, iconColor: 'text-aura-danger' },
-    { title: 'Service Due Soon', value: (equipment || []).filter((e) => { const days = (safeNewDate(e.nextService || new Date()).getTime() - Date.now()) / (1000 * 3600 * 24); return days <= 14 && days >= 0; }).length, icon: Calendar, iconColor: 'text-aura-warning' },
-    { title: 'Excellent Condition', value: (equipment || []).filter((e) => e.condition === 'excellent').length, icon: CheckCircle, iconColor: 'text-aura-success' },
+    { title: 'Operational Items', value: (equipment || []).filter((e) => (e.status || 'operational') === 'operational').length, icon: CheckCircle, iconColor: 'text-aura-success' },
+    { title: 'Needs Maintenance', value: (equipment || []).filter((e) => e.condition === 'poor' || e.status === 'maintenance').length, icon: AlertTriangle, iconColor: 'text-aura-danger' },
+    { title: 'Excellent Condition', value: (equipment || []).filter((e) => e.condition === 'excellent').length, icon: CheckCircle, iconColor: 'text-aura-primary' },
   ];
 
   return (
@@ -167,7 +167,7 @@ export default function EquipmentPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-aura-border text-left">
-                {['Equipment Name', 'Category', 'Condition', 'Usage', 'Next Service', 'Actions'].map((h) => (
+                {['Equipment Name', 'Category', 'Condition', 'Status', 'Actions'].map((h) => (
                   <th key={h} className="px-4 py-3.5 text-xs font-semibold text-aura-muted uppercase tracking-wider first:pl-6">
                     {h}
                   </th>
@@ -203,18 +203,21 @@ export default function EquipmentPage() {
                         )}
                         <div>
                           <span className="font-medium text-aura-text block">{eq.name}</span>
-                          <span className="text-xs text-aura-muted capitalize">{eq.status || 'Operational'}</span>
+                          <span className="text-xs text-aura-muted capitalize">{eq.description || 'Gym Facility Equipment'}</span>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 text-aura-muted">{eq.category}</td>
+                    <td className="px-4 py-3.5 text-aura-muted font-medium">{eq.category}</td>
                     <td className="px-4 py-3.5">
-                      <Badge variant={conditionVariantMap[eq.condition] ?? 'muted'} className="capitalize">
+                      <Badge variant={conditionVariantMap[eq.condition] ?? 'muted'} className="capitalize font-bold">
                         {eq.condition}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3.5 text-aura-text">{(eq.usageHours || 0).toLocaleString()} hrs</td>
-                    <td className="px-4 py-3.5 text-aura-muted text-xs">{formatDate(eq.nextService || new Date())}</td>
+                    <td className="px-4 py-3.5">
+                      <Badge variant={eq.status === 'operational' ? 'success' : eq.status === 'maintenance' ? 'warning' : 'danger'} className="capitalize font-bold">
+                        {eq.status || 'operational'}
+                      </Badge>
+                    </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2">
                         <button

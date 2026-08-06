@@ -206,46 +206,54 @@ export default function MembersPage({ defaultShowAdd = false }: MembersPageProps
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-aura-border">
-                  {pendingRequests.map((req: any) => (
-                    <tr key={req.id} className="hover:bg-white/3 transition-colors">
-                      <td className="py-3 font-semibold text-aura-text">
-                        {req.userName || req.userEmail || 'Customer Applicant'}
-                      </td>
-                      <td className="py-3 text-aura-muted">
-                        {req.userEmail || req.userPhone || '—'}
-                      </td>
-                      <td className="py-3 text-aura-muted text-xs">
-                        {formatDate(req.createdAt || req.created_at)}
-                      </td>
-                      <td className="py-3">
-                        <Badge variant="warning" className="capitalize">
-                          {req.status}
-                        </Badge>
-                      </td>
-                      <td className="py-3">
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="primary"
-                            disabled={approveMutation.isPending}
-                            onClick={() => approveMutation.mutate(req.id)}
-                            className="gap-1.5 text-xs"
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5" /> Approve Member
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            disabled={rejectMutation.isPending}
-                            onClick={() => rejectMutation.mutate(req.id)}
-                            className="gap-1.5 text-xs"
-                          >
-                            <XCircle className="h-3.5 w-3.5" /> Reject
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {pendingRequests.map((req: any) => {
+                    const profile = req.profiles || req.profile || {};
+                    const applicantName = profile.full_name || profile.fullName || req.userName || req.userEmail || 'Customer Applicant';
+                    const contactInfo = profile.email || profile.phone || req.userEmail || req.userPhone || '—';
+                    return (
+                      <tr key={req.id} className="hover:bg-white/3 transition-colors">
+                        <td className="py-3 font-semibold text-aura-text">
+                          <div className="flex items-center gap-3">
+                            <Avatar name={applicantName} src={profile.avatar_url || profile.avatar} size="sm" />
+                            <span className="font-bold text-white">{applicantName}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 text-aura-muted font-medium">
+                          {contactInfo}
+                        </td>
+                        <td className="py-3 text-aura-muted text-xs">
+                          {formatDate(req.createdAt || req.created_at)}
+                        </td>
+                        <td className="py-3">
+                          <Badge variant="warning" className="capitalize font-bold">
+                            {req.status}
+                          </Badge>
+                        </td>
+                        <td className="py-3">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="primary"
+                              disabled={approveMutation.isPending}
+                              onClick={() => approveMutation.mutate(req.id)}
+                              className="gap-1.5 text-xs font-semibold"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Approve Member
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              disabled={rejectMutation.isPending}
+                              onClick={() => rejectMutation.mutate(req.id)}
+                              className="gap-1.5 text-xs font-semibold"
+                            >
+                              <XCircle className="h-3.5 w-3.5" /> Reject
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

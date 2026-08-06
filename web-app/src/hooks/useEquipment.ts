@@ -16,6 +16,7 @@ export function useEquipment() {
         category: e.category || 'General',
         condition: e.condition || 'excellent',
         status: e.status || 'operational',
+        description: e.description || '',
         imageUrl: e.imageUrl || e.image_url || e.path || '',
         purchaseDate: e.purchasedAt || e.purchaseDate || new Date().toISOString(),
         warrantyExpiry: e.warrantyExpiry || new Date().toISOString(),

@@ -179,6 +179,7 @@ export interface Equipment {
   category: string;
   condition: EquipmentCondition;
   status?: string;
+  description?: string;
   imageUrl?: string;
   purchaseDate: string;
   warrantyExpiry: string;
