@@ -91,6 +91,9 @@ export class SubscriptionService {
       method: input.method ?? 'cash',
     });
 
+    // Automatically promote member status to active upon plan creation
+    await MemberService.update(gymId, input.memberId, { status: 'active' }).catch(() => null);
+
     return this.getById(gymId, subscription_id);
   }
 }

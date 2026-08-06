@@ -19,3 +19,13 @@ export function useCreateManualSubscription() {
     },
   });
 }
+
+export function useMySubscriptions() {
+  return useQuery({
+    queryKey: ['subscriptions', 'me'],
+    queryFn: async () => {
+      const res = await subscriptionsApi.getMine();
+      return res.data.data || [];
+    },
+  });
+}

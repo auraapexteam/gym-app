@@ -314,7 +314,7 @@ export class GymService {
             full_name: profile.full_name,
             email: profile.email,
             phone: profile.phone,
-            status: 'active'
+            status: 'inactive'
           })
           .select('id')
           .single();

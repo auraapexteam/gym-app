@@ -14,6 +14,9 @@ export const subscriptionsApi = {
   list: (params?: { status?: string; memberId?: string }) =>
     axiosInstance.get<ApiResponse<any[]>>('/subscriptions', { params }),
 
+  getMine: () =>
+    axiosInstance.get<ApiResponse<any[]>>('/subscriptions/me'),
+
   cancel: (id: string) =>
     axiosInstance.post<ApiResponse<any>>(`/subscriptions/${id}/cancel`),
 };

@@ -3,19 +3,23 @@ import { DashboardLayout } from '@/components/layouts';
 import { Card, CardContent, Badge, Button, SearchInput, Skeleton } from '@/components/ui';
 import { useGymDirectory, useJoinRequestStatus, useApplyJoinGym } from '@/hooks/useGyms';
 import { useAttendance } from '@/hooks/useAttendance';
+import { useMySubscriptions } from '@/hooks/useSubscriptions';
 import { useAuthStore } from '@/store';
 import { formatDate } from '@/utils';
 import {
-  Building2, MapPin, Phone, Mail, CheckCircle2, Clock, XCircle, QrCode, UserCheck, ShieldCheck
+  Building2, MapPin, Phone, Mail, CheckCircle2, Clock, XCircle, QrCode, UserCheck, ShieldCheck, CreditCard, Lock
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 export default function BrowseGymsPage() {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const { data: gyms = [], isLoading: gymsLoading } = useGymDirectory();
   const { data: joinStatus, isLoading: statusLoading } = useJoinRequestStatus();
   const { data: userAttendance = [] } = useAttendance();
+  const { data: mySubscriptions = [] } = useMySubscriptions();
   const applyMutation = useApplyJoinGym();
 
   const filteredGyms = gyms.filter((g) =>
@@ -28,6 +32,9 @@ export default function BrowseGymsPage() {
   const isPendingMember = !isApprovedMember && joinStatus?.status === 'pending';
   const approvedGym = isApprovedMember ? (gyms.find((g) => g.id === (user?.gymId || joinStatus?.gymId)) || { name: user?.gymName || joinStatus?.gymName || 'Active Gym' }) : null;
   const pendingGym = isPendingMember ? gyms.find((g) => g.id === joinStatus?.gymId) : null;
+
+  const activeSubscription = mySubscriptions.find((s: any) => s.status === 'active');
+  const hasActivePlan = !!activeSubscription;
 
   const qrPassToken = `MEMBER-${user?.id?.substring(0, 8).toUpperCase() || 'PASS'}`;
   const qrPassImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrPassToken)}`;
@@ -48,96 +55,139 @@ export default function BrowseGymsPage() {
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-r from-aura-success/20 via-aura-primary/10 to-aura-card border border-aura-success/30 p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+              className={`p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border ${
+                hasActivePlan
+                  ? 'bg-gradient-to-r from-aura-success/20 via-aura-primary/10 to-aura-card border-aura-success/30'
+                  : 'bg-gradient-to-r from-aura-warning/20 via-aura-card to-aura-card border-aura-warning/40'
+              }`}
             >
               <div className="flex items-center gap-4">
-                <div className="h-14 w-14 rounded-2xl bg-aura-success/20 border border-aura-success/40 flex items-center justify-center text-aura-success font-bold shrink-0">
-                  <CheckCircle2 className="h-8 w-8" />
+                <div className={`h-14 w-14 rounded-2xl border flex items-center justify-center font-bold shrink-0 ${
+                  hasActivePlan
+                    ? 'bg-aura-success/20 border-aura-success/40 text-aura-success'
+                    : 'bg-aura-warning/20 border-aura-warning/40 text-aura-warning'
+                }`}>
+                  {hasActivePlan ? <CheckCircle2 className="h-8 w-8" /> : <CreditCard className="h-8 w-8" />}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-xl font-bold text-aura-text">{approvedGym?.name || joinStatus?.gymName || 'Active Gym Member'}</h2>
-                    <Badge variant="success">APPROVED MEMBER</Badge>
+                    <Badge variant={hasActivePlan ? "success" : "warning"}>
+                      {hasActivePlan ? "APPROVED MEMBER" : "PLAN ACTIVATION REQUIRED"}
+                    </Badge>
                   </div>
                   <p className="text-xs text-aura-muted mt-1">
-                    Welcome back, <span className="text-aura-text font-semibold">{user?.name}</span>! Your membership is active.
+                    Welcome back, <span className="text-aura-text font-semibold">{user?.name}</span>! {hasActivePlan ? 'Your membership is active.' : 'Select a membership plan to unlock your digital pass.'}
                   </p>
                 </div>
               </div>
+
+              {!hasActivePlan && (
+                <Button
+                  variant="primary"
+                  onClick={() => navigate('/customer/plans')}
+                  className="gap-2 font-bold text-xs"
+                >
+                  <CreditCard className="h-4 w-4" /> Subscribe / Select Plan
+                </Button>
+              )}
             </motion.div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Member QR Check-in Pass Card */}
-              <Card className="lg:col-span-1 border-aura-primary/40">
-                <CardContent className="p-6 text-center flex flex-col items-center">
-                  <div className="flex items-center gap-2 mb-3">
-                    <QrCode className="h-5 w-5 text-aura-primary" />
-                    <h3 className="font-bold text-aura-text text-sm uppercase tracking-wider">My Digital Check-in Pass</h3>
-                  </div>
+            {hasActivePlan ? (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Member QR Check-in Pass Card */}
+                <Card className="lg:col-span-1 border-aura-primary/40">
+                  <CardContent className="p-6 text-center flex flex-col items-center">
+                    <div className="flex items-center gap-2 mb-3">
+                      <QrCode className="h-5 w-5 text-aura-primary" />
+                      <h3 className="font-bold text-aura-text text-sm uppercase tracking-wider">My Digital Check-in Pass</h3>
+                    </div>
 
-                  <div className="bg-white p-4 rounded-2xl border-2 border-aura-primary/30 shadow-aura-md my-2">
-                    <img src={qrPassImageUrl} alt="Member Digital Checkin Pass" className="h-48 w-48 object-contain rounded" />
-                  </div>
+                    <div className="bg-white p-4 rounded-2xl border-2 border-aura-primary/30 shadow-aura-md my-2">
+                      <img src={qrPassImageUrl} alt="Member Digital Checkin Pass" className="h-48 w-48 object-contain rounded" />
+                    </div>
 
-                  <p className="text-xs text-aura-muted mt-2">Present this QR pass at reception for instant scan</p>
-                  <p className="font-mono text-xs font-bold text-aura-primary bg-aura-primary/10 border border-aura-primary/20 px-3 py-1 rounded mt-2">
-                    {qrPassToken}
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Membership Overview & Attendance History */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-aura-card border border-aura-border rounded-xl p-4">
-                    <p className="text-xs text-aura-muted mb-1">Active Membership</p>
-                    <p className="text-base font-bold text-aura-text">{approvedGym?.name || joinStatus?.gymName || 'Gym Center'}</p>
-                    <p className="text-xs text-aura-success mt-1 font-semibold">Standard Access Plan</p>
-                  </div>
-                  <div className="bg-aura-card border border-aura-border rounded-xl p-4">
-                    <p className="text-xs text-aura-muted mb-1">Total Visits</p>
-                    <p className="text-xl font-extrabold text-aura-primary">{userAttendance.length}</p>
-                    <p className="text-xs text-aura-muted mt-1">Recorded check-ins</p>
-                  </div>
-                </div>
-
-                {/* Personal Attendance Logs */}
-                <Card>
-                  <CardContent className="p-6">
-                    <h3 className="font-bold text-aura-text text-sm mb-3 flex items-center gap-2">
-                      <UserCheck className="h-4 w-4 text-aura-primary" /> My Recent Check-in Logs
-                    </h3>
-                    {userAttendance.length === 0 ? (
-                      <div className="text-center py-8 text-aura-muted text-xs border border-dashed border-aura-border rounded-xl">
-                        No check-ins recorded yet. Scan your digital QR pass at reception when you visit the gym!
-                      </div>
-                    ) : (
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b border-aura-border text-left">
-                            <th className="pb-2 font-semibold text-aura-muted">Date & Time</th>
-                            <th className="pb-2 font-semibold text-aura-muted">Method</th>
-                            <th className="pb-2 font-semibold text-aura-muted">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-aura-border">
-                          {userAttendance.slice(0, 5).map((a: any) => (
-                            <tr key={a.id} className="hover:bg-white/3">
-                              <td className="py-2.5 text-aura-text font-medium">{formatDate(a.checkInTime || a.created_at)}</td>
-                              <td className="py-2.5 uppercase font-mono text-aura-muted">{a.method || 'qr'}</td>
-                              <td className="py-2.5">
-                                <Badge variant="success">Checked In</Badge>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
+                    <p className="text-xs text-aura-muted mt-2">Present this QR pass at reception for instant scan</p>
+                    <p className="font-mono text-xs font-bold text-aura-primary bg-aura-primary/10 border border-aura-primary/20 px-3 py-1 rounded mt-2">
+                      {qrPassToken}
+                    </p>
                   </CardContent>
                 </Card>
+
+                {/* Membership Overview & Attendance History */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-aura-card border border-aura-border rounded-xl p-4">
+                      <p className="text-xs text-aura-muted mb-1">Active Plan</p>
+                      <p className="text-base font-bold text-aura-text">{activeSubscription?.plan?.name || 'Active Package'}</p>
+                      <p className="text-xs text-aura-success mt-1 font-semibold">Active Membership</p>
+                    </div>
+                    <div className="bg-aura-card border border-aura-border rounded-xl p-4">
+                      <p className="text-xs text-aura-muted mb-1">Total Visits</p>
+                      <p className="text-xl font-extrabold text-aura-primary">{userAttendance.length}</p>
+                      <p className="text-xs text-aura-muted mt-1">Recorded check-ins</p>
+                    </div>
+                  </div>
+
+                  {/* Personal Attendance Logs */}
+                  <Card>
+                    <CardContent className="p-6">
+                      <h3 className="font-bold text-aura-text text-sm mb-3 flex items-center gap-2">
+                        <UserCheck className="h-4 w-4 text-aura-primary" /> My Recent Check-in Logs
+                      </h3>
+                      {userAttendance.length === 0 ? (
+                        <div className="text-center py-8 text-aura-muted text-xs border border-dashed border-aura-border rounded-xl">
+                          No check-ins recorded yet. Scan your digital QR pass at reception when you visit the gym!
+                        </div>
+                      ) : (
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b border-aura-border text-left">
+                              <th className="pb-2 font-semibold text-aura-muted">Date & Time</th>
+                              <th className="pb-2 font-semibold text-aura-muted">Method</th>
+                              <th className="pb-2 font-semibold text-aura-muted">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-aura-border">
+                            {userAttendance.slice(0, 5).map((a: any) => (
+                              <tr key={a.id} className="hover:bg-white/3">
+                                <td className="py-2.5 text-aura-text font-medium">{formatDate(a.checkInTime || a.created_at)}</td>
+                                <td className="py-2.5 uppercase font-mono text-aura-muted">{a.method || 'qr'}</td>
+                                <td className="py-2.5">
+                                  <Badge variant="success">Checked In</Badge>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
-            </div>
+            ) : (
+              /* IF APPROVED BUT NO ACTIVE PLAN: Prompt Card */
+              <Card className="border-aura-warning/40 p-8 text-center bg-gradient-to-b from-aura-warning/5 to-aura-card">
+                <CardContent className="p-0 max-w-lg mx-auto flex flex-col items-center">
+                  <div className="h-16 w-16 rounded-2xl bg-aura-warning/20 border border-aura-warning/40 flex items-center justify-center text-aura-warning mb-4">
+                    <Lock className="h-8 w-8" />
+                  </div>
+                  <h3 className="text-xl font-bold text-aura-text mb-2">Membership Plan Activation Required</h3>
+                  <p className="text-xs text-aura-muted leading-relaxed mb-6">
+                    Your join application has been approved by gym management! To activate your membership and unlock your digital QR check-in pass, please choose a membership plan.
+                  </p>
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={() => navigate('/customer/plans')}
+                    className="gap-2 font-bold text-xs px-8"
+                  >
+                    <CreditCard className="h-4 w-4" /> View & Activate Membership Plan
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
 
