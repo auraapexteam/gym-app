@@ -125,6 +125,7 @@ function CustomerDashboardView() {
   const { data: joinStatus } = useJoinRequestStatus();
   const { data: gyms = [] } = useGymDirectory();
   const { data: userAttendance = [] } = useAttendance();
+  const { data: mySubscriptions = [] } = useMySubscriptions();
   const qrCheckInMutation = useQrCheckIn();
 
   const [showScannerModal, setShowScannerModal] = useState(false);
@@ -132,6 +133,12 @@ function CustomerDashboardView() {
 
   const isApproved = joinStatus?.status === 'approved';
   const approvedGym = isApproved ? gyms.find((g) => g.id === joinStatus?.gymId) : null;
+
+  const activeSub = (mySubscriptions || []).find((s: any) => s.status === 'active');
+  const subEndDate = activeSub?.end_date || activeSub?.endDate;
+  const remSubDays = subEndDate ? Math.max(0, Math.ceil((new Date(subEndDate).getTime() - Date.now()) / (1000 * 3600 * 24))) : 0;
+  const totSubDays = activeSub?.plan?.duration_days || activeSub?.plan?.durationDays || 30;
+  const subProgress = Math.min(100, Math.max(0, Math.round((remSubDays / totSubDays) * 100)));
 
   // Check if checked in today
   const todayDateStr = new Date().toISOString().split('T')[0];
@@ -193,19 +200,47 @@ function CustomerDashboardView() {
           </Card>
 
           <div className="md:col-span-2 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-aura-card border border-aura-border rounded-xl p-5">
-                <p className="text-xs text-aura-muted mb-1">Linked Fitness Center</p>
-                <p className="text-base font-bold text-aura-text">{approvedGym?.name || joinStatus?.gymName || 'Iron Paradise Gym'}</p>
-                <p className="text-xs text-aura-success mt-1 font-semibold">Active Member Access</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-aura-card border border-aura-border rounded-xl p-4">
+                <p className="text-xs text-aura-muted mb-1">Active Package</p>
+                <p className="text-base font-bold text-aura-text truncate">{activeSub?.plan?.name || 'Active Package'}</p>
+                <p className="text-xs text-aura-success mt-1 font-semibold flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> Active
+                </p>
               </div>
 
-              <div className="bg-aura-card border border-aura-border rounded-xl p-5">
-                <p className="text-xs text-aura-muted mb-1">Total Recorded Visits</p>
-                <p className="text-2xl font-extrabold text-aura-primary">{userAttendance.length}</p>
+              <div className="bg-aura-card border border-aura-border rounded-xl p-4">
+                <p className="text-xs text-aura-muted mb-1">Plan Validity</p>
+                <p className="text-lg font-extrabold text-aura-success">{remSubDays} Days Left</p>
+                <p className="text-xs text-aura-muted mt-1 truncate">
+                  {subEndDate ? `Expires ${formatDate(subEndDate)}` : 'Active'}
+                </p>
+              </div>
+
+              <div className="bg-aura-card border border-aura-border rounded-xl p-4">
+                <p className="text-xs text-aura-muted mb-1">Total Visits</p>
+                <p className="text-xl font-extrabold text-aura-primary">{userAttendance.length}</p>
                 <p className="text-xs text-aura-muted mt-1">Gym check-ins</p>
               </div>
             </div>
+
+            {/* Plan Validity Progress Bar */}
+            {activeSub && (
+              <div className="bg-aura-card border border-aura-border rounded-xl p-4 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-aura-muted flex items-center gap-1.5 font-medium">
+                    <Clock className="h-3.5 w-3.5 text-aura-primary" /> Subscription Validity Progress
+                  </span>
+                  <span className="font-bold text-aura-success">{remSubDays} of {totSubDays} Days Remaining</span>
+                </div>
+                <div className="w-full h-2.5 bg-aura-bg border border-aura-border rounded-full overflow-hidden p-0.5">
+                  <div
+                    className="h-full bg-gradient-to-r from-aura-primary via-aura-success to-aura-success transition-all duration-500 rounded-full"
+                    style={{ width: `${subProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Attendance Timeline */}
             <Card>

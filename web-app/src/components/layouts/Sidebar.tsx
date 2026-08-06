@@ -85,7 +85,7 @@ const navConfig: NavGroup[] = [
     group: 'System',
     items: [
       { label: 'Notifications', icon: Bell, href: '/notifications' },
-      { label: 'Settings', icon: Settings, href: '/settings' },
+      { label: 'Settings', icon: Settings, href: '/settings', roles: ['super_admin', 'gym_owner', 'staff'] },
     ],
   },
 ];

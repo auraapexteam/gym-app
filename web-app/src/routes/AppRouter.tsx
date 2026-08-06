@@ -95,8 +95,6 @@ export function AppRouter() {
           <Route path="/equipment" element={<EquipmentPage />} />
           <Route path="/gallery" element={<GalleryPage />} />
           <Route path="/attendance" element={<AttendancePage />} />
-          <Route path="/analytics" element={<AnalyticsPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
           <Route path="/staff" element={<StaffPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/reports" element={<ReportsPage />} />
@@ -104,6 +102,11 @@ export function AppRouter() {
           <Route path="/customer/progress" element={<CustomerProgressPage />} />
           <Route path="/customer/plans" element={<CustomerPlansPage />} />
           <Route path="/customer/payments" element={<CustomerPaymentsPage />} />
+
+          {/* Admin & Management Protected routes */}
+          <Route element={<ProtectedRoute allowedRoles={['super_admin', 'gym_owner', 'staff']} />}>
+            <Route path="/settings" element={<SettingsPage />} />
+          </Route>
 
           {/* Super Admin Protected routes */}
           <Route element={<ProtectedRoute allowedRoles={['super_admin']} />}>
