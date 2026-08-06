@@ -24,9 +24,9 @@ export default function BrowseGymsPage() {
     (g.address && g.address.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const isApprovedMember = joinStatus?.status === 'approved';
-  const isPendingMember = joinStatus?.status === 'pending';
-  const approvedGym = isApprovedMember ? gyms.find((g) => g.id === joinStatus?.gymId) : null;
+  const isApprovedMember = !!user?.gymId || joinStatus?.status === 'approved';
+  const isPendingMember = !isApprovedMember && joinStatus?.status === 'pending';
+  const approvedGym = isApprovedMember ? (gyms.find((g) => g.id === (user?.gymId || joinStatus?.gymId)) || { name: user?.gymName || joinStatus?.gymName || 'Active Gym' }) : null;
   const pendingGym = isPendingMember ? gyms.find((g) => g.id === joinStatus?.gymId) : null;
 
   const qrPassToken = `MEMBER-${user?.id?.substring(0, 8).toUpperCase() || 'PASS'}`;

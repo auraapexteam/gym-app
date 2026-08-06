@@ -78,18 +78,20 @@ export default function CustomerPlansPage() {
                       <span className="text-xs text-aura-muted ml-1">/ package</span>
                     </div>
 
-                    <p className="text-xs text-aura-muted mb-4 border-t border-aura-border pt-3">
-                      {plan.description || 'Full gym facility access, equipment usage, and daily QR check-ins.'}
+                    <p className="text-sm text-aura-muted mb-4 border-t border-aura-border pt-3 leading-relaxed">
+                      {plan.description || 'Full gym facility access, equipment usage, and daily reception check-in privileges.'}
                     </p>
 
-                    <div className="space-y-2 text-xs text-aura-text">
-                      {['Unlimited Daily Check-ins', 'Full Gym Equipment Access', 'Locker Room Facility', 'Member App Access'].map((f) => (
-                        <div key={f} className="flex items-center gap-2">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-aura-success shrink-0" />
-                          <span>{f}</span>
-                        </div>
-                      ))}
-                    </div>
+                    {Array.isArray(plan.features) && plan.features.length > 0 && (
+                      <div className="space-y-2 text-xs text-aura-text">
+                        {plan.features.map((f: string) => (
+                          <div key={f} className="flex items-center gap-2">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-aura-success shrink-0" />
+                            <span>{f}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
 
                   <div className="p-6 pt-0">

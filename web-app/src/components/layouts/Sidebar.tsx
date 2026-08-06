@@ -122,14 +122,14 @@ export function Sidebar() {
     }));
   };
 
-  const isApprovedMember = user?.role === 'customer' && joinStatus?.status === 'approved';
+  const isApprovedMember = user?.role === 'customer' && (!!user?.gymId || joinStatus?.status === 'approved');
 
   const filteredNav = navConfig
     .map((group) => ({
       ...group,
       items: group.items.filter((item) => {
         if (item.roles && !item.roles.includes(user?.role as UserRole)) return false;
-        // Hide Browse Gyms if customer is already an approved member
+        // Hide Browse Gyms if customer has already joined a gym
         if (isApprovedMember && item.href === '/browse-gyms') return false;
         return true;
       }),
