@@ -198,7 +198,7 @@ export default function ManageOwnersPage() {
                       {/* Column 1: Profile and Info */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <Avatar name={owner.name} className="h-9 w-9 bg-aura-primary/10 text-aura-primary font-bold border border-aura-primary/20" />
+                          <Avatar name={owner.name} size="sm" />
                           <div>
                             <p className="text-sm font-semibold text-aura-text">{owner.name}</p>
                             <p className="text-xs text-aura-muted flex items-center gap-1.5 mt-0.5">
@@ -231,8 +231,18 @@ export default function ManageOwnersPage() {
                       </td>
 
                       {/* Column 4: Registration Date */}
-                      <td className="px-6 py-4 text-xs text-aura-muted">
-                        {owner.createdAt}
+                      <td className="px-6 py-4 text-xs text-aura-muted whitespace-nowrap">
+                        {owner.createdAt ? (
+                          isNaN(Date.parse(owner.createdAt))
+                            ? owner.createdAt
+                            : new Date(owner.createdAt).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                              })
+                        ) : (
+                          '—'
+                        )}
                       </td>
 
                       {/* Column 5: Status */}
@@ -274,7 +284,7 @@ export default function ManageOwnersPage() {
         onClose={() => setIsAddModalOpen(false)}
         title="Add Gym Owner"
       >
-        <form onSubmit={handleAddOwner} className="space-y-4">
+        <form onSubmit={handleAddOwner} className="p-6 space-y-4">
           <div>
             <label className="block text-xs font-medium text-aura-text mb-1">Full Name *</label>
             <Input
@@ -313,18 +323,18 @@ export default function ManageOwnersPage() {
             <Select
               value={newOwnerStatus}
               onChange={(e) => setNewOwnerStatus(e.target.value as any)}
-              className="text-xs"
+              className="text-xs bg-aura-bg"
               options={[
                 { value: 'active', label: 'Active' },
                 { value: 'suspended', label: 'Suspended' }
               ]}
             />
           </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>
+          <div className="flex justify-end gap-3 pt-4 border-t border-aura-border mt-6">
+            <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)} className="text-xs">
               Cancel
             </Button>
-            <Button type="submit" variant="primary">
+            <Button type="submit" variant="primary" className="text-xs">
               Register Owner
             </Button>
           </div>

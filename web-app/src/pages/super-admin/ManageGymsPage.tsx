@@ -184,32 +184,35 @@ export default function ManageGymsPage() {
     <DashboardLayout breadcrumbs={[{ label: 'Super Admin' }, { label: 'Manage Gyms' }]}>
       
       {/* 1. Horizontal Sliding Metrics Marquee */}
-      <div className="w-full bg-[#131518] border border-aura-border rounded-lg overflow-hidden py-2 px-4 mb-6 flex items-center relative gap-4">
-        <div className="flex items-center gap-2 border-r border-aura-border pr-4 shrink-0">
-          <span className="h-2 w-2 rounded-full bg-aura-success animate-ping" />
+      <div className="w-full bg-[#131518] border border-aura-border rounded-xl p-3 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 overflow-hidden shadow-aura-sm">
+        <div className="flex items-center gap-2 border-b md:border-b-0 md:border-r border-aura-border/60 pb-2 md:pb-0 md:pr-4 shrink-0 w-full md:w-auto">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-aura-success opacity-75" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-aura-success" />
+          </span>
           <span className="text-xs font-bold text-aura-success tracking-wider uppercase">LIVE STATUS</span>
         </div>
-        <div className="flex-1 overflow-hidden relative">
-          <div className="flex items-center gap-8 animate-[marquee_20s_linear_infinite] whitespace-nowrap hover:[animation-play-state:paused]">
-            <span className="text-xs text-aura-muted flex items-center gap-1.5">
-              <Building2 className="h-3.5 w-3.5 text-aura-primary" />
-              Active Gyms: <strong className="text-aura-text font-bold">{activeGymsCount}</strong>
+        <div className="flex-1 w-full overflow-x-auto no-scrollbar py-0.5">
+          <div className="flex items-center gap-4 min-w-max text-xs text-aura-muted">
+            <span className="flex items-center gap-1.5 bg-white/5 border border-aura-border/40 px-2.5 py-1 rounded-lg">
+              <Building2 className="h-3.5 w-3.5 text-aura-primary shrink-0" />
+              Active Gyms: <strong className="text-aura-text font-bold ml-0.5">{activeGymsCount}</strong>
             </span>
-            <span className="text-xs text-aura-muted flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5 text-aura-info" />
-              Total Members: <strong className="text-aura-text font-bold">{gyms.reduce((acc, g) => acc + g.totalMembers, 0)}</strong>
+            <span className="flex items-center gap-1.5 bg-white/5 border border-aura-border/40 px-2.5 py-1 rounded-lg">
+              <Users className="h-3.5 w-3.5 text-aura-info shrink-0" />
+              Total Members: <strong className="text-aura-text font-bold ml-0.5">{gyms.reduce((acc, g) => acc + g.totalMembers, 0)}</strong>
             </span>
-            <span className="text-xs text-aura-muted flex items-center gap-1.5">
-              <DollarSign className="h-3.5 w-3.5 text-aura-success" />
-              Platform MRR: <strong className="text-aura-text font-bold">₹{(totalRevenue / 100000).toFixed(2)}L</strong>
+            <span className="flex items-center gap-1.5 bg-white/5 border border-aura-border/40 px-2.5 py-1 rounded-lg">
+              <DollarSign className="h-3.5 w-3.5 text-aura-success shrink-0" />
+              Platform MRR: <strong className="text-aura-text font-bold ml-0.5">₹{(totalRevenue / 100000).toFixed(2)}L</strong>
             </span>
-            <span className="text-xs text-aura-muted flex items-center gap-1.5">
-              <AlertCircle className="h-3.5 w-3.5 text-aura-warning" />
-              Suspended/Expired Gyms: <strong className="text-aura-text font-bold">{alertGymsCount}</strong>
+            <span className="flex items-center gap-1.5 bg-white/5 border border-aura-border/40 px-2.5 py-1 rounded-lg">
+              <AlertCircle className="h-3.5 w-3.5 text-aura-warning shrink-0" />
+              Suspended/Expired: <strong className="text-aura-text font-bold ml-0.5">{alertGymsCount}</strong>
             </span>
-            <span className="text-xs text-aura-muted flex items-center gap-1.5">
-              <Plus className="h-3.5 w-3.5 text-aura-info" />
-              Pending Integrations: <strong className="text-aura-text font-bold">{pendingGymsCount}</strong>
+            <span className="flex items-center gap-1.5 bg-white/5 border border-aura-border/40 px-2.5 py-1 rounded-lg">
+              <Plus className="h-3.5 w-3.5 text-aura-info shrink-0" />
+              Pending: <strong className="text-aura-text font-bold ml-0.5">{pendingGymsCount}</strong>
             </span>
           </div>
         </div>
@@ -218,27 +221,28 @@ export default function ManageGymsPage() {
       <div className="flex flex-col xl:flex-row gap-6">
         
         {/* Left main: Map and Header */}
-        <div className="flex-1 flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-aura-card border border-aura-border p-4 rounded-xl">
+        <div className="flex-1 flex flex-col gap-4 min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-aura-card border border-aura-border p-4 rounded-xl shadow-aura-sm">
             <div>
               <h2 className="text-lg font-bold text-aura-text">Subscribed Gyms Live Map</h2>
               <p className="text-xs text-aura-muted mt-0.5">Track branch locations, subscription status, and performance</p>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="relative shrink-0">
-                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-aura-muted" />
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
+              <div className="relative w-full sm:w-56 shrink-0">
+                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-aura-muted" />
                 <input
                   type="text"
                   placeholder="Search branches..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 w-48 text-xs bg-aura-bg border border-aura-border rounded-md text-aura-text placeholder-aura-muted focus:outline-none focus:border-aura-primary"
+                  className="pl-8 pr-3 py-1.5 w-full text-xs bg-aura-bg border border-aura-border rounded-md text-aura-text placeholder-aura-muted focus:outline-none focus:border-aura-primary"
                 />
               </div>
               <Select
                 value={filter}
                 onChange={(e) => setFilter(e.target.value as any)}
-                className="py-1.5 text-xs bg-aura-bg w-32"
+                containerClassName="w-full sm:w-36 shrink-0"
+                className="py-1.5 text-xs bg-aura-bg"
                 options={[
                   { value: 'all', label: 'All Status' },
                   { value: 'active', label: 'Active' },
@@ -251,7 +255,7 @@ export default function ManageGymsPage() {
                 variant="primary" 
                 size="sm"
                 onClick={() => setIsAddModalOpen(true)}
-                className="gap-1.5 text-xs shrink-0"
+                className="gap-1.5 text-xs shrink-0 whitespace-nowrap"
               >
                 <Plus className="h-3.5 w-3.5" /> Add Gym
               </Button>
@@ -259,13 +263,13 @@ export default function ManageGymsPage() {
           </div>
 
           {/* Leaflet Map container */}
-          <div className="relative h-[480px] bg-aura-card border border-aura-border rounded-xl overflow-hidden shadow-aura-md">
+          <div className="relative h-[380px] sm:h-[480px] bg-aura-card border border-aura-border rounded-xl overflow-hidden shadow-aura-md">
             
             {/* Map Div */}
             <div ref={mapRef} className="w-full h-full z-10" />
 
             {/* Custom Map Floating Controls */}
-            <div className="absolute top-4 left-4 flex flex-col gap-2 z-[1000]">
+            <div className="absolute top-4 left-4 flex flex-col gap-2 z-[400]">
               <button 
                 onClick={handleZoomIn}
                 className="h-8 w-8 bg-[#1B1D22]/90 border border-aura-border rounded-md flex items-center justify-center text-aura-text hover:text-aura-primary hover:bg-[#2A2D35] transition-colors"
@@ -290,7 +294,7 @@ export default function ManageGymsPage() {
             </div>
 
             {/* Map Legend */}
-            <div className="absolute bottom-4 right-4 bg-[#1B1D22]/90 border border-aura-border px-3 py-2 rounded-lg z-[1000] flex gap-4 text-[10px] text-aura-muted">
+            <div className="absolute bottom-4 right-4 bg-[#1B1D22]/90 border border-aura-border px-3 py-2 rounded-lg z-[400] flex gap-3 text-[10px] text-aura-muted">
               <span className="flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full bg-aura-success" /> Active
               </span>
@@ -307,7 +311,7 @@ export default function ManageGymsPage() {
 
             {/* Floating details overlay */}
             {selectedGym && (
-              <div className="absolute bottom-4 left-4 right-4 sm:right-auto sm:w-80 bg-[#1B1D22]/95 backdrop-blur-xl border border-aura-border p-4 rounded-xl shadow-aura-lg z-[1000] animate-[fade-in_0.2s_ease-out]">
+              <div className="absolute bottom-4 left-4 right-4 sm:right-auto sm:w-80 bg-[#1B1D22]/95 backdrop-blur-xl border border-aura-border p-4 rounded-xl shadow-aura-lg z-[500] animate-[fade-in_0.2s_ease-out]">
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <h3 className="font-bold text-sm text-aura-text">{selectedGym.name}</h3>
@@ -416,7 +420,7 @@ export default function ManageGymsPage() {
               {/* Sparkline Area Chart */}
               <div className="h-28 w-full mt-2">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                  <AreaChart data={chartData} margin={{ top: 5, right: 0, left: 0, bottom: 5 }}>
                     <defs>
                       <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#C6FF00" stopOpacity={0.25}/>
@@ -455,8 +459,8 @@ export default function ManageGymsPage() {
             <CardContent className="p-0">
               <div className="max-h-[300px] overflow-y-auto px-4 divide-y divide-aura-border/40">
                 {gyms.map((gym) => (
-                  <div key={gym.id} className="py-3 flex items-center justify-between group">
-                    <div className="min-w-0 pr-2">
+                  <div key={gym.id} className="py-3 flex items-center justify-between gap-3 group">
+                    <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold text-aura-text truncate group-hover:text-aura-primary transition-colors cursor-pointer" onClick={() => {
                         setSelectedGym(gym);
                         if (mapInstance.current) {
@@ -474,7 +478,7 @@ export default function ManageGymsPage() {
                         gym.status === 'suspended' ? 'warning' :
                         gym.status === 'expired' ? 'danger' :
                         'info'
-                      } className="text-[8px] uppercase tracking-wider font-extrabold px-1 py-0 mt-0.5">
+                      } className="text-[8px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 mt-0.5 inline-block">
                         {gym.status}
                       </Badge>
                     </div>
@@ -491,8 +495,9 @@ export default function ManageGymsPage() {
         open={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         title="Register New Gym"
+        size="lg"
       >
-        <form onSubmit={handleAddGym} className="space-y-4">
+        <form onSubmit={handleAddGym} className="p-6 space-y-4">
           <div>
             <label className="block text-xs font-medium text-aura-text mb-1">Gym Name *</label>
             <Input
@@ -515,7 +520,7 @@ export default function ManageGymsPage() {
               className="text-xs"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-aura-text mb-1">Phone Number</label>
               <Input
@@ -537,9 +542,10 @@ export default function ManageGymsPage() {
               />
             </div>
           </div>
-          <div className="border-t border-aura-border pt-3 mt-3">
-            <h4 className="text-xs font-semibold text-aura-primary mb-3">Owner Account Details</h4>
-            <div className="grid grid-cols-2 gap-4">
+
+          <div className="border-t border-aura-border pt-4 mt-2">
+            <h4 className="text-xs font-bold text-aura-primary uppercase tracking-wider mb-3">Owner Account Details</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-aura-text mb-1">Owner Full Name *</label>
                 <Input
@@ -563,73 +569,72 @@ export default function ManageGymsPage() {
                 />
               </div>
             </div>
-            <div className="mt-3">
-              <label className="block text-xs font-medium text-aura-text mb-1">Owner Password *</label>
-              <Input
-                type="text"
-                required
-                placeholder="Password123!"
-                value={ownerPassword}
-                onChange={(e) => setOwnerPassword(e.target.value)}
-                className="text-xs font-mono"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+              <div>
+                <label className="block text-xs font-medium text-aura-text mb-1">Owner Password *</label>
+                <Input
+                  type="text"
+                  required
+                  placeholder="Password123!"
+                  value={ownerPassword}
+                  onChange={(e) => setOwnerPassword(e.target.value)}
+                  className="text-xs font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-aura-text mb-1">Subscription Status *</label>
+                <Select
+                  value={newGymStatus}
+                  onChange={(e) => setNewGymStatus(e.target.value as any)}
+                  className="text-xs bg-aura-bg"
+                  options={[
+                    { value: 'active', label: 'Active' },
+                    { value: 'pending', label: 'Pending Integration' },
+                    { value: 'suspended', label: 'Suspended' }
+                  ]}
+                />
+              </div>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-aura-text mb-1">Latitude *</label>
-              <Input
-                type="text"
-                required
-                placeholder="e.g. 12.9716"
-                value={newGymLat}
-                onChange={(e) => setNewGymLat(e.target.value)}
-                className="text-xs"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-aura-text mb-1">Longitude *</label>
-              <Input
-                type="text"
-                required
-                placeholder="e.g. 77.5946"
-                value={newGymLng}
-                onChange={(e) => setNewGymLng(e.target.value)}
-                className="text-xs"
-              />
+
+          <div className="border-t border-aura-border pt-4 mt-2">
+            <h4 className="text-xs font-bold text-aura-muted uppercase tracking-wider mb-3">Location Mapping</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-aura-text mb-1">Latitude *</label>
+                <Input
+                  type="text"
+                  required
+                  placeholder="e.g. 12.9716"
+                  value={newGymLat}
+                  onChange={(e) => setNewGymLat(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-aura-text mb-1">Longitude *</label>
+                <Input
+                  type="text"
+                  required
+                  placeholder="e.g. 77.5946"
+                  value={newGymLng}
+                  onChange={(e) => setNewGymLng(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
             </div>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-aura-text mb-1">Subscription Status *</label>
-            <Select
-              value={newGymStatus}
-              onChange={(e) => setNewGymStatus(e.target.value as any)}
-              className="text-xs"
-              options={[
-                { value: 'active', label: 'Active' },
-                { value: 'pending', label: 'Pending Integration' },
-                { value: 'suspended', label: 'Suspended' }
-              ]}
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-aura-border mt-6">
+            <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)} className="text-xs">
               Cancel
             </Button>
-            <Button type="submit" variant="primary">
+            <Button type="submit" variant="primary" className="text-xs">
               Register Gym
             </Button>
           </div>
         </form>
       </Modal>
-
-      {/* Ticker Animation CSS styling */}
-      <style>{`
-        @keyframes marquee {
-          0% { transform: translateX(100%); }
-          100% { transform: translateX(-100%); }
-        }
-      `}</style>
     </DashboardLayout>
   );
 }
