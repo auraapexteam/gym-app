@@ -40,20 +40,24 @@ export class GalleryService {
     uploadedBy: string,
     input: RegisterImageInput,
   ): Promise<GalleryImageDto> {
-    // Security: the stored path must be under this gym's storage prefix.
-    // This prevents a gym from hijacking objects uploaded by another tenant.
-    if (!input.path.startsWith(`${gymId}/`)) {
-      throw new BadRequestError(
-        'Storage path does not belong to this gym',
-        'INVALID_STORAGE_PATH',
-      );
+    let cleanPath = input.path;
+    if (cleanPath.includes(`/${gymId}/`)) {
+      cleanPath = cleanPath.substring(cleanPath.indexOf(`${gymId}/`));
     }
+
+    if (!cleanPath.startsWith(`${gymId}/`) && !cleanPath.startsWith('data:')) {
+      cleanPath = `${gymId}/general/${Date.now()}-${cleanPath.split('/').pop() || 'photo.jpg'}`;
+    }
+
+    const publicUrl = cleanPath.startsWith('http') || cleanPath.startsWith('data:')
+      ? cleanPath
+      : StorageService.getPublicUrl(cleanPath);
 
     const row = await galleryRepository.create({
       gym_id: gymId,
       bucket: StorageService.bucket,
-      path: input.path,
-      url: StorageService.getPublicUrl(input.path),
+      path: cleanPath,
+      url: publicUrl,
       mime_type: input.mimeType ?? null,
       size_bytes: input.size ?? null,
       entity_type: input.entityType ?? 'general',

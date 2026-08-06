@@ -46,13 +46,13 @@ export async function uploadFileToGallery({
 
     // 3. Register image metadata record in PostgreSQL
     await galleryApi.registerImage({
-      path: publicUrl || path || dataUrl,
+      path: path || publicUrl || dataUrl,
       mimeType: file.type || 'image/jpeg',
       size: file.size,
       entityType,
       entityId: cleanEntityId,
       caption,
-    }).catch(() => undefined);
+    });
 
     return publicUrl || dataUrl;
   } catch (err) {
