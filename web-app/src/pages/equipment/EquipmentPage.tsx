@@ -247,26 +247,30 @@ export default function EquipmentPage() {
         onClose={() => setShowAddModal(false)}
         title={editingEquipment ? 'Edit Gym Equipment' : 'Add Gym Equipment'}
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 bg-[#12151b]">
           <div>
-            <label className="block text-xs font-medium text-aura-text mb-1">Equipment Name *</label>
+            <label className="block text-xs font-semibold text-aura-text uppercase tracking-wider mb-2">
+              Equipment Name *
+            </label>
             <Input
               type="text"
               required
               placeholder="e.g. Leg Press 3 in 1"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="text-xs"
+              className="text-sm bg-[#0a0c0f] border-aura-border/80 focus:border-aura-primary focus:ring-aura-primary/30 rounded-xl"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-aura-text mb-1">Category *</label>
+              <label className="block text-xs font-semibold text-aura-text uppercase tracking-wider mb-2">
+                Category *
+              </label>
               <Select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="text-xs"
+                className="text-sm bg-[#0a0c0f] border-aura-border/80 focus:border-aura-primary focus:ring-aura-primary/30 rounded-xl"
                 options={[
                   { value: 'Strength', label: 'Strength' },
                   { value: 'Cardio', label: 'Cardio' },
@@ -276,11 +280,13 @@ export default function EquipmentPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-aura-text mb-1">Condition *</label>
+              <label className="block text-xs font-semibold text-aura-text uppercase tracking-wider mb-2">
+                Condition *
+              </label>
               <Select
                 value={condition}
                 onChange={(e) => setCondition(e.target.value as any)}
-                className="text-xs"
+                className="text-sm bg-[#0a0c0f] border-aura-border/80 focus:border-aura-primary focus:ring-aura-primary/30 rounded-xl"
                 options={[
                   { value: 'excellent', label: 'Excellent' },
                   { value: 'good', label: 'Good' },
@@ -293,11 +299,13 @@ export default function EquipmentPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-aura-text mb-1">Status</label>
+            <label className="block text-xs font-semibold text-aura-text uppercase tracking-wider mb-2">
+              Operational Status
+            </label>
             <Select
               value={status}
               onChange={(e) => setStatus(e.target.value as any)}
-              className="text-xs"
+              className="text-sm bg-[#0a0c0f] border-aura-border/80 focus:border-aura-primary focus:ring-aura-primary/30 rounded-xl"
               options={[
                 { value: 'operational', label: 'Operational' },
                 { value: 'maintenance', label: 'In Maintenance' },
@@ -306,32 +314,49 @@ export default function EquipmentPage() {
             />
           </div>
 
-          {/* Photo Upload Input */}
+          {/* Photo Upload Dropzone */}
           <div>
-            <label className="block text-xs font-medium text-aura-text mb-1">Equipment Photo</label>
+            <label className="block text-xs font-semibold text-aura-text uppercase tracking-wider mb-2">
+              Equipment Photo
+            </label>
             <div className="flex items-center gap-3">
               {imageUrl ? (
-                <img src={imageUrl} alt="Preview" className="h-12 w-12 rounded-md object-cover border border-aura-border" />
+                <img
+                  src={imageUrl}
+                  alt="Preview"
+                  className="h-14 w-14 rounded-xl object-cover border-2 border-aura-primary/40 shadow-sm shrink-0"
+                />
               ) : (
-                <div className="h-12 w-12 rounded-md bg-aura-card border border-aura-border flex items-center justify-center text-aura-muted">
-                  <ImageIcon className="h-5 w-5" />
+                <div className="h-14 w-14 rounded-xl bg-[#0a0c0f] border border-aura-border/80 flex items-center justify-center text-aura-muted shrink-0">
+                  <ImageIcon className="h-6 w-6 text-aura-primary/70" />
                 </div>
               )}
-              <label className="flex-1 flex items-center justify-center gap-2 border border-dashed border-aura-border rounded-md p-2.5 cursor-pointer hover:border-aura-primary/50 transition-colors text-xs text-aura-muted">
-                <Upload className="h-4 w-4 text-aura-primary" />
-                <span>{isUploading ? 'Uploading to Supabase...' : imageUrl ? 'Change Photo' : 'Upload Equipment Photo'}</span>
+              <label className="flex-1 flex items-center justify-center gap-2.5 bg-[#0a0c0f] border-2 border-dashed border-aura-border/80 hover:border-aura-primary/60 rounded-xl p-3.5 cursor-pointer transition-all hover:bg-white/[0.02] group">
+                <Upload className="h-4 w-4 text-aura-primary group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-medium text-aura-text">
+                  {isUploading ? 'Uploading to Supabase Storage...' : imageUrl ? 'Change Photo' : 'Upload Equipment Photo'}
+                </span>
                 <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
               </label>
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setShowAddModal(false)}>
+          {/* Action Footer */}
+          <div className="flex justify-end gap-3 pt-3 border-t border-aura-border/50">
+            <button
+              type="button"
+              onClick={() => setShowAddModal(false)}
+              className="px-4 py-2.5 rounded-xl border border-aura-border bg-white/5 hover:bg-white/10 text-aura-text text-sm font-semibold transition-all"
+            >
               Cancel
-            </Button>
-            <Button type="submit" variant="primary" disabled={isUploading || createMutation.isPending || updateMutation.isPending}>
+            </button>
+            <button
+              type="submit"
+              disabled={isUploading || createMutation.isPending || updateMutation.isPending}
+              className="px-6 py-2.5 rounded-xl bg-aura-primary text-aura-bg hover:bg-aura-primary/90 text-sm font-bold shadow-aura-sm transition-all active:scale-[0.98] disabled:opacity-50"
+            >
               {editingEquipment ? 'Save Changes' : 'Register Equipment'}
-            </Button>
+            </button>
           </div>
         </form>
       </Modal>
