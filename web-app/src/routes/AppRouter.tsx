@@ -41,6 +41,8 @@ const NotificationsPage = lazy(() => import('@/pages/notifications/Notifications
 const ReportsPage = lazy(() => import('@/pages/reports/ReportsPage'));
 const BrowseGymsPage = lazy(() => import('@/pages/customer/BrowseGymsPage'));
 const CustomerProgressPage = lazy(() => import('@/pages/customer/CustomerProgressPage'));
+const CustomerPlansPage = lazy(() => import('@/pages/customer/CustomerPlansPage'));
+const CustomerPaymentsPage = lazy(() => import('@/pages/customer/CustomerPaymentsPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
 // Super Admin Pages
@@ -100,6 +102,8 @@ export function AppRouter() {
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/browse-gyms" element={<BrowseGymsPage />} />
           <Route path="/customer/progress" element={<CustomerProgressPage />} />
+          <Route path="/customer/plans" element={<CustomerPlansPage />} />
+          <Route path="/customer/payments" element={<CustomerPaymentsPage />} />
 
           {/* Super Admin Protected routes */}
           <Route element={<ProtectedRoute allowedRoles={['super_admin']} />}>

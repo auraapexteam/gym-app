@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { cn } from '@/utils';
 import { useUIStore, useAuthStore } from '@/store';
+import { useJoinRequestStatus } from '@/hooks/useGyms';
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -44,6 +45,8 @@ const navConfig: NavGroup[] = [
     items: [
       { label: 'My Dashboard', icon: LayoutDashboard, href: '/dashboard', roles: ['customer'] },
       { label: 'Browse Gyms', icon: Building2, href: '/browse-gyms', roles: ['customer'] },
+      { label: 'Membership Plans', icon: Zap, href: '/customer/plans', roles: ['customer'] },
+      { label: 'My Payments', icon: CreditCard, href: '/customer/payments', roles: ['customer'] },
       { label: 'Fitness Progress', icon: Activity, href: '/customer/progress', roles: ['customer'] },
     ],
   },
@@ -91,11 +94,13 @@ export function Sidebar() {
   const { sidebarCollapsed, toggleSidebar, mobileMenuOpen, setMobileMenuOpen } = useUIStore();
   const { user, logout } = useAuthStore();
   const location = useLocation();
+  const { data: joinStatus } = useJoinRequestStatus();
 
   const [isMobile, setIsMobile] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     Overview: true,
     'Platform Admin': true,
+    'Customer Portal': true,
     Management: true,
     'Plans & Finance': true,
     'Store & Equipment': true,
@@ -117,12 +122,17 @@ export function Sidebar() {
     }));
   };
 
+  const isApprovedMember = user?.role === 'customer' && joinStatus?.status === 'approved';
+
   const filteredNav = navConfig
     .map((group) => ({
       ...group,
-      items: group.items.filter(
-        (item) => !item.roles || item.roles.includes(user?.role as UserRole),
-      ),
+      items: group.items.filter((item) => {
+        if (item.roles && !item.roles.includes(user?.role as UserRole)) return false;
+        // Hide Browse Gyms if customer is already an approved member
+        if (isApprovedMember && item.href === '/browse-gyms') return false;
+        return true;
+      }),
     }))
     .filter((group) => group.items.length > 0);
 

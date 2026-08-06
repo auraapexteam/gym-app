@@ -3,6 +3,8 @@ import { useUIStore, useAuthStore } from '@/store';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { useJoinRequestStatus } from '@/hooks/useGyms';
+
 interface TopbarProps {
   title?: string;
   breadcrumbs?: { label: string; href?: string }[];
@@ -11,6 +13,7 @@ interface TopbarProps {
 export function Topbar({ title, breadcrumbs }: TopbarProps) {
   const { toggleMobileMenu, toggleNotificationDrawer } = useUIStore();
   const { user } = useAuthStore();
+  const { data: joinStatus } = useJoinRequestStatus();
   const [searchOpen, setSearchOpen] = useState(false);
 
   const formattedDate = new Date().toLocaleDateString('en-US', {
@@ -92,12 +95,12 @@ export function Topbar({ title, breadcrumbs }: TopbarProps) {
           </Link>
         ) : isCustomer ? (
           <Link
-            to="/browse-gyms"
+            to={joinStatus?.status === 'approved' ? "/customer/plans" : "/browse-gyms"}
             className="h-10 w-10 sm:w-auto sm:px-4 rounded-md flex items-center justify-center gap-2 bg-aura-primary text-sm font-semibold text-aura-bg hover:bg-aura-primary/90 transition-colors"
-            aria-label="Explore Gyms"
+            aria-label={joinStatus?.status === 'approved' ? "Membership Plans" : "Explore Gyms"}
           >
             <Building2 className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Explore Gyms</span>
+            <span className="hidden sm:inline">{joinStatus?.status === 'approved' ? "My Plans" : "Explore Gyms"}</span>
           </Link>
         ) : (
           <Link

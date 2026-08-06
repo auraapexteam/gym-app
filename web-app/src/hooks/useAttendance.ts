@@ -38,3 +38,19 @@ export function useManualCheckIn() {
     },
   });
 }
+
+export function useQrCheckIn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (qrCode: string) => attendanceApi.checkIn({ qrCode }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['attendance'] });
+      qc.invalidateQueries({ queryKey: ['attendance-stats'] });
+      toast.success('Check-in recorded! Enjoy your workout session.');
+    },
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || 'Invalid or expired reception QR Code.';
+      toast.error(msg);
+    },
+  });
+}

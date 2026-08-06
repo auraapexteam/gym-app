@@ -1,6 +1,7 @@
-import { Navigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts';
-import { StatCard, StatCardSkeleton, Card, CardContent, Badge, Button } from '@/components/ui';
+import { StatCard, StatCardSkeleton, Card, CardContent, Badge, Button, Modal } from '@/components/ui';
 import { RevenueChart } from './charts/RevenueChart';
 import { AttendanceChart } from './charts/AttendanceChart';
 import { MembershipGrowthChart } from './charts/MembershipGrowthChart';
@@ -10,11 +11,11 @@ import { UpcomingRenewals } from './widgets/UpcomingRenewals';
 import { useDashboardStats } from '@/hooks/useDashboard';
 import { useAuthStore } from '@/store';
 import { useJoinRequestStatus, useGymDirectory } from '@/hooks/useGyms';
-import { useAttendance } from '@/hooks/useAttendance';
+import { useAttendance, useQrCheckIn } from '@/hooks/useAttendance';
 import { formatDate } from '@/utils';
 import {
   DollarSign, Users, UserCheck, RefreshCw,
-  AlertCircle, TrendingUp, Dumbbell, QrCode, CheckCircle2, Clock, Activity, Building2
+  AlertCircle, TrendingUp, Dumbbell, QrCode, CheckCircle2, Clock, Activity, Building2, Zap, LogIn
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -119,20 +120,40 @@ export default function DashboardPage() {
 }
 
 function CustomerDashboardView() {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const { data: joinStatus } = useJoinRequestStatus();
   const { data: gyms = [] } = useGymDirectory();
   const { data: userAttendance = [] } = useAttendance();
+  const qrCheckInMutation = useQrCheckIn();
+
+  const [showScannerModal, setShowScannerModal] = useState(false);
+  const [scannedQrCode, setScannedQrCode] = useState('');
 
   const isApproved = joinStatus?.status === 'approved';
   const approvedGym = isApproved ? gyms.find((g) => g.id === joinStatus?.gymId) : null;
-  const qrPassToken = `MEMBER-${user?.id?.substring(0, 8).toUpperCase() || 'PASS'}`;
-  const qrPassImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrPassToken)}`;
+
+  // Check if checked in today
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const checkedInToday = userAttendance.some((a: any) => {
+    const time = a.checkInTime || a.created_at || '';
+    return time.startsWith(todayDateStr);
+  });
+
+  const handleScanCheckin = () => {
+    if (!scannedQrCode) return;
+    qrCheckInMutation.mutate(scannedQrCode, {
+      onSuccess: () => {
+        setShowScannerModal(false);
+        setScannedQrCode('');
+      },
+    });
+  };
 
   return (
     <DashboardLayout breadcrumbs={[{ label: 'Customer Portal', href: '/dashboard' }, { label: 'My Dashboard' }]}>
       <div className="max-w-5xl mx-auto space-y-6">
-        {/* Welcome Banner */}
+        {/* Welcome Header Banner */}
         <div className="bg-aura-card border border-aura-border p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-aura-text">Welcome back, {user?.name}! 👋</h1>
@@ -143,23 +164,31 @@ function CustomerDashboardView() {
           </Badge>
         </div>
 
-        {/* Member Digital QR Pass & Active Membership Details */}
+        {/* Scan Reception QR Check-in Action Card */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="md:col-span-1 border-aura-primary/40">
-            <CardContent className="p-6 text-center flex flex-col items-center">
-              <div className="flex items-center gap-2 mb-3">
+            <CardContent className="p-6 text-center flex flex-col items-center justify-between h-full space-y-4">
+              <div className="flex items-center gap-2">
                 <QrCode className="h-5 w-5 text-aura-primary" />
-                <h3 className="font-bold text-aura-text text-sm uppercase tracking-wider">Digital Check-in Pass</h3>
+                <h3 className="font-bold text-aura-text text-sm uppercase tracking-wider">Gym Check-in</h3>
               </div>
 
-              <div className="bg-white p-4 rounded-2xl border-2 border-aura-primary/30 shadow-aura-md my-2">
-                <img src={qrPassImageUrl} alt="Member QR Pass" className="h-44 w-44 object-contain rounded" />
+              <div className="my-2 p-4 bg-aura-primary/10 border border-aura-primary/30 rounded-2xl w-full flex flex-col items-center">
+                <div className="h-16 w-16 rounded-full bg-aura-primary flex items-center justify-center text-aura-bg mb-2 shadow-aura-md">
+                  <UserCheck className="h-8 w-8" />
+                </div>
+                <Badge variant={checkedInToday ? 'success' : 'warning'} className="text-xs">
+                  {checkedInToday ? 'CHECKED IN TODAY' : 'NOT CHECKED IN YET'}
+                </Badge>
               </div>
 
-              <p className="text-xs text-aura-muted mt-2">Scan at gym reception for instant check-in</p>
-              <p className="font-mono text-xs font-bold text-aura-primary bg-aura-primary/10 border border-aura-primary/20 px-3 py-1 rounded mt-2">
-                {qrPassToken}
-              </p>
+              <Button
+                variant="primary"
+                onClick={() => setShowScannerModal(true)}
+                className="w-full gap-2 text-xs font-semibold py-3"
+              >
+                <QrCode className="h-4 w-4" /> Scan Reception QR Code
+              </Button>
             </CardContent>
           </Card>
 
@@ -182,11 +211,11 @@ function CustomerDashboardView() {
             <Card>
               <CardContent className="p-6">
                 <h3 className="font-bold text-aura-text text-sm mb-3 flex items-center gap-2">
-                  <UserCheck className="h-4 w-4 text-aura-primary" /> Recent Gym Attendance Logs
+                  <UserCheck className="h-4 w-4 text-aura-primary" /> My Gym Attendance Logs
                 </h3>
                 {userAttendance.length === 0 ? (
                   <div className="text-center py-8 text-aura-muted text-xs border border-dashed border-aura-border rounded-xl">
-                    No check-in logs recorded yet. Present your digital QR pass at reception when visiting the gym!
+                    No check-in logs recorded yet. Click "Scan Reception QR Code" when visiting the gym to mark your daily attendance!
                   </div>
                 ) : (
                   <table className="w-full text-xs">
@@ -215,6 +244,39 @@ function CustomerDashboardView() {
           </div>
         </div>
       </div>
+
+      {/* Reception QR Code Scanner Modal */}
+      <Modal open={showScannerModal} onClose={() => setShowScannerModal(false)} title="Scan Reception Desk QR Code">
+        <div className="space-y-4">
+          <p className="text-xs text-aura-muted">
+            Point your camera at the printed reception QR code standee or paste the active QR token string displayed at the desk.
+          </p>
+          <div>
+            <label className="block text-xs font-medium text-aura-text mb-1">Active Reception QR Token *</label>
+            <input
+              type="text"
+              placeholder="Paste or scan QR token (e.g. i50ce8v90ePB1RkSBePkm2fd-gKfCddw)"
+              value={scannedQrCode}
+              onChange={(e) => setScannedQrCode(e.target.value)}
+              className="w-full bg-aura-bg border border-aura-border rounded-lg px-3 py-2.5 text-xs text-aura-text font-mono focus:outline-none focus:border-aura-primary"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowScannerModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              disabled={!scannedQrCode || qrCheckInMutation.isPending}
+              onClick={handleScanCheckin}
+              className="gap-2 text-xs"
+            >
+              <LogIn className="h-4 w-4" />
+              {qrCheckInMutation.isPending ? 'Verifying Check-in...' : 'Verify & Check In Now'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </DashboardLayout>
   );
 }
