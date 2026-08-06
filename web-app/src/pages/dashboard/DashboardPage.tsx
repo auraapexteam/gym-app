@@ -1,4 +1,4 @@
-import { Navigate } from 'react';
+import { Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts';
 import { StatCard, StatCardSkeleton, Card, CardContent, Badge, Button } from '@/components/ui';
 import { RevenueChart } from './charts/RevenueChart';
@@ -138,7 +138,7 @@ function CustomerDashboardView() {
             <h1 className="text-2xl font-bold text-aura-text">Welcome back, {user?.name}! 👋</h1>
             <p className="text-sm text-aura-muted mt-1">Your personal member fitness and check-in portal</p>
           </div>
-          <Badge variant={isApproved ? 'success' : joinStatus?.status === 'pending' ? 'warning' : 'secondary'}>
+          <Badge variant={isApproved ? 'success' : joinStatus?.status === 'pending' ? 'warning' : 'muted'}>
             {isApproved ? 'ACTIVE MEMBER' : joinStatus?.status === 'pending' ? 'PENDING APPROVAL' : 'NO GYM LINKED'}
           </Badge>
         </div>
