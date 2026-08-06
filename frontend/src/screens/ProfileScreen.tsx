@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -11,10 +11,14 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { useAuthStore } from '../store/useAuthStore';
+import { useGymStore } from '../store/useGymStore';
 import { apiClient } from '../api/client';
 import { useTheme } from '../context/ThemeContext';
+import { uploadPersonalImage } from '../utils/upload';
 import {
   User as UserIcon,
   Phone,
@@ -23,18 +27,24 @@ import {
   ChevronRight,
   Bell,
   Dumbbell,
-  CreditCard,
+  Receipt,
   Settings,
+  Camera,
 } from 'lucide-react-native';
+
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export function ProfileScreen({ navigation }: any) {
   const { userProfile, signOut, loadUserProfile, subscription } = useAuthStore();
-  const { colors } = useTheme();
-  
+  const { myRequest, fetchMyRequestStatus } = useGymStore();
+  const { colors, isDark } = useTheme();
+
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [saving, setSaving] = useState(false);
-  
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [attendanceDates, setAttendanceDates] = useState<string[]>([]);
+
   // Toggle editing fields
   const [isEditing, setIsEditing] = useState(false);
 
@@ -44,6 +54,40 @@ export function ProfileScreen({ navigation }: any) {
       setPhone(userProfile.phone || '');
     }
   }, [userProfile]);
+
+  useEffect(() => {
+    fetchMyRequestStatus();
+    apiClient
+      .get('/attendance/me')
+      .then((res) => {
+        if (res.data?.success) {
+          const items = res.data.data.items || res.data.data || [];
+          setAttendanceDates(items.map((i: any) => String(i.attendance_date || i.created_at).slice(0, 10)));
+        }
+      })
+      .catch((err) => console.warn('Failed to load attendance for profile stats:', err));
+  }, [fetchMyRequestStatus]);
+
+  const streak = useMemo(() => {
+    const dateSet = new Set(attendanceDates);
+    const toIso = (d: Date) => d.toISOString().slice(0, 10);
+    let count = 0;
+    let cursor = new Date();
+    if (!dateSet.has(toIso(cursor))) cursor.setDate(cursor.getDate() - 1);
+    while (dateSet.has(toIso(cursor))) {
+      count += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return count;
+  }, [attendanceDates]);
+
+  const memberSince = useMemo(() => {
+    if (!userProfile?.created_at) return '—';
+    const d = new Date(userProfile.created_at);
+    return `${MONTH_ABBR[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
+  }, [userProfile?.created_at]);
+
+  const gymName = userProfile?.gym_id ? myRequest?.gyms?.name || 'My Gym' : null;
 
   const handleSaveProfile = async () => {
     if (!fullName.trim()) {
@@ -70,14 +114,39 @@ export function ProfileScreen({ navigation }: any) {
     }
   };
 
+  const handlePickAvatar = async () => {
+    const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.8, maxWidth: 1200, maxHeight: 1200 });
+    if (result.didCancel || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    if (!asset.uri) return;
+
+    try {
+      setUploadingAvatar(true);
+      const publicUrl = await uploadPersonalImage(
+        { uri: asset.uri, fileName: asset.fileName, type: asset.type, fileSize: asset.fileSize },
+        'avatar'
+      );
+      const res = await apiClient.patch('/auth/me', { avatarUrl: publicUrl });
+      if (res.data?.success) {
+        await loadUserProfile();
+      }
+    } catch (err: any) {
+      Alert.alert('Upload Failed', err.response?.data?.message || err.message || 'Failed to upload avatar.');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   const menuItems = [
-    { icon: Bell, label: 'Notifications', meta: 'On', id: 'NotificationSettings' },
-    { icon: Dumbbell, label: 'Linked gym', meta: 'Aura Downtown', id: null },
-    { icon: CreditCard, label: 'Payment methods', meta: '•••• 4242', id: null },
+    { icon: Bell, label: 'Notifications', meta: '', id: 'Notifications' },
+    { icon: Dumbbell, label: 'Linked gym', meta: gymName || 'Not linked', id: gymName ? 'GymInfo' : 'GymDirectory' },
+    { icon: Receipt, label: 'Subscription history', meta: '', id: 'SubscriptionHistory' },
     { icon: Settings, label: 'Settings', meta: '', id: 'Settings' },
   ];
 
-  const planName = subscription?.plans?.name || 'Elite';
+  const isSubscribed = subscription?.status === 'active';
+  const planName = subscription?.plans?.name;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -89,20 +158,42 @@ export function ProfileScreen({ navigation }: any) {
           {/* Profile Header Block */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <View style={[styles.avatarCircle, { backgroundColor: colors.primarySoft, borderColor: colors.primary }]}>
-                <Text style={[styles.avatarText, { color: colors.foreground }]}>
-                  {(fullName || 'U').charAt(0).toUpperCase()}
-                </Text>
-              </View>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={handlePickAvatar}
+                disabled={uploadingAvatar}
+                style={[styles.avatarCircle, { backgroundColor: colors.primarySoft, borderColor: colors.primary }]}
+              >
+                {uploadingAvatar ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : userProfile?.avatar_url ? (
+                  <Image source={{ uri: userProfile.avatar_url }} style={styles.avatarImage} />
+                ) : (
+                  <Text style={[styles.avatarText, { color: colors.foreground }]}>
+                    {(fullName || 'U').charAt(0).toUpperCase()}
+                  </Text>
+                )}
+                <View style={[styles.avatarCameraBadge, { backgroundColor: colors.primary, borderColor: colors.surface }]}>
+                  <Camera size={11} color="#FFFFFF" />
+                </View>
+              </TouchableOpacity>
               <View style={styles.userMeta}>
                 <Text style={[styles.userName, { color: colors.foreground }]}>{fullName || 'Athlete'}</Text>
                 <View style={styles.badgeRow}>
-                  <View style={[styles.badgeIndigo, { backgroundColor: colors.primarySoft }]}>
-                    <Text style={[styles.badgeIndigoText, { color: colors.primary }]}>{planName}</Text>
-                  </View>
-                  <View style={styles.badgeMint}>
-                    <Text style={styles.badgeMintText}>Active</Text>
-                  </View>
+                  {isSubscribed ? (
+                    <>
+                      <View style={[styles.badgeIndigo, { backgroundColor: colors.primarySoft }]}>
+                        <Text style={[styles.badgeIndigoText, { color: colors.primary }]}>{planName || 'Member'}</Text>
+                      </View>
+                      <View style={styles.badgeMint}>
+                        <Text style={styles.badgeMintText}>Active</Text>
+                      </View>
+                    </>
+                  ) : (
+                    <View style={[styles.badgeIndigo, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' }]}>
+                      <Text style={[styles.badgeIndigoText, { color: colors.mutedForeground }]}>No active plan</Text>
+                    </View>
+                  )}
                 </View>
               </View>
             </View>
@@ -120,15 +211,15 @@ export function ProfileScreen({ navigation }: any) {
           {/* Statistics Grid */}
           <View style={styles.statsGrid}>
             <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.statsValue, { color: colors.foreground }]}>52</Text>
+              <Text style={[styles.statsValue, { color: colors.foreground }]}>{attendanceDates.length}</Text>
               <Text style={[styles.statsLabel, { color: colors.mutedForeground }]}>Check-ins</Text>
             </View>
             <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.statsValue, { color: colors.foreground }]}>12</Text>
+              <Text style={[styles.statsValue, { color: colors.foreground }]}>{streak}</Text>
               <Text style={[styles.statsLabel, { color: colors.mutedForeground }]}>Streak</Text>
             </View>
             <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.statsValue, { color: colors.foreground }]}>Mar '25</Text>
+              <Text style={[styles.statsValue, { color: colors.foreground }]}>{memberSince}</Text>
               <Text style={[styles.statsLabel, { color: colors.mutedForeground }]}>Member since</Text>
             </View>
           </View>
@@ -175,7 +266,10 @@ export function ProfileScreen({ navigation }: any) {
                 <Text style={[styles.inputLabel, { color: colors.mutedForeground }]}>Full Name</Text>
               </View>
               <TextInput
-                style={[styles.textInput, { color: colors.foreground, borderColor: colors.border }]}
+                style={[
+                  styles.textInput,
+                  { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surfaceDark },
+                ]}
                 placeholder="Full Name"
                 placeholderTextColor={colors.mutedForeground}
                 value={fullName}
@@ -187,7 +281,10 @@ export function ProfileScreen({ navigation }: any) {
                 <Text style={[styles.inputLabel, { color: colors.mutedForeground }]}>Phone Number</Text>
               </View>
               <TextInput
-                style={[styles.textInput, { color: colors.foreground, borderColor: colors.border }]}
+                style={[
+                  styles.textInput,
+                  { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surfaceDark },
+                ]}
                 placeholder="Phone Number"
                 placeholderTextColor={colors.mutedForeground}
                 value={phone}
@@ -197,7 +294,10 @@ export function ProfileScreen({ navigation }: any) {
 
               <View style={styles.editActionRow}>
                 <TouchableOpacity
-                  style={[styles.editBtn, { backgroundColor: 'rgba(255,255,255,0.06)' }]}
+                  style={[
+                    styles.editBtn,
+                    { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' },
+                  ]}
                   onPress={() => setIsEditing(false)}
                 >
                   <Text style={[styles.saveText, { color: colors.foreground }]}>Cancel</Text>
@@ -213,7 +313,7 @@ export function ProfileScreen({ navigation }: any) {
                   ) : (
                     <>
                       <Save size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
-                      <Text style={styles.saveText}>Save</Text>
+                      <Text style={[styles.saveText, { color: '#FFFFFF' }]}>Save</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -268,6 +368,24 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    overflow: 'visible',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 34,
+  },
+  avatarCameraBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
@@ -415,7 +533,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   textInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderWidth: 1,
     borderRadius: 14,
     height: 44,

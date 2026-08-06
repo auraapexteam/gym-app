@@ -12,7 +12,6 @@ import {
 import { useTheme } from '../context/ThemeContext';
 import {
   ShieldAlert,
-  Fingerprint,
   Smartphone,
   ChevronRight,
   LogOut,

@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
-  Platform,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useAuthStore } from '../store/useAuthStore';
@@ -20,10 +19,11 @@ import {
   Settings,
   HelpCircle,
   Info,
+  GraduationCap,
 } from 'lucide-react-native';
 
 export function SettingsScreen({ navigation }: any) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { userProfile } = useAuthStore();
 
   const settingsGroups = [
@@ -76,6 +76,12 @@ export function SettingsScreen({ navigation }: any) {
     {
       title: 'Support & Info',
       items: [
+        {
+          id: 'BeginnerGuide',
+          label: 'Beginner guide',
+          icon: GraduationCap,
+          color: '#22c55e',
+        },
         {
           id: 'HelpSettings',
           label: 'Help & support',

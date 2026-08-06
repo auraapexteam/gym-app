@@ -36,7 +36,7 @@ export function NotificationSettingsScreen() {
           if (config.sound !== undefined) setSoundEnabled(config.sound);
           if (config.vibration !== undefined) setVibrationEnabled(config.vibration);
           if (config.email !== undefined) setEmailEnabled(config.email);
-        } catch (e) {
+        } catch {
           console.warn('Failed to parse saved notification preferences');
         }
       }
