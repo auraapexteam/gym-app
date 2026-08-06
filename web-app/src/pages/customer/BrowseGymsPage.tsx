@@ -245,26 +245,24 @@ export default function BrowseGymsPage() {
                     </CardContent>
 
                     <div className="p-6 pt-0">
-                      <Button
-                        variant={isApproved ? 'outline' : isPending ? 'secondary' : 'primary'}
-                        disabled={isPending || isApproved || applyMutation.isPending}
-                        onClick={() => applyMutation.mutate(gym.id)}
-                        className="w-full gap-2 text-xs py-2.5 font-semibold"
-                      >
-                        {isApproved ? (
-                          <>
-                            <CheckCircle2 className="h-4 w-4 text-aura-success" /> Active Gym Member
-                          </>
-                        ) : isPending ? (
-                          <>
-                            <Clock className="h-4 w-4 text-aura-warning animate-pulse" /> Pending Approval
-                          </>
-                        ) : (
-                          <>
-                            <ShieldCheck className="h-4 w-4" /> Apply to Join Gym
-                          </>
-                        )}
-                      </Button>
+                      {isApproved ? (
+                        <div className="w-full py-2.5 rounded-lg bg-aura-success/10 border border-aura-success/30 text-aura-success text-xs font-bold flex items-center justify-center gap-2">
+                          <CheckCircle2 className="h-4 w-4" /> Joined Gym — Active Member
+                        </div>
+                      ) : isPending ? (
+                        <div className="w-full py-2.5 rounded-lg bg-aura-warning/10 border border-aura-warning/30 text-aura-warning text-xs font-bold flex items-center justify-center gap-2">
+                          <Clock className="h-4 w-4 animate-pulse" /> Pending Approval
+                        </div>
+                      ) : (
+                        <Button
+                          variant="primary"
+                          disabled={applyMutation.isPending}
+                          onClick={() => applyMutation.mutate(gym.id)}
+                          className="w-full gap-2 text-xs py-2.5 font-semibold"
+                        >
+                          <ShieldCheck className="h-4 w-4" /> Apply to Join Gym
+                        </Button>
+                      )}
                     </div>
                   </Card>
                 </motion.div>

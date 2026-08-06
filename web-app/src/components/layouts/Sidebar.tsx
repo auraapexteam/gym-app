@@ -42,7 +42,9 @@ const navConfig: NavGroup[] = [
   {
     group: 'Customer Portal',
     items: [
+      { label: 'My Dashboard', icon: LayoutDashboard, href: '/dashboard', roles: ['customer'] },
       { label: 'Browse Gyms', icon: Building2, href: '/browse-gyms', roles: ['customer'] },
+      { label: 'Fitness Progress', icon: Activity, href: '/customer/progress', roles: ['customer'] },
     ],
   },
   {
