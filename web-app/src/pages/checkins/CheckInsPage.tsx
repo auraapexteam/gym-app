@@ -65,20 +65,44 @@ export default function CheckInsPage() {
     <DashboardLayout
       breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Check-ins' }]}
     >
-      {/* Hide rest of UI when printing A4 poster */}
+      {/* Dedicated A4 Print Page Styles */}
       <style>{`
         @media print {
-          body * { visibility: hidden; }
-          #printable-a4-standee, #printable-a4-standee * { visibility: visible; }
-          #printable-a4-standee {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background: white !important;
-            color: black !important;
-            padding: 2rem;
+          @page {
+            size: A4 portrait;
+            margin: 0;
+          }
+          html, body {
+            background: #ffffff !important;
+            color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+          }
+          #root, .fixed, [role="dialog"], header, nav, sidebar {
+            display: none !important;
+          }
+          #printable-a4-pdf-standalone {
+            display: flex !important;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            margin: 0 auto !important;
+            padding: 20mm 15mm !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            box-sizing: border-box !important;
+            z-index: 9999999 !important;
+          }
+        }
+        @media screen {
+          #printable-a4-pdf-standalone {
+            display: none !important;
           }
         }
       `}</style>
@@ -314,6 +338,58 @@ export default function CheckInsPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Standalone Printable A4 PDF Container */}
+      <div id="printable-a4-pdf-standalone" className="text-black bg-white">
+        {/* Header */}
+        <div className="flex flex-col items-center gap-3 border-b-4 border-black pb-6 w-full text-center">
+          <div className="h-20 w-20 rounded-3xl bg-black text-white flex items-center justify-center font-black text-4xl shadow-xl">
+            {gymName.charAt(0)}
+          </div>
+          <h1 className="text-4xl font-black uppercase tracking-wider text-black mt-1">{gymName}</h1>
+          <span className="inline-block bg-black text-white text-xs font-extrabold uppercase tracking-widest px-4 py-1.5 rounded-full">
+            Official Reception Check-in Station
+          </span>
+        </div>
+
+        {/* QR Graphic */}
+        <div className="flex flex-col items-center justify-center my-auto py-8 text-center w-full">
+          <div className="p-8 rounded-3xl border-4 border-black bg-gray-50 shadow-2xl flex flex-col items-center">
+            <img src={qrImageUrl} alt="A4 QR Code" className="h-72 w-72 object-contain" />
+            <div className="mt-5 bg-black text-white font-mono text-sm font-bold px-6 py-2.5 rounded-xl tracking-wider">
+              TOKEN: {qrToken}
+            </div>
+          </div>
+          <p className="text-sm font-bold text-gray-700 mt-4 uppercase tracking-widest">Scan using Aura Apex Mobile App</p>
+        </div>
+
+        {/* Instructions & Footer */}
+        <div className="w-full space-y-4 text-center">
+          <div className="bg-gray-100 p-6 rounded-2xl border-2 border-black text-left max-w-md mx-auto">
+            <p className="font-extrabold uppercase tracking-wider text-center text-black text-xs mb-3">Easy 3-Step Check In:</p>
+            <div className="space-y-2.5 text-xs font-semibold text-gray-900">
+              <div className="flex items-center gap-3">
+                <span className="h-6 w-6 rounded-full bg-black text-white flex items-center justify-center font-black text-xs shrink-0">1</span>
+                <span>Open <strong>Aura Apex Mobile App</strong> on your phone.</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="h-6 w-6 rounded-full bg-black text-white flex items-center justify-center font-black text-xs shrink-0">2</span>
+                <span>Tap <strong>QR Check-in Scanner</strong> on your home dashboard.</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="h-6 w-6 rounded-full bg-black text-white flex items-center justify-center font-black text-xs shrink-0">3</span>
+                <span>Point camera at this QR Poster for instant verification.</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t-2 border-gray-200">
+            <p className="text-xs font-mono text-gray-500 font-bold uppercase tracking-widest">
+              Powered by Aura Apex Gym Management System
+            </p>
+          </div>
+        </div>
+      </div>
     </DashboardLayout>
   );
 }
