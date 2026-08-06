@@ -10,6 +10,8 @@ import { ListQuery, PaginatedResult } from '@/shared/types';
 import { ConflictError, NotFoundError } from '@/shared/errors';
 import { normalizeEmail } from '@/shared/utils';
 
+import { subscriptionRepository } from '@/modules/subscriptions/subscriptions.repository';
+
 /**
  * Business logic for gym members. Framework-agnostic and reusable from REST,
  * cron jobs or future interfaces. Always tenant-scoped by `gymId`.
@@ -33,7 +35,30 @@ export class MemberService {
       filters: status ? { status } : undefined,
     });
 
-    return { ...result, items: result.items.map(toMemberDto) };
+    const memberIds = result.items.map((m) => m.id);
+    const activeSubs = memberIds.length > 0 ? await subscriptionRepository.findByMemberIds(memberIds) : [];
+    const activeSubMap = new Map<string, any>();
+    for (const sub of activeSubs) {
+      if (sub.status === 'active' && !activeSubMap.has(sub.member_id)) {
+        activeSubMap.set(sub.member_id, sub);
+      }
+    }
+
+    const items = result.items.map((row) => {
+      const dto = toMemberDto(row);
+      const sub = activeSubMap.get(row.id);
+      if (sub) {
+        dto.planName = sub.plan?.name || (sub as any).planName || null;
+        dto.renewDate = sub.end_date || null;
+        dto.status = 'active';
+      } else {
+        dto.planName = null;
+        dto.status = row.status === 'active' ? 'inactive' : row.status;
+      }
+      return dto;
+    });
+
+    return { ...result, items };
   }
 
   /** Fetch a single member or throw 404. */

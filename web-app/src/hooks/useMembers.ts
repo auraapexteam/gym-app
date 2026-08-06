@@ -21,7 +21,7 @@ export function useMembers(params?: { page?: number; limit?: number; search?: st
         phone: m.phone || '',
         membershipStatus: m.status || 'inactive',
         membershipPlan: m.planName || (m.notes?.includes('Renewed plan:') ? m.notes.replace('Renewed plan: ', '') : 'No Active Plan'),
-        renewDate: m.joinedAt ? new Date(safeNewDate(m.joinedAt).getTime() + 30 * 24 * 3600 * 1000).toISOString() : new Date().toISOString(),
+        renewDate: m.renewDate || (m.joinedAt ? new Date(safeNewDate(m.joinedAt).getTime() + 30 * 24 * 3600 * 1000).toISOString() : new Date().toISOString()),
         attendance: 0,
         visits: 0,
         gymId: m.gymId || '',

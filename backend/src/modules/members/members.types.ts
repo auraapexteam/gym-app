@@ -37,6 +37,8 @@ export interface MemberDto {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  planName?: string | null;
+  renewDate?: string | null;
 }
 
 export interface CreateMemberInput {
