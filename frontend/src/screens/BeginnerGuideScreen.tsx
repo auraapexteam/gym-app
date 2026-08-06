@@ -1,215 +1,319 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, Dimensions } from 'react-native';
-import { Theme } from '../theme/Theme';
-import { Dumbbell, Sparkles, QrCode, ChevronRight } from 'lucide-react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, ScrollView, ActivityIndicator } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
+import { useAuthStore } from '../store/useAuthStore';
+import { apiClient } from '../api/client';
+import {
+  Dumbbell,
+  Activity,
+  Apple,
+  ChevronDown,
+  Clock,
+  Phone,
+  Mail,
+  Building2,
+} from 'lucide-react-native';
 
-const { width } = Dimensions.get('window');
+const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const formatTime = (t?: string) => {
+  if (!t) return '--';
+  const [h, m] = t.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+};
 
-export function BeginnerGuideScreen({ navigation }: any) {
-  const [slideIndex, setSlideIndex] = useState(0);
+interface Guide {
+  id: string;
+  category: 'Workout' | 'Posture' | 'Nutrition';
+  title: string;
+  body: string;
+}
 
-  const slides = [
-    {
-      icon: Dumbbell,
-      title: 'Train with intent',
-      body: 'Track sessions, set streaks, and stay consistent — your gym in one place.',
-      color: '#6366f1',
-    },
-    {
-      icon: Sparkles,
-      title: 'See your progress',
-      body: 'Weight, water, protein and photos captured beautifully every day.',
-      color: '#10b981',
-    },
-    {
-      icon: QrCode,
-      title: 'One-tap check-in',
-      body: "Skip the front desk. Scan your Aura Apex QR and you're in.",
-      color: '#0d94f8',
-    },
-  ];
+const GUIDES: Guide[] = [
+  {
+    id: 'warmup',
+    category: 'Workout',
+    title: 'Warm up before every session',
+    body: 'Spend 5–10 minutes on light cardio and dynamic stretches before lifting. It raises your heart rate and prepares your joints, lowering injury risk.',
+  },
+  {
+    id: 'fullbody',
+    category: 'Workout',
+    title: 'A full-body beginner routine',
+    body: '3 sets of 8–12 reps each: squats, push-ups, rows, and planks. Rest 60–90 seconds between sets and focus on form over weight for the first few weeks.',
+  },
+  {
+    id: 'progressive-overload',
+    category: 'Workout',
+    title: 'Progress gradually',
+    body: 'Add small amounts of weight or reps week over week once a movement feels easy. Consistent small increases beat occasional big jumps.',
+  },
+  {
+    id: 'posture-squat',
+    category: 'Posture',
+    title: 'Squat form basics',
+    body: 'Keep your chest up, weight through your heels, and knees tracking over your toes. Go as low as comfortable while keeping your back neutral.',
+  },
+  {
+    id: 'posture-deadlift',
+    category: 'Posture',
+    title: 'Deadlift safety',
+    body: 'Keep the bar close to your shins, brace your core, and drive through your heels. Never round your lower back to lift more weight.',
+  },
+  {
+    id: 'posture-desk',
+    category: 'Posture',
+    title: 'Undoing a day of sitting',
+    body: 'Chest-opener and hip-flexor stretches before training help counter a day of sitting and improve range of motion during lifts.',
+  },
+  {
+    id: 'nutrition-protein',
+    category: 'Nutrition',
+    title: 'How much protein do you need?',
+    body: 'A common guideline for active adults is roughly 1.6–2.2g of protein per kg of bodyweight per day, spread across your meals.',
+  },
+  {
+    id: 'nutrition-meals',
+    category: 'Nutrition',
+    title: 'Pre- and post-workout meals',
+    body: 'Eat a balanced meal with carbs and protein 1–2 hours before training, and refuel with protein plus carbs within a couple of hours after.',
+  },
+  {
+    id: 'nutrition-water',
+    category: 'Nutrition',
+    title: 'Staying hydrated',
+    body: 'Aim to drink water throughout the day, not just during workouts. Thirst is a lagging signal — sip regularly rather than waiting to feel thirsty.',
+  },
+];
 
-  const currentSlide = slides[slideIndex];
-  const IconComponent = currentSlide.icon;
+const CATEGORY_META: Record<Guide['category'], { icon: any; color: string }> = {
+  Workout: { icon: Dumbbell, color: '#6366f1' },
+  Posture: { icon: Activity, color: '#10b981' },
+  Nutrition: { icon: Apple, color: '#f87171' },
+};
 
-  const handleNext = () => {
-    if (slideIndex < slides.length - 1) {
-      setSlideIndex(slideIndex + 1);
-    } else {
-      // Finished onboarding, go back to main screen
-      navigation.goBack();
+export function BeginnerGuideScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
+  const { userProfile } = useAuthStore();
+
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [gym, setGym] = useState<any>(null);
+  const [loadingGym, setLoadingGym] = useState(true);
+
+  useEffect(() => {
+    if (!userProfile?.gym_id) {
+      setLoadingGym(false);
+      return;
     }
-  };
+    apiClient
+      .get('/gyms/me')
+      .then((res) => {
+        if (res.data?.success) setGym(res.data.data);
+      })
+      .catch((err) => console.warn('Failed to load gym schedule:', err))
+      .finally(() => setLoadingGym(false));
+  }, [userProfile?.gym_id]);
 
-  const handleSkip = () => {
-    navigation.goBack();
-  };
+  const categories: Guide['category'][] = ['Workout', 'Posture', 'Nutrition'];
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top Header */}
-      <View style={styles.header}>
-        <Text style={styles.brandTitle}>Aura Apex</Text>
-        <TouchableOpacity onPress={handleSkip} activeOpacity={0.7}>
-          <Text style={styles.skipText}>Skip</Text>
-        </TouchableOpacity>
-      </View>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <Text style={styles.title}>Beginner Guide</Text>
+        <Text style={styles.subtitle}>Everything you need to get started, safely.</Text>
 
-      {/* Main Slide Content */}
-      <View style={styles.contentContainer}>
-        {/* Giant Circle Icon Wrapper */}
-        <View style={[styles.iconContainer, { backgroundColor: Theme.colors.surface }]}>
-          <View style={[styles.iconCircle, { backgroundColor: 'rgba(99, 102, 241, 0.15)' }]}>
-            <IconComponent size={64} color={currentSlide.color} />
+        {categories.map((category) => {
+          const meta = CATEGORY_META[category];
+          const CategoryIcon = meta.icon;
+          return (
+            <View key={category} style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <View style={[styles.sectionIconBadge, { backgroundColor: meta.color + '26' }]}>
+                  <CategoryIcon size={14} color={meta.color} />
+                </View>
+                <Text style={styles.sectionTitle}>{category}</Text>
+              </View>
+
+              <View style={styles.card}>
+                {GUIDES.filter((g) => g.category === category).map((guide, idx, arr) => {
+                  const isOpen = expandedId === guide.id;
+                  return (
+                    <View key={guide.id}>
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        style={styles.guideRow}
+                        onPress={() => setExpandedId(isOpen ? null : guide.id)}
+                      >
+                        <Text style={styles.guideTitle}>{guide.title}</Text>
+                        <ChevronDown
+                          size={16}
+                          color={colors.mutedForeground}
+                          style={{ transform: [{ rotate: isOpen ? '180deg' : '0deg' }] }}
+                        />
+                      </TouchableOpacity>
+                      {isOpen && <Text style={styles.guideBody}>{guide.body}</Text>}
+                      {idx < arr.length - 1 && <View style={styles.divider} />}
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          );
+        })}
+
+        {/* Gym Schedule & Support */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <View style={[styles.sectionIconBadge, { backgroundColor: colors.primarySoft }]}>
+              <Building2 size={14} color={colors.primary} />
+            </View>
+            <Text style={styles.sectionTitle}>Gym Schedule & Support</Text>
+          </View>
+
+          <View style={styles.card}>
+            {loadingGym ? (
+              <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 8 }} />
+            ) : gym ? (
+              <>
+                {WEEKDAYS.map((day) => {
+                  const isOff = (gym.weeklyOff || []).includes(day);
+                  const t = gym.timings?.[day];
+                  return (
+                    <View key={day} style={styles.timingRow}>
+                      <Text style={styles.timingDay}>{capitalize(day)}</Text>
+                      <Text style={[styles.timingHours, isOff && { color: colors.destructive }]}>
+                        {isOff ? 'Closed' : t ? `${formatTime(t.open)} – ${formatTime(t.close)}` : 'Not set'}
+                      </Text>
+                    </View>
+                  );
+                })}
+
+                {(!!gym.phone || !!gym.email) && <View style={styles.divider} />}
+
+                {!!gym.phone && (
+                  <View style={styles.supportRow}>
+                    <Phone size={14} color={colors.mutedForeground} style={{ marginRight: 8 }} />
+                    <Text style={styles.supportText}>{gym.phone}</Text>
+                  </View>
+                )}
+                {!!gym.email && (
+                  <View style={[styles.supportRow, { marginTop: gym.phone ? 6 : 0 }]}>
+                    <Mail size={14} color={colors.mutedForeground} style={{ marginRight: 8 }} />
+                    <Text style={styles.supportText}>{gym.email}</Text>
+                  </View>
+                )}
+              </>
+            ) : (
+              <View style={styles.emptyGymRow}>
+                <Clock size={16} color={colors.mutedForeground} style={{ marginRight: 8 }} />
+                <Text style={styles.supportText}>Join a gym to see its schedule and support contact.</Text>
+              </View>
+            )}
           </View>
         </View>
-
-        {/* Text Details */}
-        <View style={styles.textContainer}>
-          <Text style={styles.slideTitle}>{currentSlide.title}</Text>
-          <Text style={styles.slideBody}>{currentSlide.body}</Text>
-        </View>
-
-        {/* Page Indicators */}
-        <View style={styles.indicatorContainer}>
-          {slides.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.indicatorDot,
-                index === slideIndex
-                  ? styles.indicatorDotActive
-                  : styles.indicatorDotInactive,
-              ]}
-            />
-          ))}
-        </View>
-      </View>
-
-      {/* Bottom Action Button */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          onPress={handleNext}
-          activeOpacity={0.85}
-          style={styles.actionButton}
-        >
-          <Text style={styles.actionButtonText}>
-            {slideIndex < slides.length - 1 ? 'Next' : 'Get Started'}
-          </Text>
-          <ChevronRight size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
-        </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b0f19',
-    paddingHorizontal: 24,
+    backgroundColor: colors.background,
   },
-  header: {
+  scroll: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 40,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: colors.foreground,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginTop: 4,
+    marginBottom: 24,
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+    marginLeft: 4,
+  },
+  sectionIconBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.foreground,
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+  },
+  guideRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 16,
-    paddingBottom: 24,
+    paddingVertical: 14,
   },
-  brandTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#f5f6fa',
-  },
-  skipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#a1a5b7',
-  },
-  contentContainer: {
+  guideTitle: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconContainer: {
-    width: 170,
-    height: 170,
-    borderRadius: 48,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 40,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.35,
-    shadowRadius: 20,
-    elevation: 8,
-  },
-  iconCircle: {
-    width: 130,
-    height: 130,
-    borderRadius: 9999,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  textContainer: {
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 32,
-  },
-  slideTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#f5f6fa',
-    textAlign: 'center',
-  },
-  slideBody: {
     fontSize: 14,
-    color: '#a1a5b7',
-    textAlign: 'center',
-    marginTop: 12,
-    lineHeight: 22,
-    maxWidth: 280,
-  },
-  indicatorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  indicatorDot: {
-    height: 6,
-    borderRadius: 3,
-  },
-  indicatorDotActive: {
-    width: 24,
-    backgroundColor: '#6366f1',
-  },
-  indicatorDotInactive: {
-    width: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  footer: {
-    paddingBottom: 32,
-    paddingTop: 16,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#6366f1',
-    borderRadius: 9999,
-    paddingVertical: 16,
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    elevation: 10,
-  },
-  actionButtonText: {
-    fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.foreground,
+    marginRight: 12,
+  },
+  guideBody: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    lineHeight: 19,
+    paddingBottom: 14,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  timingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  timingDay: { fontSize: 13, fontWeight: '700', color: colors.foreground },
+  timingHours: { fontSize: 13, fontWeight: '600', color: colors.mutedForeground },
+  supportRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  supportText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  emptyGymRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
   },
 });

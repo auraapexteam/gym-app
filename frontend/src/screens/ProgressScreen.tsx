@@ -11,16 +11,20 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import Svg, { Circle, Polyline, Path, Rect, ClipPath, Defs } from 'react-native-svg';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { apiClient } from '../api/client';
 import { useTheme } from '../context/ThemeContext';
+import { uploadPersonalImage } from '../utils/upload';
 import {
   ChevronLeft,
   ChevronRight,
   Camera,
   Plus,
   Minus,
+  Footprints,
 } from 'lucide-react-native';
 
 /* ============ Vectors ============ */
@@ -111,6 +115,7 @@ interface LogSummary {
   weightLogs: { weight: number; log_date: string }[];
   waterLogs: { amount_ml: number; log_date: string }[];
   proteinLogs: { amount_g: number; log_date: string }[];
+  stepsLogs: { steps: number; log_date: string }[];
   imageLogs: { image_url: string; log_date: string }[];
 }
 
@@ -118,6 +123,7 @@ export function ProgressScreen() {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const [loading, setLoading] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1); // 1-indexed
 
@@ -126,16 +132,19 @@ export function ProgressScreen() {
   const [weight, setWeight] = useState('72.0');
   const [water, setWater] = useState(1500);
   const [protein, setProtein] = useState(95);
+  const [steps, setSteps] = useState(0);
 
   const [summary, setSummary] = useState<LogSummary>({
     weightLogs: [],
     waterLogs: [],
     proteinLogs: [],
+    stepsLogs: [],
     imageLogs: [],
   });
 
   useEffect(() => {
     fetchMonthSummary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-fetch only when the viewed month changes
   }, [currentYear, currentMonth]);
 
   useEffect(() => {
@@ -143,10 +152,12 @@ export function ProgressScreen() {
     const dWeight = summary.weightLogs.find((l) => l.log_date === selectedDate)?.weight;
     const dWater = summary.waterLogs.find((l) => l.log_date === selectedDate)?.amount_ml;
     const dProtein = summary.proteinLogs.find((l) => l.log_date === selectedDate)?.amount_g;
+    const dSteps = summary.stepsLogs.find((l) => l.log_date === selectedDate)?.steps;
 
     setWeight(dWeight ? String(dWeight.toFixed(1)) : '72.0');
     setWater(dWater ? dWater : 1500);
     setProtein(dProtein ? dProtein : 95);
+    setSteps(dSteps ? dSteps : 0);
   }, [selectedDate, summary]);
 
   const fetchMonthSummary = async () => {
@@ -162,6 +173,33 @@ export function ProgressScreen() {
       console.warn('Failed to load summary stats:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUploadPhoto = async () => {
+    if (selectedDate > new Date().toISOString().slice(0, 10)) {
+      Alert.alert('Invalid Date', 'You cannot log a snapshot for future dates.');
+      return;
+    }
+
+    const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.8, maxWidth: 1600, maxHeight: 1600 });
+    if (result.didCancel || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    if (!asset.uri) return;
+
+    try {
+      setUploadingPhoto(true);
+      const publicUrl = await uploadPersonalImage(
+        { uri: asset.uri, fileName: asset.fileName, type: asset.type, fileSize: asset.fileSize },
+        'progress-photo'
+      );
+      await apiClient.post('/progress/image', { imageUrl: publicUrl, logDate: selectedDate });
+      fetchMonthSummary();
+    } catch (err: any) {
+      Alert.alert('Upload Failed', err.response?.data?.message || err.message || 'Failed to upload snapshot.');
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
@@ -196,6 +234,13 @@ export function ProgressScreen() {
         })
       );
 
+      promises.push(
+        apiClient.post('/progress/steps', {
+          steps: Number(steps),
+          logDate: selectedDate,
+        })
+      );
+
       await Promise.all(promises);
       Alert.alert('Logs Saved', 'Your progress logs have been updated.');
       fetchMonthSummary();
@@ -211,6 +256,7 @@ export function ProgressScreen() {
     ...summary.weightLogs.map((l) => l.log_date),
     ...summary.waterLogs.map((l) => l.log_date),
     ...summary.proteinLogs.map((l) => l.log_date),
+    ...summary.stepsLogs.map((l) => l.log_date),
   ]);
 
   // Calendar logic
@@ -280,10 +326,10 @@ export function ProgressScreen() {
               </View>
               <View style={styles.calNav}>
                 <TouchableOpacity onPress={handlePrevMonth} activeOpacity={0.7} style={styles.navBtn}>
-                  <ChevronLeft size={18} color="#f5f6fa" />
+                  <ChevronLeft size={18} color={colors.foreground} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleNextMonth} activeOpacity={0.7} style={styles.navBtn}>
-                  <ChevronRight size={18} color="#f5f6fa" />
+                  <ChevronRight size={18} color={colors.foreground} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -368,7 +414,7 @@ export function ProgressScreen() {
                   activeOpacity={0.7}
                   style={styles.adjustButton}
                 >
-                  <Minus size={16} color="#f5f6fa" />
+                  <Minus size={16} color={colors.foreground} />
                 </TouchableOpacity>
                 <WaterGlass value={water / 3000} />
                 <TouchableOpacity
@@ -393,7 +439,7 @@ export function ProgressScreen() {
                   activeOpacity={0.7}
                   style={styles.adjustButton}
                 >
-                  <Minus size={16} color="#f5f6fa" />
+                  <Minus size={16} color={colors.foreground} />
                 </TouchableOpacity>
                 <ProgressRing size={32} stroke={3.5} progress={protein / 150} color="#f87171" />
                 <TouchableOpacity
@@ -406,26 +452,56 @@ export function ProgressScreen() {
               </View>
             </View>
 
+            {/* Steps Adjustment Box */}
+            <View style={styles.sheetControlBox}>
+              <View style={styles.stepsLabelGroup}>
+                <Footprints size={16} color="#fbbf24" />
+                <View>
+                  <Text style={styles.sheetControlTitle}>Steps</Text>
+                  <Text style={styles.sheetControlValue}>{steps.toLocaleString()}</Text>
+                </View>
+              </View>
+              <View style={styles.adjusterRow}>
+                <TouchableOpacity
+                  onPress={() => setSteps(Math.max(0, steps - 500))}
+                  activeOpacity={0.7}
+                  style={styles.adjustButton}
+                >
+                  <Minus size={16} color={colors.foreground} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setSteps(steps + 500)}
+                  activeOpacity={0.7}
+                  style={[styles.adjustButton, { backgroundColor: '#fbbf24' }]}
+                >
+                  <Plus size={16} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
             {/* Progress Snapshots Upload box */}
             <View style={styles.photoSection}>
               <Text style={styles.photoTitle}>Progress photo</Text>
-              <TouchableOpacity activeOpacity={0.7} style={styles.dashedUploadBox}>
-                <Camera size={20} color="#a1a5b7" style={{ marginBottom: 6 }} />
-                <Text style={styles.uploadText}>Tap to upload snapshot</Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.dashedUploadBox}
+                onPress={handleUploadPhoto}
+                disabled={uploadingPhoto}
+              >
+                {uploadingPhoto ? (
+                  <ActivityIndicator size="small" color={colors.mutedForeground} />
+                ) : (
+                  <>
+                    <Camera size={20} color={colors.mutedForeground} style={{ marginBottom: 6 }} />
+                    <Text style={styles.uploadText}>Tap to upload snapshot</Text>
+                  </>
+                )}
               </TouchableOpacity>
 
               {/* Photos scroll list */}
               <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} style={styles.photoList}>
-                {[210, 40, 160, 280, 90].map((h, index) => (
-                  <View
-                    key={index}
-                    style={[
-                      styles.photoThumbnail,
-                      {
-                        backgroundColor: `hsl(${h}, 55%, 55%)`,
-                      },
-                    ]}
-                  />
+                {summary.imageLogs.map((log) => (
+                  <Image key={log.log_date} source={{ uri: log.image_url }} style={styles.photoThumbnail} />
                 ))}
               </ScrollView>
             </View>
@@ -616,6 +692,11 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontWeight: '800',
     color: colors.foreground,
     marginTop: 2,
+  },
+  stepsLabelGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   adjusterRow: {
     flexDirection: 'row',
