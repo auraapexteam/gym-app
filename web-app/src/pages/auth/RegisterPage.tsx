@@ -3,18 +3,26 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Zap, Mail, Lock, User, Phone } from 'lucide-react';
+import { Eye, EyeOff, Zap, Mail, Lock, User, Phone, CheckCircle2, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { authApi } from '@/api';
 import { useAuthStore } from '@/store';
 import { toast } from 'sonner';
 
+const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~])/;
+
 const registerSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Invalid email address'),
-  phone: z.string().min(10, 'Enter a valid phone number'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  name: z.string().min(2, 'Full name must be at least 2 characters'),
+  email: z.string().email('Please enter a valid email address'),
+  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(
+      PASSWORD_REGEX,
+      'Password must contain at least 1 uppercase letter, 1 number, and 1 special character (!@#$%...)'
+    ),
   confirmPassword: z.string(),
 }).refine((d) => d.password === d.confirmPassword, {
   message: 'Passwords do not match',
@@ -32,10 +40,19 @@ export default function RegisterPage() {
   const {
     register,
     handleSubmit,
+    watch,
+    setError,
     formState: { errors },
   } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
+    mode: 'onChange',
   });
+
+  const passwordValue = watch('password') || '';
+  const hasMinLength = passwordValue.length >= 8;
+  const hasUppercase = /[A-Z]/.test(passwordValue);
+  const hasNumber = /\d/.test(passwordValue);
+  const hasSpecial = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(passwordValue);
 
   const mutation = useMutation({
     mutationFn: async (data: Omit<RegisterForm, 'confirmPassword'>) => {
@@ -52,8 +69,33 @@ export default function RegisterPage() {
       }
     },
     onError: (err: any) => {
-      const errorMsg = err.response?.data?.message || err?.message || 'Registration failed. Please try again.';
-      toast.error(errorMsg);
+      const resData = err.response?.data;
+      const details = resData?.error?.details || resData?.details;
+      const code = resData?.error?.code;
+
+      if (Array.isArray(details) && details.length > 0) {
+        details.forEach((d: any) => {
+          const rawField = (d.field || '').toLowerCase();
+          let fieldKey: keyof RegisterForm | null = null;
+          if (rawField.includes('name') || rawField.includes('fullname')) fieldKey = 'name';
+          else if (rawField.includes('email')) fieldKey = 'email';
+          else if (rawField.includes('phone')) fieldKey = 'phone';
+          else if (rawField.includes('password')) fieldKey = 'password';
+
+          if (fieldKey) {
+            setError(fieldKey, { message: d.message });
+          }
+        });
+
+        const messages = details.map((d: any) => d.message).join(' | ');
+        toast.error(`Validation Failed: ${messages}`);
+      } else if (code === 'EMAIL_EXISTS' || resData?.message?.toLowerCase().includes('already registered')) {
+        setError('email', { message: 'This email is already registered. Please sign in.' });
+        toast.error('Email is already registered. Please sign in or use another email.');
+      } else {
+        const msg = resData?.message || err?.message || 'Registration failed. Please review input requirements.';
+        toast.error(msg);
+      }
     },
   });
 
@@ -138,7 +180,7 @@ export default function RegisterPage() {
                 <input
                   {...register('password')}
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Min. 8 characters"
+                  placeholder="Min. 8 characters (A-Z, 0-9, !@#)"
                   className="w-full bg-aura-bg border border-aura-border rounded-md pl-9 pr-10 py-2.5 text-sm text-aura-text placeholder-aura-muted focus:outline-none focus:border-aura-primary focus:ring-1 focus:ring-aura-primary/30 transition-all"
                 />
                 <button
@@ -149,7 +191,27 @@ export default function RegisterPage() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              {errors.password && <p className="mt-1 text-xs text-aura-danger">{errors.password.message}</p>}
+
+              {/* Real-time Password Requirements Helper */}
+              <div className="mt-2 bg-aura-bg border border-aura-border/70 rounded-md p-2.5 text-[11px] space-y-1">
+                <p className="font-semibold text-aura-muted uppercase tracking-wider text-[10px] mb-1">Required Password Format:</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <span className={`flex items-center gap-1 ${hasMinLength ? 'text-aura-success font-medium' : 'text-aura-muted'}`}>
+                    {hasMinLength ? <CheckCircle2 className="h-3 w-3 text-aura-success shrink-0" /> : <XCircle className="h-3 w-3 opacity-40 shrink-0" />} At least 8 characters
+                  </span>
+                  <span className={`flex items-center gap-1 ${hasUppercase ? 'text-aura-success font-medium' : 'text-aura-muted'}`}>
+                    {hasUppercase ? <CheckCircle2 className="h-3 w-3 text-aura-success shrink-0" /> : <XCircle className="h-3 w-3 opacity-40 shrink-0" />} 1 Uppercase (A-Z)
+                  </span>
+                  <span className={`flex items-center gap-1 ${hasNumber ? 'text-aura-success font-medium' : 'text-aura-muted'}`}>
+                    {hasNumber ? <CheckCircle2 className="h-3 w-3 text-aura-success shrink-0" /> : <XCircle className="h-3 w-3 opacity-40 shrink-0" />} 1 Number (0-9)
+                  </span>
+                  <span className={`flex items-center gap-1 ${hasSpecial ? 'text-aura-success font-medium' : 'text-aura-muted'}`}>
+                    {hasSpecial ? <CheckCircle2 className="h-3 w-3 text-aura-success shrink-0" /> : <XCircle className="h-3 w-3 opacity-40 shrink-0" />} 1 Special Symbol (!@#...)
+                  </span>
+                </div>
+              </div>
+
+              {errors.password && <p className="mt-1.5 text-xs text-aura-danger font-medium">{errors.password.message}</p>}
             </div>
 
             {/* Confirm Password */}
