@@ -145,8 +145,27 @@ export function PlansScreen({ navigation }: any) {
 
   const getIntervalLabel = (plan: Plan) => (plan.billing_interval === 'year' ? '/yr' : '/mo');
 
+  const activeSub = useMemo(() => {
+    if (!subscription) return null;
+    if (Array.isArray(subscription)) {
+      return subscription.find((s: any) => s.status === 'active');
+    }
+    return subscription.status === 'active' ? subscription : null;
+  }, [subscription]);
+
   const isCurrentPlan = (plan: Plan) => {
-    return subscription?.plans?.id === plan.id;
+    if (!activeSub) return false;
+    const subPlanId = activeSub.plan?.id || activeSub.plan_id || activeSub.planId;
+    const subPlanName = (activeSub.plan?.name || activeSub.planName || '').toLowerCase().trim();
+    const currentName = (plan.name || '').toLowerCase().trim();
+    return (subPlanId && subPlanId === plan.id) || (subPlanName && subPlanName === currentName);
+  };
+
+  const getRemainingDays = () => {
+    if (!activeSub) return 0;
+    const subEndDate = activeSub.end_date || activeSub.endDate;
+    if (!subEndDate) return 30;
+    return Math.max(0, Math.ceil((new Date(subEndDate).getTime() - Date.now()) / (1000 * 3600 * 24)));
   };
 
   return (
@@ -155,7 +174,7 @@ export function PlansScreen({ navigation }: any) {
         {/* Title area */}
         <View style={styles.screenHeader}>
           <Text style={styles.screenTitle}>Choose your plan</Text>
-          <Text style={styles.screenSubtitle}>Cancel or switch tiers anytime.</Text>
+          <Text style={styles.screenSubtitle}>Select and activate your membership tier.</Text>
         </View>
 
         {/* Swipe Carousel of plan cards */}
@@ -175,6 +194,7 @@ export function PlansScreen({ navigation }: any) {
             {plans.map((p) => {
               const isElite = p.name.includes('Elite') || p.name.includes('Gold') || p.name.includes('Premium');
               const isCurrent = isCurrentPlan(p);
+              const remDays = isCurrent ? getRemainingDays() : 0;
               
               return (
                 <View
@@ -182,13 +202,19 @@ export function PlansScreen({ navigation }: any) {
                   style={[
                     styles.planCard,
                     isElite ? styles.featuredCard : styles.standardCard,
+                    isCurrent && styles.activePlanCard,
                   ]}
                 >
-                  {isElite && (
+                  {isCurrent ? (
+                    <View style={styles.activeBadge}>
+                      <Text style={styles.activeBadgeText}>ACTIVE PACKAGE</Text>
+                    </View>
+                  ) : isElite ? (
                     <View style={styles.popBadge}>
                       <Text style={styles.popBadgeText}>Most Popular</Text>
                     </View>
-                  )}
+                  ) : null}
+
                   <Text style={[styles.tierName, isElite ? styles.textWhite : styles.textMuted]}>
                     {p.name.toUpperCase()}
                   </Text>
@@ -207,7 +233,7 @@ export function PlansScreen({ navigation }: any) {
                   <View style={styles.featuresContainer}>
                     {p.features?.map((f, idx) => (
                       <View key={idx} style={styles.featureRow}>
-                        <Check size={14} color={isElite ? '#FFFFFF' : '#10b981'} style={{ marginRight: 8, marginTop: 2 }} />
+                        <Check size={14} color={isCurrent || isElite ? '#10b981' : '#10b981'} style={{ marginRight: 8, marginTop: 2 }} />
                         <Text style={[styles.featureText, isElite ? styles.textWhite : styles.textMuted]}>
                           {f}
                         </Text>
@@ -215,23 +241,32 @@ export function PlansScreen({ navigation }: any) {
                     ))}
                   </View>
 
-                  <TouchableOpacity
-                    onPress={() => !isCurrent && handleOpenCheckout(p)}
-                    activeOpacity={0.8}
-                    style={[
-                      styles.subscribeBtn,
-                      isElite ? styles.subscribeBtnElite : styles.subscribeBtnStandard,
-                    ]}
-                  >
-                    <Text
+                  {isCurrent ? (
+                    <View style={styles.activePlanBtnContainer}>
+                      <Text style={styles.activePlanBtnTitle}>✓ ONGOING ACTIVE PLAN</Text>
+                      <Text style={styles.activePlanBtnSubtext}>
+                        {remDays > 0 ? `${remDays} Days Remaining` : 'Active Access'}
+                      </Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => handleOpenCheckout(p)}
+                      activeOpacity={0.8}
                       style={[
-                        styles.subscribeBtnText,
-                        isElite ? styles.subscribeTextElite : styles.subscribeTextStandard,
+                        styles.subscribeBtn,
+                        isElite ? styles.subscribeBtnElite : styles.subscribeBtnStandard,
                       ]}
                     >
-                      {isCurrent ? 'Current Plan' : 'Subscribe Now'}
-                    </Text>
-                  </TouchableOpacity>
+                      <Text
+                        style={[
+                          styles.subscribeBtnText,
+                          isElite ? styles.subscribeTextElite : styles.subscribeTextStandard,
+                        ]}
+                      >
+                        Subscribe Now
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               );
             })}
@@ -576,6 +611,49 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontSize: 14,
     color: colors.mutedForeground,
     fontWeight: '600',
+  },
+  activePlanCard: {
+    borderColor: '#10b981',
+    borderWidth: 2,
+  },
+  activeBadge: {
+    position: 'absolute',
+    top: -12,
+    alignSelf: 'center',
+    backgroundColor: '#10b981',
+    paddingHorizontal: 12,
+    paddingVertical: 3,
+    borderRadius: 9999,
+  },
+  activeBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  activePlanBtnContainer: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderColor: 'rgba(16, 185, 129, 0.4)',
+    borderWidth: 1,
+    borderRadius: 9999,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activePlanBtnTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#10b981',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  activePlanBtnSubtext: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#10b981',
+    marginTop: 2,
   },
   successState: {
     height: 220,

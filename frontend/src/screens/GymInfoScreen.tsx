@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View, ActivityIndicator, ScrollView, SafeAreaView } from 'react-native';
+import { StyleSheet, Text, View, ActivityIndicator, ScrollView, SafeAreaView, Image } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
-import { Building2, Phone, Mail } from 'lucide-react-native';
+import { Building2, Phone, Mail, CheckCircle2 } from 'lucide-react-native';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -23,14 +23,12 @@ export function GymInfoScreen() {
   const { userProfile } = useAuthStore();
   const [gym, setGym] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [logoError, setLogoError] = useState(false);
 
   const fetchGymInfo = async () => {
     if (!userProfile?.gym_id) return;
     try {
       setLoading(true);
-      // /gyms/me resolves to the authenticated member's own linked gym and
-      // includes contact fields — the public /gyms/:id endpoint deliberately
-      // omits phone/email for directory browsing.
       const res = await apiClient.get('/gyms/me');
       if (res.data?.success) {
         setGym(res.data.data);
@@ -44,7 +42,6 @@ export function GymInfoScreen() {
 
   useEffect(() => {
     fetchGymInfo();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-fetch only when gym_id changes
   }, [userProfile?.gym_id]);
 
   if (loading) {
@@ -63,14 +60,28 @@ export function GymInfoScreen() {
     );
   }
 
+  const gymLogoUri = gym.logoUrl || gym.logo_url || gym.avatarUrl || gym.avatar_url || gym.photo_url || (Array.isArray(gym.photos) && gym.photos[0]);
+  const gymInitials = (gym.name || 'GYM').split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase();
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <View style={styles.headerIconBadge}>
-            <Building2 size={36} color={colors.primary} />
+          {gymLogoUri && !logoError ? (
+            <Image
+              source={{ uri: gymLogoUri }}
+              style={styles.gymLogoImage}
+              onError={() => setLogoError(true)}
+            />
+          ) : (
+            <View style={styles.headerIconBadge}>
+              <Text style={styles.gymInitialsText}>{gymInitials}</Text>
+            </View>
+          )}
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>{gym.name}</Text>
+            <CheckCircle2 size={18} color={colors.primary} style={{ marginLeft: 6, marginTop: 2 }} />
           </View>
-          <Text style={styles.title}>{gym.name}</Text>
           <Text style={styles.subtitle}>{gym.address || 'Address not listed'}</Text>
         </View>
 
@@ -126,13 +137,34 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
   header: { alignItems: 'center', marginBottom: 24, marginTop: 12 },
   headerIconBadge: {
-    width: 72,
-    height: 72,
+    width: 80,
+    height: 80,
     borderRadius: 24,
     backgroundColor: colors.primarySoft,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 14,
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  gymLogoImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    marginBottom: 14,
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  gymInitialsText: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: colors.primary,
+    letterSpacing: 1,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: { fontSize: 22, fontWeight: '800', color: colors.foreground, textAlign: 'center' },
   subtitle: { fontSize: 13, color: colors.mutedForeground, marginTop: 4, textAlign: 'center' },
