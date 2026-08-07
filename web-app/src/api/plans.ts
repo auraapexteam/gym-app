@@ -2,7 +2,7 @@ import axiosInstance from './axios';
 import type { MembershipPlan, ApiResponse, PaginatedResponse } from '@/types';
 
 export const plansApi = {
-  getAll: (params?: { page?: number; limit?: number }) =>
+  getAll: (params?: { gymId?: string; page?: number; limit?: number }) =>
     axiosInstance.get<PaginatedResponse<MembershipPlan>>('/plans', { params }),
 
   getById: (id: string) =>

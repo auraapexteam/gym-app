@@ -11,15 +11,18 @@ import { motion } from 'framer-motion';
 
 export default function CustomerPlansPage() {
   const { user } = useAuthStore();
-  const { data: plansData, isLoading: plansLoading } = usePlans();
   const { data: joinStatus } = useJoinRequestStatus();
   const { data: gyms = [] } = useGymDirectory();
   const { data: mySubscriptions = [] } = useMySubscriptions();
   const createSubscriptionMutation = useCreateManualSubscription();
 
-  const activePlans = Array.isArray(plansData) ? plansData : (plansData as any)?.data || [];
   const isApproved = joinStatus?.status === 'approved';
   const approvedGym = isApproved ? gyms.find((g) => g.id === joinStatus?.gymId) : null;
+  const targetGymId = approvedGym?.id || joinStatus?.gymId || user?.gymId;
+
+  const { data: plansData, isLoading: plansLoading } = usePlans(targetGymId);
+
+  const activePlans = Array.isArray(plansData) ? plansData : (plansData as any)?.data || [];
 
   const handleSubscribe = (planId: string) => {
     if (!user?.id) return;

@@ -3,11 +3,11 @@ import { plansApi } from '@/api';
 import { toast } from 'sonner';
 import type { MembershipPlan } from '@/types';
 
-export function usePlans() {
+export function usePlans(gymId?: string) {
   return useQuery({
-    queryKey: ['plans'],
+    queryKey: ['plans', gymId],
     queryFn: async () => {
-      const res = await plansApi.getAll();
+      const res = await plansApi.getAll(gymId ? { gymId } : undefined);
       return res.data.data;
     },
   });

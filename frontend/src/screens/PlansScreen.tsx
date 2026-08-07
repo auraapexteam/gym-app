@@ -49,7 +49,9 @@ export function PlansScreen({ navigation }: any) {
   const fetchPlans = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/plans');
+      const targetGymId = userProfile?.gymId || user?.gymId;
+      const endpoint = targetGymId ? `/plans?gymId=${targetGymId}` : '/plans';
+      const response = await apiClient.get(endpoint);
       if (response.data && response.data.success) {
         // Map backend plans or use mock list for features if missing
         const list = response.data.data.map((p: Plan) => {

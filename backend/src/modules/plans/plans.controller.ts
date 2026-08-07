@@ -19,10 +19,11 @@ export class PlanController {
 
     if (user.role === Role.CUSTOMER) {
       const requested = req.query.gymId;
-      if (typeof requested !== 'string') {
-        throw new BadRequestError('gymId query parameter is required', 'GYM_ID_REQUIRED');
+      const targetGymId = typeof requested === 'string' && requested ? requested : user.gymId;
+      if (!targetGymId) {
+        throw new BadRequestError('gymId query parameter is required or user must be linked to a gym', 'GYM_ID_REQUIRED');
       }
-      gymId = requested;
+      gymId = targetGymId;
       isActive = true; // customers only ever see purchasable plans
     } else {
       gymId = requireGymId(user);
