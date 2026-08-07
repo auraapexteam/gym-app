@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View, SafeAreaView } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { Theme } from '../theme/Theme';
+import { useTheme } from '../context/ThemeContext';
 import { AppButton } from '../components/AppButton';
 
 export function OwnerDashboardScreen() {
   const { userProfile, signOut } = useAuthStore();
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -35,7 +38,7 @@ export function OwnerDashboardScreen() {
 
         <View style={styles.metricRow}>
           <Text style={styles.metricLabel}>💰 Monthly Revenue</Text>
-          <Text style={[styles.metricValue, { color: Theme.colors.primary }]}>₹1,85,000</Text>
+          <Text style={[styles.metricValue, { color: colors.primary }]}>₹1,85,000</Text>
         </View>
       </View>
 
@@ -48,10 +51,10 @@ export function OwnerDashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
+    backgroundColor: colors.background,
     justifyContent: 'space-between',
   },
   header: {
@@ -62,52 +65,52 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: Theme.colors.primary,
+    color: colors.primary,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   title: {
     fontSize: 26,
     fontWeight: 'bold',
-    color: Theme.colors.foreground,
+    color: colors.foreground,
     marginTop: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: Theme.colors.mutedForeground,
+    color: colors.mutedForeground,
     marginTop: 6,
   },
   roleBadgeContainer: {
     marginTop: 12,
-    backgroundColor: Theme.colors.primarySoft,
+    backgroundColor: colors.primarySoft,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: Theme.radius.round,
   },
   roleBadge: {
-    color: Theme.colors.primary,
+    color: colors.primary,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   card: {
-    backgroundColor: Theme.colors.surface,
+    backgroundColor: colors.surface,
     padding: 20,
     borderRadius: Theme.radius.lg,
     ...Theme.shadow.lift,
     marginHorizontal: 24,
     marginVertical: 40,
     borderWidth: 1,
-    borderColor: Theme.colors.border,
+    borderColor: colors.border,
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: Theme.colors.foreground,
+    color: colors.foreground,
   },
   divider: {
     height: 1,
-    backgroundColor: Theme.colors.border,
+    backgroundColor: colors.border,
     marginVertical: 14,
   },
   metricRow: {
@@ -119,12 +122,12 @@ const styles = StyleSheet.create({
   metricLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: Theme.colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   metricValue: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: Theme.colors.foreground,
+    color: colors.foreground,
   },
   footer: {
     paddingHorizontal: 24,
