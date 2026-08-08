@@ -10,13 +10,24 @@ import {
   Modal,
   Dimensions,
   Platform,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import RazorpayCheckout from 'react-native-razorpay';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/useAuthStore';
+import { useGymStore, PublicGym } from '../store/useGymStore';
 import { useTheme } from '../context/ThemeContext';
-import { Check, Building2 } from 'lucide-react-native';
+import {
+  Check,
+  Building2,
+  MapPin,
+  Clock,
+  ShieldCheck,
+  Sparkles,
+  CreditCard,
+  X,
+} from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -32,44 +43,100 @@ interface Plan {
 export function PlansScreen({ route, navigation }: any) {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
+
+  const { user, userProfile, loadUserProfile, loadSubscription, subscription } = useAuthStore();
+  const { directory, fetchDirectory } = useGymStore();
+
+  const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
+  const [gymDetails, setGymDetails] = useState<PublicGym | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [gymLoading, setGymLoading] = useState(false);
 
-  // Checkout sheet states
+  // Checkout modal states
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [payPhase, setPayPhase] = useState<'form' | 'loading' | 'success'>('form');
 
-  const { user, userProfile, loadUserProfile, loadSubscription, subscription } = useAuthStore();
-
+  // 1. Initial Gym Resolution
   useEffect(() => {
-    fetchPlans();
-  }, [route?.params?.gymId, userProfile?.gym_id]);
+    fetchDirectory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount fetch
+  }, []);
 
-  const fetchPlans = async () => {
+  // Update selectedGymId from params or profile or fallback to first directory gym
+  useEffect(() => {
+    const paramId = route?.params?.gymId;
+    const profileId = userProfile?.gym_id || userProfile?.gymId;
+    const initialId = paramId || profileId || (directory.length > 0 ? directory[0].id : null);
+
+    if (initialId && initialId !== selectedGymId) {
+      setSelectedGymId(initialId);
+    } else if (!selectedGymId && directory.length > 0) {
+      setSelectedGymId(directory[0].id);
+    }
+  }, [route?.params?.gymId, userProfile?.gym_id, directory]);
+
+  // 2. Fetch Gym Info and Plans whenever selectedGymId changes
+  useEffect(() => {
+    if (selectedGymId) {
+      loadGymData(selectedGymId);
+    }
+  }, [selectedGymId]);
+
+  const loadGymData = async (gymId: string) => {
     try {
+      setGymLoading(true);
       setLoading(true);
-      const paramGymId = route?.params?.gymId;
-      const targetGymId = paramGymId || userProfile?.gym_id || userProfile?.gymId || user?.gymId;
-      const endpoint = targetGymId ? `/plans?gymId=${targetGymId}` : '/plans';
-      const response = await apiClient.get(endpoint);
-      if (response.data && response.data.success) {
-        // Map backend plans or use mock list for features if missing
-        const list = response.data.data.map((p: Plan) => {
-          let features = ['Full gym access', 'Locker inclusion', '1 group class/week'];
-          if (p.name.includes('Standard') || p.name.includes('Elite')) {
-            features = ['All Starter perks', 'Unlimited group classes', 'Sauna recovery access', 'Progress tracking logs'];
+
+      // Check if gym is already in directory store, else fetch public profile
+      const localGym = directory.find((g) => g.id === gymId);
+      if (localGym) {
+        setGymDetails(localGym);
+      } else {
+        try {
+          const gymRes = await apiClient.get(`/gyms/${gymId}/public`);
+          if (gymRes.data?.success && gymRes.data.data) {
+            setGymDetails(gymRes.data.data);
           }
-          if (p.name.includes('Elite')) {
-            features = ['All Standard perks', 'Personal trainer 4x/mo', 'Nutrition meal planning', 'Recovery lounge access', 'Priority booking slots'];
+        } catch {
+          // Fallback if public endpoint is unavailable
+          if (localGym) setGymDetails(localGym);
+        }
+      }
+
+      // Fetch plans for this specific gym
+      const plansRes = await apiClient.get(`/plans?gymId=${gymId}`);
+      if (plansRes.data && plansRes.data.success) {
+        const list = plansRes.data.data.map((p: Plan) => {
+          let features = ['Full floor & equipment access', 'Locker room & shower access', '1 Trainer fitness assessment'];
+          if (p.name.toLowerCase().includes('standard') || p.name.toLowerCase().includes('pro')) {
+            features = [
+              'All Starter perks',
+              'Unlimited group classes & spin',
+              'Sauna & steam recovery access',
+              'Progress & metric tracking logs',
+            ];
+          }
+          if (p.name.toLowerCase().includes('elite') || p.name.toLowerCase().includes('gold') || p.name.toLowerCase().includes('premium')) {
+            features = [
+              'All Standard perks',
+              'Personal trainer 4x / month',
+              'Personalized nutrition meal plan',
+              'Recovery lounge & hydromassage',
+              'Priority booking & guest passes',
+            ];
           }
           return { ...p, features };
         });
         setPlans(list);
+      } else {
+        setPlans([]);
       }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to fetch plans');
+    } catch (err: any) {
+      console.warn('Failed to load gym plans:', err);
     } finally {
+      setGymLoading(false);
       setLoading(false);
     }
   };
@@ -86,7 +153,7 @@ export function PlansScreen({ route, navigation }: any) {
     try {
       setPayPhase('loading');
 
-      // 1. Create a Razorpay order on the backend for this plan.
+      // 1. Create a Razorpay order on the backend for this plan
       const orderRes = await apiClient.post('/payments/orders', {
         planId: selectedPlan.id,
       });
@@ -97,14 +164,14 @@ export function PlansScreen({ route, navigation }: any) {
 
       const { orderId, amountInPaise, currency, razorpayKeyId } = orderRes.data.data;
 
-      // 2. Open Razorpay's native one-time checkout for that order.
+      // 2. Open Razorpay's native one-time checkout
       const options = {
-        description: selectedPlan.description,
-        currency,
+        description: `${selectedPlan.name} Membership`,
+        currency: currency || 'INR',
         key: razorpayKeyId,
         amount: amountInPaise,
         order_id: orderId,
-        name: 'Aura Apex Gym',
+        name: gymDetails?.name || 'Aura Apex Gym',
         prefill: {
           email: user?.email || '',
           contact: '9876543210',
@@ -115,8 +182,7 @@ export function PlansScreen({ route, navigation }: any) {
 
       const result = await RazorpayCheckout.open(options);
 
-      // 3. Verify the signature server-side — this is what actually activates
-      // the subscription. Never treat the Razorpay callback alone as success.
+      // 3. Verify signature server-side to activate subscription & link gym
       const verifyRes = await apiClient.post('/payments/verify', {
         orderId: result.razorpay_order_id,
         paymentId: result.razorpay_payment_id,
@@ -131,16 +197,16 @@ export function PlansScreen({ route, navigation }: any) {
       await loadUserProfile();
       await loadSubscription();
 
-      // Delayed close
+      // Delayed close and navigate to HomeTab
       setTimeout(() => {
         setCheckoutOpen(false);
         navigation.navigate('HomeTab');
-      }, 1800);
+      }, 1600);
     } catch (error: any) {
       setPayPhase('form');
       Alert.alert(
         'Payment Failed',
-        error.response?.data?.message || error.description || error.message || 'Checkout closed or failed.'
+        error.response?.data?.message || error.description || error.message || 'Checkout was cancelled or failed.'
       );
     }
   };
@@ -170,28 +236,119 @@ export function PlansScreen({ route, navigation }: any) {
     return Math.max(0, Math.ceil((new Date(subEndDate).getTime() - Date.now()) / (1000 * 3600 * 24)));
   };
 
+  // Helper for Initials
+  const getGymInitials = (name?: string) => {
+    if (!name) return 'GY';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Title area */}
+        {/* Screen Header */}
         <View style={styles.screenHeader}>
           <Text style={styles.screenTitle}>Choose your plan</Text>
           <Text style={styles.screenSubtitle}>Select and activate your membership tier.</Text>
         </View>
 
-        {/* Swipe Carousel of plan cards */}
-        {loading ? (
+        {/* 1. Gym Quick-Selector Bar (if multiple gyms exist in network) */}
+        {directory.length > 1 && (
+          <View style={styles.gymSelectorWrapper}>
+            <Text style={styles.gymSelectorLabel}>SELECT GYM PARTNER</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gymPillsScroll}>
+              {directory.map((gym) => {
+                const isSelected = gym.id === selectedGymId;
+                return (
+                  <TouchableOpacity
+                    key={gym.id}
+                    activeOpacity={0.8}
+                    style={[styles.gymPill, isSelected && styles.gymPillActive]}
+                    onPress={() => setSelectedGymId(gym.id)}
+                  >
+                    <Building2 size={13} color={isSelected ? '#FFFFFF' : colors.mutedForeground} style={{ marginRight: 6 }} />
+                    <Text style={[styles.gymPillText, isSelected && styles.gymPillTextActive]}>
+                      {gym.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* 2. Rich Gym Information Banner / Card */}
+        {gymDetails ? (
+          <View style={styles.gymHeroCard}>
+            <View style={styles.gymHeroTop}>
+              {gymDetails.logoUrl ? (
+                <Image source={{ uri: gymDetails.logoUrl }} style={styles.gymHeroLogo} />
+              ) : (
+                <View style={styles.gymAvatar}>
+                  <Text style={styles.gymAvatarText}>{getGymInitials(gymDetails.name)}</Text>
+                </View>
+              )}
+
+              <View style={styles.gymHeroInfo}>
+                <View style={styles.gymBadgeRow}>
+                  <Text style={styles.gymHeroName} numberOfLines={1}>
+                    {gymDetails.name}
+                  </Text>
+                </View>
+                <View style={styles.verifiedBadge}>
+                  <ShieldCheck size={12} color="#10B981" style={{ marginRight: 4 }} />
+                  <Text style={styles.verifiedText}>Verified Fitness Partner</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Address & Timings */}
+            <View style={styles.gymDetailsList}>
+              {!!gymDetails.address && (
+                <View style={styles.gymDetailItem}>
+                  <MapPin size={13} color={colors.primary} style={{ marginRight: 7, marginTop: 1 }} />
+                  <Text style={styles.gymDetailText} numberOfLines={2}>
+                    {gymDetails.address}
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.gymDetailItem}>
+                <Clock size={13} color={colors.primary} style={{ marginRight: 7, marginTop: 1 }} />
+                <Text style={styles.gymDetailText}>
+                  06:00 AM – 10:00 PM · Open Today
+                </Text>
+              </View>
+
+              {!!gymDetails.description && (
+                <Text style={styles.gymDescText} numberOfLines={2}>
+                  {gymDetails.description}
+                </Text>
+              )}
+            </View>
+          </View>
+        ) : null}
+
+        {/* 3. Available Membership Plans Carousel */}
+        <View style={styles.plansSectionHeader}>
+          <Text style={styles.plansSectionTitle}>Available Packages</Text>
+          <Text style={styles.plansSectionSubtitle}>Instant digital activation via Razorpay</Text>
+        </View>
+
+        {loading || gymLoading ? (
           <View style={styles.centerLoader}>
-            <ActivityIndicator size="large" color="#6366f1" />
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loaderLabel}>Loading gym membership packages…</Text>
           </View>
         ) : plans.length === 0 ? (
           <View style={styles.noGymCard}>
             <View style={styles.noGymIconBadge}>
               <Building2 size={36} color={colors.primary} />
             </View>
-            <Text style={styles.noGymTitle}>Find & Join a Gym</Text>
+            <Text style={styles.noGymTitle}>No Plans Available</Text>
             <Text style={styles.noGymSubtitle}>
-              You haven't selected a gym yet. Browse our verified fitness centers to explore their specific membership tiers and pricing.
+              {gymDetails?.name || 'This gym'} has not published any public membership plans yet. Browse other partner gyms in our network.
             </Text>
             <TouchableOpacity
               activeOpacity={0.85}
@@ -205,17 +362,16 @@ export function PlansScreen({ route, navigation }: any) {
         ) : (
           <ScrollView
             horizontal={true}
-            pagingEnabled={false}
             showsHorizontalScrollIndicator={false}
             decelerationRate="fast"
-            snapToInterval={width * 0.76 + 12}
+            snapToInterval={width * 0.78 + 12}
             contentContainerStyle={styles.carouselContainer}
           >
             {plans.map((p) => {
-              const isElite = p.name.includes('Elite') || p.name.includes('Gold') || p.name.includes('Premium');
+              const isElite = p.name.toLowerCase().includes('elite') || p.name.toLowerCase().includes('gold') || p.name.toLowerCase().includes('pro');
               const isCurrent = isCurrentPlan(p);
               const remDays = isCurrent ? getRemainingDays() : 0;
-              
+
               return (
                 <View
                   key={p.id}
@@ -227,25 +383,22 @@ export function PlansScreen({ route, navigation }: any) {
                 >
                   {isCurrent ? (
                     <View style={styles.activeBadge}>
-                      <Text style={styles.activeBadgeText}>ACTIVE PACKAGE</Text>
+                      <Text style={styles.activeBadgeText}>CURRENT ACTIVE PLAN</Text>
                     </View>
                   ) : isElite ? (
                     <View style={styles.popBadge}>
+                      <Sparkles size={11} color="#FFFFFF" style={{ marginRight: 4 }} />
                       <Text style={styles.popBadgeText}>Most Popular</Text>
                     </View>
                   ) : null}
 
-                  <Text style={[styles.tierName, isElite ? styles.textWhite : styles.textMuted]}>
+                  <Text style={[styles.tierName, isElite ? styles.textPrimary : styles.textMuted]}>
                     {p.name.toUpperCase()}
                   </Text>
-                  
+
                   <View style={styles.priceRow}>
-                    <Text style={[styles.tierPrice, isElite ? styles.textWhite : styles.textWhite]}>
-                      ₹{p.price.toLocaleString()}
-                    </Text>
-                    <Text style={[styles.tierInterval, isElite ? styles.textMuted : styles.textMuted]}>
-                      {getIntervalLabel(p)}
-                    </Text>
+                    <Text style={styles.tierPrice}>₹{p.price.toLocaleString()}</Text>
+                    <Text style={styles.tierInterval}>{getIntervalLabel(p)}</Text>
                   </View>
 
                   <View style={styles.cardDivider} />
@@ -253,10 +406,8 @@ export function PlansScreen({ route, navigation }: any) {
                   <View style={styles.featuresContainer}>
                     {p.features?.map((f, idx) => (
                       <View key={idx} style={styles.featureRow}>
-                        <Check size={14} color={isCurrent || isElite ? '#10b981' : '#10b981'} style={{ marginRight: 8, marginTop: 2 }} />
-                        <Text style={[styles.featureText, isElite ? styles.textWhite : styles.textMuted]}>
-                          {f}
-                        </Text>
+                        <Check size={14} color="#10B981" style={{ marginRight: 8, marginTop: 2 }} />
+                        <Text style={styles.featureText}>{f}</Text>
                       </View>
                     ))}
                   </View>
@@ -265,26 +416,20 @@ export function PlansScreen({ route, navigation }: any) {
                     <View style={styles.activePlanBtnContainer}>
                       <Text style={styles.activePlanBtnTitle}>✓ ONGOING ACTIVE PLAN</Text>
                       <Text style={styles.activePlanBtnSubtext}>
-                        {remDays > 0 ? `${remDays} Days Remaining` : 'Active Access'}
+                        {remDays > 0 ? `${remDays} Days Remaining` : 'Active Membership'}
                       </Text>
                     </View>
                   ) : (
                     <TouchableOpacity
                       onPress={() => handleOpenCheckout(p)}
-                      activeOpacity={0.8}
+                      activeOpacity={0.85}
                       style={[
                         styles.subscribeBtn,
                         isElite ? styles.subscribeBtnElite : styles.subscribeBtnStandard,
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.subscribeBtnText,
-                          isElite ? styles.subscribeTextElite : styles.subscribeTextStandard,
-                        ]}
-                      >
-                        Subscribe Now
-                      </Text>
+                      <CreditCard size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Text style={styles.subscribeBtnText}>Select & Pay via Razorpay</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -294,7 +439,7 @@ export function PlansScreen({ route, navigation }: any) {
         )}
       </ScrollView>
 
-      {/* Slide-Up Checkout Bottom Drawer Sheet */}
+      {/* Slide-Up Checkout Drawer Sheet */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -311,41 +456,62 @@ export function PlansScreen({ route, navigation }: any) {
             {payPhase === 'form' && selectedPlan && (
               <View style={styles.sheetContent}>
                 <View style={styles.sheetHeader}>
-                  <Text style={styles.sheetTitle}>Checkout</Text>
-                  <TouchableOpacity onPress={() => setCheckoutOpen(false)}>
-                    <Text style={styles.sheetClose}>Close</Text>
+                  <View>
+                    <Text style={styles.sheetTitle}>Membership Checkout</Text>
+                    <Text style={styles.sheetSubtitle}>{gymDetails?.name || 'Aura Apex'}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setCheckoutOpen(false)} style={styles.closeIconBtn}>
+                    <X size={20} color={colors.foreground} />
                   </TouchableOpacity>
                 </View>
 
+                {/* Plan Invoice Breakdown Card */}
                 <View style={styles.checkoutAmountCard}>
-                  <View>
-                    <Text style={styles.checkoutPlanSub}>
-                      Aura Apex · {selectedPlan.name}
-                    </Text>
-                    <Text style={styles.checkoutAmountVal}>
-                      ₹{selectedPlan.price.toLocaleString()}
-                      <Text style={styles.checkoutAmountPeriod}>{getIntervalLabel(selectedPlan)}</Text>
+                  <View style={styles.invoiceRow}>
+                    <Text style={styles.invoiceLabel}>Selected Package</Text>
+                    <Text style={styles.invoiceValue}>{selectedPlan.name}</Text>
+                  </View>
+                  <View style={styles.invoiceRow}>
+                    <Text style={styles.invoiceLabel}>Billing Duration</Text>
+                    <Text style={styles.invoiceValue}>
+                      {selectedPlan.billing_interval === 'year' ? '12 Months (Annual)' : '1 Month (Monthly)'}
                     </Text>
                   </View>
-                  <View style={styles.checkoutGatewayBadge}>
-                    <Text style={styles.checkoutGatewayText}>Razorpay</Text>
+                  <View style={styles.invoiceRow}>
+                    <Text style={styles.invoiceLabel}>Base Price</Text>
+                    <Text style={styles.invoiceValue}>₹{Math.round(selectedPlan.price / 1.18).toLocaleString()}</Text>
+                  </View>
+                  <View style={styles.invoiceRow}>
+                    <Text style={styles.invoiceLabel}>GST (18%)</Text>
+                    <Text style={styles.invoiceValue}>₹{(selectedPlan.price - Math.round(selectedPlan.price / 1.18)).toLocaleString()}</Text>
+                  </View>
+                  
+                  <View style={styles.invoiceDivider} />
+
+                  <View style={styles.invoiceTotalRow}>
+                    <Text style={styles.invoiceTotalLabel}>Total Payable</Text>
+                    <Text style={styles.invoiceTotalValue}>
+                      ₹{selectedPlan.price.toLocaleString()}
+                    </Text>
                   </View>
                 </View>
 
-                <View style={styles.methodDetailBox}>
-                  <Text style={styles.methodDetailNote}>
-                    You'll choose UPI, card, netbanking, or wallet on the next screen.
+                <View style={styles.securityBadge}>
+                  <ShieldCheck size={14} color="#10B981" style={{ marginRight: 6 }} />
+                  <Text style={styles.securityBadgeText}>
+                    Secured by Razorpay · UPI, Cards, NetBanking supported
                   </Text>
                 </View>
 
-                {/* Checkout Trigger */}
+                {/* Direct Checkout Trigger */}
                 <TouchableOpacity
                   onPress={handlePay}
                   activeOpacity={0.85}
                   style={styles.payBtn}
                 >
+                  <CreditCard size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
                   <Text style={styles.payBtnText}>
-                    Pay ₹{selectedPlan.price.toLocaleString()}
+                    Proceed to Pay ₹{selectedPlan.price.toLocaleString()}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -353,18 +519,20 @@ export function PlansScreen({ route, navigation }: any) {
 
             {payPhase === 'loading' && (
               <View style={styles.loadingState}>
-                <ActivityIndicator size="large" color="#6366f1" />
-                <Text style={styles.loadingText}>Processing payment…</Text>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={styles.loadingText}>Initializing Razorpay Secure Checkout…</Text>
               </View>
             )}
 
             {payPhase === 'success' && selectedPlan && (
               <View style={styles.successState}>
                 <View style={styles.successCircle}>
-                  <Check size={36} color="#FFFFFF" strokeWidth={3.5} />
+                  <Check size={38} color="#FFFFFF" strokeWidth={3.5} />
                 </View>
-                <Text style={styles.successTitle}>You're on {selectedPlan.name}!</Text>
-                <Text style={styles.successSubtitle}>Membership activated successfully.</Text>
+                <Text style={styles.successTitle}>Welcome to {gymDetails?.name || 'the Gym'}!</Text>
+                <Text style={styles.successSubtitle}>
+                  Your {selectedPlan.name} membership has been activated successfully.
+                </Text>
               </View>
             )}
           </View>
@@ -374,396 +542,505 @@ export function PlansScreen({ route, navigation }: any) {
   );
 }
 
-const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scroll: {
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 48 : 16, // clear top notch/status bar on Android
-    paddingBottom: 120,
-  },
-  screenHeader: {
-    marginBottom: 20,
-  },
-  screenTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: colors.foreground,
-  },
-  screenSubtitle: {
-    fontSize: 14,
-    color: colors.mutedForeground,
-    marginTop: 4,
-  },
-  centerLoader: {
-    height: 250,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  carouselContainer: {
-    paddingRight: 40,
-    gap: 12,
-  },
-  planCard: {
-    width: width * 0.74,
-    borderRadius: 28,
-    padding: 20,
-    minHeight: 330,
-    justifyContent: 'space-between',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 6,
-  },
-  standardCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  featuredCard: {
-    backgroundColor: isDark ? colors.surfaceDark : colors.surface,
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
-  popBadge: {
-    position: 'absolute',
-    top: -12,
-    right: 20,
-    backgroundColor: colors.foreground,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 99,
-  },
-  popBadgeText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: colors.background,
-    textTransform: 'uppercase',
-  },
-  tierName: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-  },
-  textWhite: {
-    color: colors.foreground,
-  },
-  textMuted: {
-    color: colors.mutedForeground,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginTop: 8,
-  },
-  tierPrice: {
-    fontSize: 32,
-    fontWeight: '800',
-  },
-  tierInterval: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginLeft: 2,
-  },
-  cardDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: 14,
-  },
-  featuresContainer: {
-    flex: 1,
-    gap: 10,
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  featureText: {
-    fontSize: 12,
-    fontWeight: '500',
-    lineHeight: 18,
-    flex: 1,
-  },
-  subscribeBtn: {
-    borderRadius: 9999,
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  subscribeBtnStandard: {
-    backgroundColor: colors.primary,
-  },
-  subscribeBtnElite: {
-    backgroundColor: colors.foreground,
-  },
-  subscribeBtnText: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  subscribeTextStandard: {
-    color: '#FFFFFF',
-  },
-  subscribeTextElite: {
-    color: colors.background,
-  },
-  sheetOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    justifyContent: 'flex-end',
-  },
-  dismissOverlay: {
-    flex: 1,
-  },
-  sheetBody: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-    minHeight: 300,
-  },
-  sheetContent: {
-    gap: 16,
-  },
-  sheetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderColor: colors.border,
-  },
-  sheetTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.foreground,
-  },
-  sheetClose: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.mutedForeground,
-  },
-  checkoutAmountCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 18,
-    padding: 16,
-    marginTop: 10,
-  },
-  checkoutPlanSub: {
-    fontSize: 11,
-    color: colors.mutedForeground,
-    fontWeight: '600',
-  },
-  checkoutAmountVal: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: colors.foreground,
-    marginTop: 2,
-  },
-  checkoutAmountPeriod: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.mutedForeground,
-  },
-  checkoutGatewayBadge: {
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  checkoutGatewayText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: colors.primary,
-    textTransform: 'uppercase',
-  },
-  methodDetailBox: {
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 18,
-    padding: 16,
-  },
-  methodDetailNote: {
-    fontSize: 12,
-    color: colors.mutedForeground,
-    fontWeight: '600',
-    lineHeight: 17,
-  },
-  payBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: 9999,
-    height: 52,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  payBtnText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  loadingState: {
-    height: 200,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: colors.mutedForeground,
-    fontWeight: '600',
-  },
-  activePlanCard: {
-    borderColor: '#10b981',
-    borderWidth: 2,
-  },
-  activeBadge: {
-    position: 'absolute',
-    top: -12,
-    alignSelf: 'center',
-    backgroundColor: '#10b981',
-    paddingHorizontal: 12,
-    paddingVertical: 3,
-    borderRadius: 9999,
-  },
-  activeBadgeText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  activePlanBtnContainer: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    borderColor: 'rgba(16, 185, 129, 0.4)',
-    borderWidth: 1,
-    borderRadius: 9999,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  activePlanBtnTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#10b981',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  activePlanBtnSubtext: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#10b981',
-    marginTop: 2,
-  },
-  successState: {
-    height: 220,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 10,
-  },
-  successCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: colors.success,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: colors.success,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  successTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.foreground,
-    marginTop: 12,
-  },
-  successSubtitle: {
-    fontSize: 12,
-    color: colors.mutedForeground,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  noGymCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 24,
-    padding: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: isDark ? 0 : 0.04,
-    shadowRadius: 8,
-    elevation: isDark ? 0 : 1,
-  },
-  noGymIconBadge: {
-    width: 80,
-    height: 80,
-    borderRadius: 28,
-    backgroundColor: colors.primarySoft,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
-  noGymTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.foreground,
-    textAlign: 'center',
-  },
-  noGymSubtitle: {
-    fontSize: 13,
-    color: colors.mutedForeground,
-    textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 20,
-    marginBottom: 24,
-    maxWidth: 290,
-  },
-  browseGymsBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: 9999,
-    height: 48,
-    paddingHorizontal: 28,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  browseGymsBtnText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-});
+const getStyles = (colors: any, isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scroll: {
+      paddingHorizontal: 20,
+      paddingTop: Platform.OS === 'android' ? 36 : 16,
+      paddingBottom: 120,
+    },
+    screenHeader: {
+      marginBottom: 16,
+    },
+    screenTitle: {
+      fontSize: 26,
+      fontWeight: '800',
+      color: colors.foreground,
+    },
+    screenSubtitle: {
+      fontSize: 14,
+      color: colors.mutedForeground,
+      marginTop: 4,
+    },
+
+    // Gym Quick Selector Bar
+    gymSelectorWrapper: {
+      marginBottom: 16,
+    },
+    gymSelectorLabel: {
+      fontSize: 10.5,
+      fontWeight: '800',
+      color: colors.mutedForeground,
+      letterSpacing: 1.2,
+      marginBottom: 8,
+    },
+    gymPillsScroll: {
+      gap: 8,
+    },
+    gymPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 99,
+      backgroundColor: isDark ? colors.surfaceDark : colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    gymPillActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    gymPillText: {
+      fontSize: 12.5,
+      fontWeight: '700',
+      color: colors.foreground,
+    },
+    gymPillTextActive: {
+      color: '#FFFFFF',
+    },
+
+    // Rich Gym Hero Card
+    gymHeroCard: {
+      backgroundColor: isDark ? colors.surfaceDark : colors.surface,
+      borderRadius: 22,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 20,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      elevation: 4,
+    },
+    gymHeroTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    gymHeroLogo: {
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      marginRight: 12,
+    },
+    gymAvatar: {
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    gymAvatarText: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: '#FFFFFF',
+    },
+    gymHeroInfo: {
+      flex: 1,
+    },
+    gymBadgeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    gymHeroName: {
+      fontSize: 17,
+      fontWeight: '800',
+      color: colors.foreground,
+    },
+    verifiedBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 2,
+    },
+    verifiedText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: '#10B981',
+    },
+    gymDetailsList: {
+      gap: 6,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: 10,
+    },
+    gymDetailItem: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+    },
+    gymDetailText: {
+      fontSize: 12.5,
+      color: colors.foreground,
+      flex: 1,
+      lineHeight: 17,
+    },
+    gymDescText: {
+      fontSize: 12,
+      color: colors.mutedForeground,
+      marginTop: 4,
+      lineHeight: 16,
+    },
+
+    // Plans Section
+    plansSectionHeader: {
+      marginBottom: 14,
+    },
+    plansSectionTitle: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: colors.foreground,
+    },
+    plansSectionSubtitle: {
+      fontSize: 12.5,
+      color: colors.mutedForeground,
+      marginTop: 2,
+    },
+    centerLoader: {
+      height: 220,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loaderLabel: {
+      fontSize: 13,
+      color: colors.mutedForeground,
+      marginTop: 10,
+    },
+
+    // Empty Gym
+    noGymCard: {
+      backgroundColor: isDark ? colors.surfaceDark : colors.surface,
+      borderRadius: 22,
+      padding: 24,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginVertical: 20,
+    },
+    noGymIconBadge: {
+      width: 70,
+      height: 70,
+      borderRadius: 35,
+      backgroundColor: colors.primarySoft || 'rgba(99, 102, 241, 0.12)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 14,
+    },
+    noGymTitle: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: colors.foreground,
+      marginBottom: 6,
+    },
+    noGymSubtitle: {
+      fontSize: 13,
+      color: colors.mutedForeground,
+      textAlign: 'center',
+      lineHeight: 19,
+      marginBottom: 18,
+    },
+    browseGymsBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.primary,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 14,
+    },
+    browseGymsBtnText: {
+      color: '#FFFFFF',
+      fontSize: 14,
+      fontWeight: '700',
+    },
+
+    // Carousel Cards
+    carouselContainer: {
+      paddingRight: 30,
+      gap: 14,
+    },
+    planCard: {
+      width: width * 0.76,
+      borderRadius: 24,
+      padding: 20,
+      minHeight: 350,
+      justifyContent: 'space-between',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.12,
+      shadowRadius: 14,
+      elevation: 5,
+    },
+    standardCard: {
+      backgroundColor: isDark ? colors.surfaceDark : colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    featuredCard: {
+      backgroundColor: isDark ? '#1a1e2e' : '#f8faff',
+      borderWidth: 2,
+      borderColor: colors.primary,
+    },
+    activePlanCard: {
+      borderColor: '#10B981',
+      borderWidth: 2,
+    },
+    activeBadge: {
+      alignSelf: 'flex-start',
+      backgroundColor: '#10B981',
+      paddingHorizontal: 9,
+      paddingVertical: 4,
+      borderRadius: 99,
+      marginBottom: 8,
+    },
+    activeBadgeText: {
+      fontSize: 9.5,
+      fontWeight: '800',
+      color: '#FFFFFF',
+      letterSpacing: 0.8,
+    },
+    popBadge: {
+      alignSelf: 'flex-start',
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.primary,
+      paddingHorizontal: 9,
+      paddingVertical: 4,
+      borderRadius: 99,
+      marginBottom: 8,
+    },
+    popBadgeText: {
+      fontSize: 9.5,
+      fontWeight: '800',
+      color: '#FFFFFF',
+      letterSpacing: 0.8,
+    },
+    tierName: {
+      fontSize: 13,
+      fontWeight: '800',
+      letterSpacing: 1.2,
+    },
+    textPrimary: {
+      color: colors.primary,
+    },
+    textMuted: {
+      color: colors.mutedForeground,
+    },
+    priceRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      marginTop: 6,
+    },
+    tierPrice: {
+      fontSize: 32,
+      fontWeight: '900',
+      color: colors.foreground,
+    },
+    tierInterval: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.mutedForeground,
+      marginLeft: 4,
+    },
+    cardDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: 14,
+    },
+    featuresContainer: {
+      flex: 1,
+      gap: 9,
+      marginBottom: 18,
+    },
+    featureRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+    },
+    featureText: {
+      fontSize: 12.5,
+      color: colors.foreground,
+      flex: 1,
+      lineHeight: 17,
+    },
+    subscribeBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 13,
+      borderRadius: 14,
+    },
+    subscribeBtnStandard: {
+      backgroundColor: colors.primary,
+    },
+    subscribeBtnElite: {
+      backgroundColor: colors.primary,
+    },
+    subscribeBtnText: {
+      color: '#FFFFFF',
+      fontSize: 13.5,
+      fontWeight: '700',
+    },
+    activePlanBtnContainer: {
+      backgroundColor: 'rgba(16, 185, 129, 0.12)',
+      borderRadius: 14,
+      paddingVertical: 10,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: 'rgba(16, 185, 129, 0.3)',
+    },
+    activePlanBtnTitle: {
+      color: '#10B981',
+      fontSize: 11.5,
+      fontWeight: '800',
+      letterSpacing: 0.5,
+    },
+    activePlanBtnSubtext: {
+      color: '#10B981',
+      fontSize: 11,
+      fontWeight: '600',
+      marginTop: 2,
+    },
+
+    // Sheet Modal
+    sheetOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      justifyContent: 'flex-end',
+    },
+    dismissOverlay: {
+      flex: 1,
+    },
+    sheetBody: {
+      backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF',
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      padding: 24,
+      paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    },
+    sheetContent: {},
+    sheetHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: 16,
+    },
+    sheetTitle: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: colors.foreground,
+    },
+    sheetSubtitle: {
+      fontSize: 13,
+      color: colors.mutedForeground,
+      marginTop: 2,
+    },
+    closeIconBtn: {
+      padding: 4,
+    },
+    checkoutAmountCard: {
+      backgroundColor: isDark ? '#141724' : '#F9FAFB',
+      borderRadius: 18,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 14,
+      gap: 8,
+    },
+    invoiceRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+    invoiceLabel: {
+      fontSize: 13,
+      color: colors.mutedForeground,
+    },
+    invoiceValue: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.foreground,
+    },
+    invoiceDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: 4,
+    },
+    invoiceTotalRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    invoiceTotalLabel: {
+      fontSize: 15,
+      fontWeight: '800',
+      color: colors.foreground,
+    },
+    invoiceTotalValue: {
+      fontSize: 20,
+      fontWeight: '900',
+      color: colors.primary,
+    },
+    securityBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 18,
+    },
+    securityBadgeText: {
+      fontSize: 11.5,
+      fontWeight: '600',
+      color: colors.mutedForeground,
+    },
+    payBtn: {
+      flexDirection: 'row',
+      backgroundColor: colors.primary,
+      borderRadius: 16,
+      paddingVertical: 15,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    payBtnText: {
+      color: '#FFFFFF',
+      fontSize: 15,
+      fontWeight: '800',
+    },
+    loadingState: {
+      paddingVertical: 40,
+      alignItems: 'center',
+    },
+    loadingText: {
+      fontSize: 14,
+      color: colors.mutedForeground,
+      marginTop: 14,
+      fontWeight: '600',
+    },
+    successState: {
+      paddingVertical: 36,
+      alignItems: 'center',
+    },
+    successCircle: {
+      width: 76,
+      height: 76,
+      borderRadius: 38,
+      backgroundColor: '#10B981',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+    successTitle: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: colors.foreground,
+      textAlign: 'center',
+    },
+    successSubtitle: {
+      fontSize: 13,
+      color: colors.mutedForeground,
+      marginTop: 6,
+      textAlign: 'center',
+    },
+  });
