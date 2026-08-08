@@ -29,7 +29,7 @@ interface Plan {
   features?: string[];
 }
 
-export function PlansScreen({ navigation }: any) {
+export function PlansScreen({ route, navigation }: any) {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -40,16 +40,17 @@ export function PlansScreen({ navigation }: any) {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [payPhase, setPayPhase] = useState<'form' | 'loading' | 'success'>('form');
 
-  const { user, userProfile, loadSubscription, subscription } = useAuthStore();
+  const { user, userProfile, loadUserProfile, loadSubscription, subscription } = useAuthStore();
 
   useEffect(() => {
     fetchPlans();
-  }, []);
+  }, [route?.params?.gymId, userProfile?.gym_id]);
 
   const fetchPlans = async () => {
     try {
       setLoading(true);
-      const targetGymId = userProfile?.gymId || user?.gymId;
+      const paramGymId = route?.params?.gymId;
+      const targetGymId = paramGymId || userProfile?.gym_id || userProfile?.gymId || user?.gymId;
       const endpoint = targetGymId ? `/plans?gymId=${targetGymId}` : '/plans';
       const response = await apiClient.get(endpoint);
       if (response.data && response.data.success) {
@@ -127,7 +128,8 @@ export function PlansScreen({ navigation }: any) {
       }
 
       setPayPhase('success');
-      loadSubscription();
+      await loadUserProfile();
+      await loadSubscription();
 
       // Delayed close
       setTimeout(() => {
