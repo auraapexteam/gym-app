@@ -26,6 +26,7 @@ export interface MyJoinRequest {
 interface GymState {
   directory: PublicGym[];
   directoryLoading: boolean;
+  directoryError: string | null;
   myRequest: MyJoinRequest | null;
   requestStatusLoading: boolean;
   submitting: boolean;
@@ -35,26 +36,36 @@ interface GymState {
   reset: () => void;
 }
 
+// Monotonic id so a slow, older directory response can never overwrite the
+// results of a newer search (type-ahead race).
+let directoryRequestId = 0;
+
 export const useGymStore = create<GymState>((set, get) => ({
   directory: [],
   directoryLoading: false,
+  directoryError: null,
   myRequest: null,
   requestStatusLoading: false,
   submitting: false,
 
   fetchDirectory: async (search?: string) => {
+    const requestId = ++directoryRequestId;
     try {
-      set({ directoryLoading: true });
+      set({ directoryLoading: true, directoryError: null });
       const res = await apiClient.get('/gyms/directory', {
         params: search ? { search, limit: 50 } : { limit: 50 },
       });
+      if (requestId !== directoryRequestId) return; // stale response
       if (res.data?.success) {
         set({ directory: res.data.data || [] });
       }
     } catch (err: any) {
-      console.warn('Failed to load gym directory:', err);
+      if (requestId !== directoryRequestId) return;
+      set({ directoryError: err?.message || 'Failed to load gyms.' });
     } finally {
-      set({ directoryLoading: false });
+      if (requestId === directoryRequestId) {
+        set({ directoryLoading: false });
+      }
     }
   },
 
@@ -88,5 +99,13 @@ export const useGymStore = create<GymState>((set, get) => ({
     }
   },
 
-  reset: () => set({ directory: [], myRequest: null }),
+  reset: () =>
+    set({
+      directory: [],
+      directoryLoading: false,
+      directoryError: null,
+      myRequest: null,
+      requestStatusLoading: false,
+      submitting: false,
+    }),
 }));
