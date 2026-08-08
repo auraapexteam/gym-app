@@ -9,7 +9,8 @@ const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
 
 const config = {
   resolver: {
-    blacklistRE: /android\/.*|ios\/.*|backend\/.*/,
+    // `blacklistRE` is the deprecated name; modern Metro reads `blockList`.
+    blockList: /android\/.*|ios\/.*|backend\/.*/,
   },
 };
 
