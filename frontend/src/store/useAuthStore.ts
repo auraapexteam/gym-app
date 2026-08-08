@@ -1,46 +1,113 @@
 import { create } from 'zustand';
+import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../api/supabase';
 import { apiClient } from '../api/client';
 import { useGymStore } from '../store/useGymStore';
 
+export interface UserProfile {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+  role: 'customer' | 'owner' | 'staff' | 'trainer' | 'super_admin' | null;
+  gym_id: string | null;
+  status: string | null;
+  created_at: string | null;
+}
+
+export interface SubscriptionPlan {
+  id?: string;
+  name?: string;
+  price?: number | string;
+  durationDays?: number;
+  duration_days?: number;
+}
+
+export interface Subscription {
+  id: string;
+  status: 'pending' | 'active' | 'expired' | 'cancelled';
+  plan?: SubscriptionPlan | null;
+  plans?: SubscriptionPlan | null;
+  endDate?: string | null;
+  end_date?: string | null;
+  startDate?: string | null;
+  start_date?: string | null;
+  [key: string]: unknown;
+}
+
 interface AuthState {
-  user: any | null;
-  userProfile: any | null;
+  user: User | null;
+  userProfile: UserProfile | null;
   accessToken: string | null;
-  subscription: any | null;
+  subscription: Subscription | null;
+  /** True until the first persisted-session restore completes. */
+  initializing: boolean;
   loading: boolean;
-  setSession: (session: any) => void;
+  setSession: (session: Session | null) => Promise<void>;
   loadUserProfile: () => Promise<void>;
   loadSubscription: () => Promise<void>;
   signOut: () => Promise<void>;
 }
+
+// Serializes overlapping auth events (INITIAL_SESSION / SIGNED_IN /
+// TOKEN_REFRESHED can fire in quick succession) so profile/subscription
+// loads never interleave and clobber each other.
+let sessionChain: Promise<void> = Promise.resolve();
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   userProfile: null,
   accessToken: null,
   subscription: null,
+  initializing: true,
   loading: false,
 
-  setSession: async (session) => {
-    if (session) {
-      set({
-        user: session.user,
-        accessToken: session.access_token || session.token || null,
-      });
-      // Load user profile first to determine role
-      await get().loadUserProfile();
+  setSession: (session) => {
+    sessionChain = sessionChain.then(async () => {
+      if (session) {
+        const sameUser = get().user?.id === session.user?.id;
+        set({ user: session.user, accessToken: session.access_token ?? null });
 
-      // Always load subscription — loadSubscription handles the no-gym case gracefully
-      // and will refresh userProfile if an active sub is found without a gym_id in profile.
-      const profile = get().userProfile;
-      const isCustomer = !profile?.role || profile.role === 'customer';
-      if (isCustomer) {
-        await get().loadSubscription();
+        // A pure token refresh for the same user doesn't need a full
+        // profile + subscription reload.
+        if (sameUser && get().userProfile) {
+          set({ initializing: false });
+          return;
+        }
+
+        await get().loadUserProfile();
+
+        // If the profile fetch failed (offline, transient error), fall back to
+        // a minimal profile derived from the session so the navigator never
+        // hangs on the loader. A null role routes to the customer stack.
+        if (!get().userProfile) {
+          set({
+            userProfile: {
+              id: session.user.id,
+              email: session.user.email ?? null,
+              full_name: (session.user.user_metadata?.full_name as string) ?? null,
+              phone: null,
+              avatar_url: null,
+              role: null,
+              gym_id: null,
+              status: null,
+              created_at: null,
+            },
+          });
+        }
+
+        const profile = get().userProfile;
+        const isCustomer = !profile?.role || profile.role === 'customer';
+        if (isCustomer) {
+          await get().loadSubscription();
+        }
+      } else {
+        set({ user: null, userProfile: null, accessToken: null, subscription: null });
       }
-    } else {
-      set({ user: null, userProfile: null, accessToken: null, subscription: null });
-    }
+      set({ initializing: false });
+    });
+    return sessionChain;
   },
 
   loadUserProfile: async () => {
@@ -53,7 +120,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         .eq('id', user.id)
         .single();
       if (!error && data) {
-        set({ userProfile: data });
+        set({ userProfile: data as UserProfile });
       }
     } catch (err) {
       console.warn('Failed to load user profile:', err);
@@ -68,7 +135,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (response.data && response.data.success) {
         const rawData = response.data.data;
         // /subscriptions/me returns either an array or a single object
-        const subs: any[] = Array.isArray(rawData) ? rawData : [rawData].filter(Boolean);
+        const subs: Subscription[] = Array.isArray(rawData) ? rawData : [rawData].filter(Boolean);
         // Pick the most recent active subscription; fall back to the most recent one
         const activeSub = subs.find((s) => s.status === 'active') ?? subs[0] ?? null;
         set({ subscription: activeSub });
@@ -91,15 +158,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signOut: async () => {
+    set({ loading: true });
     try {
-      set({ loading: true });
       await supabase.auth.signOut();
-      set({ user: null, userProfile: null, accessToken: null, subscription: null });
-      useGymStore.getState().reset();
     } catch (error) {
-      console.error('Signout error:', error);
+      // Even if the network revoke fails, the local session must be cleared —
+      // otherwise the user is stuck "logged in" while offline.
+      console.warn('Signout error (local session cleared anyway):', error);
     } finally {
-      set({ loading: false });
+      set({
+        user: null,
+        userProfile: null,
+        accessToken: null,
+        subscription: null,
+        loading: false,
+      });
+      useGymStore.getState().reset();
     }
   },
 }));
