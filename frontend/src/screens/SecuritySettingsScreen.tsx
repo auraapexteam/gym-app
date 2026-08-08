@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,29 +8,124 @@ import {
   Switch,
   ScrollView,
   Alert,
+  Modal,
+  TextInput,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
+import { useAuthStore } from '../store/useAuthStore';
+import { supabase } from '../api/supabase';
 import {
   ShieldAlert,
   Smartphone,
   ChevronRight,
   LogOut,
+  Key,
+  ShieldCheck,
+  Lock,
+  X,
+  CheckCircle,
 } from 'lucide-react-native';
 
-export function SecuritySettingsScreen() {
-  const { colors } = useTheme();
-  
+const PIN_STORAGE_KEY = '@aura_apex_security_pin';
+
+export function SecuritySettingsScreen({ navigation }: any) {
+  const { colors, isDark } = useTheme();
+  const { user, userProfile, signOut } = useAuthStore();
+
   // Toggles
   const [twoFactor, setTwoFactor] = useState(false);
   const [biometric, setBiometric] = useState(true);
 
-  const activeSessions = [
-    { device: 'Redmi Note 12 Pro (This Device)', location: 'Bengaluru, India', date: 'Active now' },
-    { device: 'Windows PC · Chrome Browser', location: 'Bengaluru, India', date: '2 days ago' },
-  ];
+  // Security Modals
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
 
-  const handlePlaceholderAction = (action: string) => {
-    Alert.alert(action, `This action represents the ${action} secure flow, which will integrate with your authentication backend API.`, [{ text: 'OK' }]);
+  // PIN Modal
+  const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [pinCode, setPinCode] = useState('');
+  const [savedPin, setSavedPin] = useState<string | null>(null);
+
+  // Live session metadata
+  const [authSession, setAuthSession] = useState<any>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(PIN_STORAGE_KEY).then((val) => {
+      if (val) setSavedPin(val);
+    });
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (data?.session) {
+        setAuthSession(data.session);
+      }
+    });
+  }, []);
+
+  const handleChangePassword = async () => {
+    if (!newPassword || newPassword.length < 8) {
+      Alert.alert('Weak Password', 'New password must be at least 8 characters long.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Password Mismatch', 'New password and confirmation do not match.');
+      return;
+    }
+
+    try {
+      setSavingPassword(true);
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+
+      Alert.alert('Password Updated', 'Your account password has been changed successfully.');
+      setPasswordModalOpen(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      Alert.alert('Update Failed', err.message || 'Failed to update password.');
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  const handleSavePin = async () => {
+    if (pinCode.length !== 4 || !/^\d+$/.test(pinCode)) {
+      Alert.alert('Invalid PIN', 'Please enter a 4-digit numeric security PIN.');
+      return;
+    }
+
+    await AsyncStorage.setItem(PIN_STORAGE_KEY, pinCode);
+    setSavedPin(pinCode);
+    Alert.alert('PIN Configured', 'Your 4-digit security PIN has been set.');
+    setPinModalOpen(false);
+    setPinCode('');
+  };
+
+  const handleLogoutAllDevices = async () => {
+    Alert.alert(
+      'Global Logout',
+      'This will invalidate all active sessions across all phones and web browsers. You will need to sign in again.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Log Out Everywhere',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await supabase.auth.signOut({ scope: 'global' });
+              await signOut();
+            } catch {
+              await signOut();
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -38,7 +133,7 @@ export function SecuritySettingsScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={[styles.title, { color: colors.foreground }]}>Security</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Manage your account credentials, security preferences, and device logins.
+          Manage your account credentials, security preferences, and active sessions.
         </Text>
 
         {/* Credentials Card */}
@@ -48,19 +143,33 @@ export function SecuritySettingsScreen() {
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.row}
-              onPress={() => handlePlaceholderAction('Change Password')}
+              onPress={() => setPasswordModalOpen(true)}
             >
-              <Text style={[styles.rowLabel, { color: colors.foreground }]}>Change password</Text>
-              <ChevronRight size={14} color={colors.mutedForeground} />
+              <View style={styles.rowLeft}>
+                <Text style={[styles.rowLabel, { color: colors.foreground }]}>Change password</Text>
+                <Text style={[styles.rowDesc, { color: colors.mutedForeground }]}>
+                  Update your master account login password.
+                </Text>
+              </View>
+              <ChevronRight size={16} color={colors.mutedForeground} />
             </TouchableOpacity>
+
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.row}
-              onPress={() => handlePlaceholderAction('Update Security PIN')}
+              onPress={() => setPinModalOpen(true)}
             >
-              <Text style={[styles.rowLabel, { color: colors.foreground }]}>Update security PIN</Text>
-              <ChevronRight size={14} color={colors.mutedForeground} />
+              <View style={styles.rowLeft}>
+                <Text style={[styles.rowLabel, { color: colors.foreground }]}>
+                  {savedPin ? 'Update Security PIN' : 'Set Up Security PIN'}
+                </Text>
+                <Text style={[styles.rowDesc, { color: colors.mutedForeground }]}>
+                  {savedPin ? '4-digit quick unlock PIN is active' : 'Set a 4-digit code for quick check-in pass unlock'}
+                </Text>
+              </View>
+              <ChevronRight size={16} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
         </View>
@@ -73,7 +182,7 @@ export function SecuritySettingsScreen() {
               <View style={styles.rowLeft}>
                 <Text style={[styles.rowLabel, { color: colors.foreground }]}>Two-factor authentication</Text>
                 <Text style={[styles.rowDesc, { color: colors.mutedForeground }]}>
-                  Require verification code sent to your phone.
+                  Require verification code sent to your registered email/phone.
                 </Text>
               </View>
               <Switch
@@ -82,12 +191,14 @@ export function SecuritySettingsScreen() {
                 trackColor={{ false: 'rgba(255,255,255,0.08)', true: colors.primary }}
               />
             </View>
+
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
             <View style={styles.toggleRow}>
               <View style={styles.rowLeft}>
-                <Text style={[styles.rowLabel, { color: colors.foreground }]}>Biometric login</Text>
+                <Text style={[styles.rowLabel, { color: colors.foreground }]}>Biometric quick access</Text>
                 <Text style={[styles.rowDesc, { color: colors.mutedForeground }]}>
-                  Log in using fingerprint sensor or face unlock.
+                  Allow fingerprint or face biometric unlock.
                 </Text>
               </View>
               <Switch
@@ -103,28 +214,19 @@ export function SecuritySettingsScreen() {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Active Sessions</Text>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            {activeSessions.map((sess, idx) => (
-              <View key={idx}>
-                <View style={styles.sessionRow}>
-                  <View style={[styles.sessionIconBg, { backgroundColor: colors.primarySoft }]}>
-                    {idx === 0 ? (
-                      <Smartphone size={16} color={colors.primary} />
-                    ) : (
-                      <ShieldAlert size={16} color={colors.secondary} />
-                    )}
-                  </View>
-                  <View style={styles.sessionInfo}>
-                    <Text style={[styles.sessionDevice, { color: colors.foreground }]}>{sess.device}</Text>
-                    <Text style={[styles.sessionLocation, { color: colors.mutedForeground }]}>
-                      {sess.location} · {sess.date}
-                    </Text>
-                  </View>
-                </View>
-                {idx < activeSessions.length - 1 && (
-                  <View style={[styles.divider, { backgroundColor: colors.border }]} />
-                )}
+            <View style={styles.sessionRow}>
+              <View style={[styles.sessionIconBg, { backgroundColor: colors.primarySoft }]}>
+                <Smartphone size={16} color={colors.primary} />
               </View>
-            ))}
+              <View style={styles.sessionInfo}>
+                <Text style={[styles.sessionDevice, { color: colors.foreground }]}>
+                  {Platform.OS === 'android' ? 'Android Native Mobile' : 'iOS Apple Device'} (Current Device)
+                </Text>
+                <Text style={[styles.sessionLocation, { color: colors.mutedForeground }]}>
+                  {user?.email || 'Logged In'} · Active Session
+                </Text>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -132,12 +234,97 @@ export function SecuritySettingsScreen() {
         <TouchableOpacity
           activeOpacity={0.8}
           style={[styles.logoutAllBtn, { backgroundColor: 'rgba(248, 113, 113, 0.12)', borderColor: 'rgba(248, 113, 113, 0.25)' }]}
-          onPress={() => handlePlaceholderAction('Logout from all devices')}
+          onPress={handleLogoutAllDevices}
         >
           <LogOut size={16} color="#f87171" style={{ marginRight: 8 }} />
-          <Text style={styles.logoutAllText}>Logout from all other devices</Text>
+          <Text style={styles.logoutAllText}>Sign out from all devices</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Password Change Modal */}
+      <Modal visible={passwordModalOpen} transparent={true} animationType="slide" onRequestClose={() => setPasswordModalOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalTitleGroup}>
+                <Key size={20} color={colors.primary} style={{ marginRight: 8 }} />
+                <Text style={[styles.modalTitle, { color: colors.foreground }]}>Change Password</Text>
+              </View>
+              <TouchableOpacity onPress={() => setPasswordModalOpen(false)}>
+                <X size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.inputLabel, { color: colors.mutedForeground }]}>New Password (min 8 chars)</Text>
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', borderColor: colors.border, color: colors.foreground }]}
+              placeholder="Enter new password"
+              placeholderTextColor={colors.mutedForeground}
+              secureTextEntry={true}
+              value={newPassword}
+              onChangeText={setNewPassword}
+            />
+
+            <Text style={[styles.inputLabel, { color: colors.mutedForeground, marginTop: 12 }]}>Confirm New Password</Text>
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', borderColor: colors.border, color: colors.foreground }]}
+              placeholder="Confirm new password"
+              placeholderTextColor={colors.mutedForeground}
+              secureTextEntry={true}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+            />
+
+            <TouchableOpacity
+              style={[styles.submitBtn, { backgroundColor: colors.primary }]}
+              onPress={handleChangePassword}
+              disabled={savingPassword}
+            >
+              {savingPassword ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.submitBtnText}>Update Password</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Security PIN Modal */}
+      <Modal visible={pinModalOpen} transparent={true} animationType="slide" onRequestClose={() => setPinModalOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalTitleGroup}>
+                <ShieldCheck size={20} color={colors.primary} style={{ marginRight: 8 }} />
+                <Text style={[styles.modalTitle, { color: colors.foreground }]}>Security PIN</Text>
+              </View>
+              <TouchableOpacity onPress={() => setPinModalOpen(false)}>
+                <X size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.inputLabel, { color: colors.mutedForeground }]}>Enter 4-Digit Numeric Code</Text>
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', borderColor: colors.border, color: colors.foreground, textAlign: 'center', fontSize: 24, letterSpacing: 8 }]}
+              placeholder="••••"
+              placeholderTextColor={colors.mutedForeground}
+              keyboardType="numeric"
+              maxLength={4}
+              secureTextEntry={true}
+              value={pinCode}
+              onChangeText={setPinCode}
+            />
+
+            <TouchableOpacity
+              style={[styles.submitBtn, { backgroundColor: colors.primary }]}
+              onPress={handleSavePin}
+            >
+              <Text style={styles.submitBtnText}>Save Security PIN</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -245,5 +432,49 @@ const styles = StyleSheet.create({
     color: '#f87171',
     fontSize: 15,
     fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+    borderWidth: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitleGroup: { flexDirection: 'row', alignItems: 'center' },
+  modalTitle: { fontSize: 18, fontWeight: '800' },
+  inputLabel: { fontSize: 12, fontWeight: '700', marginBottom: 6 },
+  modalInput: {
+    borderWidth: 1,
+    borderRadius: 14,
+    height: 48,
+    paddingHorizontal: 14,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  submitBtn: {
+    height: 48,
+    borderRadius: 9999,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 20,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  submitBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });

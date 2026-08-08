@@ -1,4 +1,3 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -6,11 +5,11 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
-  SafeAreaView,
   Animated,
   PermissionsAndroid,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { Camera } from 'react-native-camera-kit';
 import { apiClient } from '../api/client';

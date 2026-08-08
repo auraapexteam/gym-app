@@ -1,17 +1,16 @@
-import React, { useMemo, useState } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   TouchableOpacity,
   Alert,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   TextInput,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../api/supabase';
 import { useTheme } from '../context/ThemeContext';
 import { Sparkles, Apple, Check, X } from 'lucide-react-native';
