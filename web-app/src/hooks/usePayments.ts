@@ -12,14 +12,17 @@ export function usePayments(params?: { page?: number; limit?: number }) {
       
       return raw.map((p: any) => ({
         id: p.id,
-        transactionId: p.transactionId || `TXN-${p.id.substring(0, 8).toUpperCase()}`,
+        transactionId: p.razorpayPaymentId || p.razorpayOrderId || p.transactionId || `TXN-${p.id.substring(0, 8).toUpperCase()}`,
         memberId: p.memberId || '',
-        memberName: p.memberName || p.memberFullName || 'Gym Member',
-        amount: p.amount || 0,
+        memberName: p.memberName || p.memberFullName || 'Gym Customer',
+        memberEmail: p.memberEmail || null,
+        memberPhone: p.memberPhone || null,
+        planName: p.planName || 'Membership Plan',
+        amount: Number(p.amount) || 0,
         type: p.type || 'membership',
-        status: p.status || 'completed',
-        gateway: p.gateway || 'razorpay',
-        createdAt: p.createdAt || new Date().toISOString(),
+        status: p.status === 'success' ? 'completed' : p.status,
+        gateway: p.method || p.gateway || 'razorpay',
+        createdAt: p.paidAt || p.createdAt || new Date().toISOString(),
       }));
     },
   });

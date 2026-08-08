@@ -1,22 +1,14 @@
 import { useState } from 'react';
 import { DashboardLayout } from '@/components/layouts';
-import { Card, CardContent, CardHeader, CardTitle, Badge, SearchInput, Pagination, StatCard } from '@/components/ui';
-import { DollarSign, AlertCircle, RefreshCw, TrendingDown, Download } from 'lucide-react';
+import { Card, CardContent, CardHeader, Badge, SearchInput, Pagination, StatCard, Modal } from '@/components/ui';
+import { DollarSign, AlertCircle, RefreshCw, TrendingDown, Download, FileText, CheckCircle2, ShieldCheck, Printer, X, Building2 } from 'lucide-react';
 import { formatCurrency, formatDateTime } from '@/utils';
 import type { Payment } from '@/types';
-
-const mockPayments: Payment[] = [
-  { id: '1', transactionId: 'TXN-2024-001', memberId: 'm1', memberName: 'Arjun Sharma', amount: 2999, type: 'membership', status: 'completed', gateway: 'razorpay', createdAt: new Date(Date.now() - 30 * 60000).toISOString() },
-  { id: '2', transactionId: 'TXN-2024-002', memberId: 'm2', memberName: 'Priya Patel', amount: 499, type: 'nutrition', status: 'completed', gateway: 'razorpay', createdAt: new Date(Date.now() - 2 * 3600000).toISOString() },
-  { id: '3', transactionId: 'TXN-2024-003', memberId: 'm3', memberName: 'Rahul Gupta', amount: 4999, type: 'membership', status: 'pending', gateway: 'razorpay', createdAt: new Date(Date.now() - 4 * 3600000).toISOString() },
-  { id: '4', transactionId: 'TXN-2024-004', memberId: 'm4', memberName: 'Sneha Singh', amount: 1200, type: 'class', status: 'completed', gateway: 'cash', createdAt: new Date(Date.now() - 6 * 3600000).toISOString() },
-  { id: '5', transactionId: 'TXN-2024-005', memberId: 'm5', memberName: 'Vikram Reddy', amount: 2999, type: 'membership', status: 'failed', gateway: 'razorpay', createdAt: new Date(Date.now() - 8 * 3600000).toISOString() },
-  { id: '6', transactionId: 'TXN-2024-006', memberId: 'm6', memberName: 'Ananya Kumar', amount: 7999, type: 'membership', status: 'completed', gateway: 'razorpay', createdAt: new Date(Date.now() - 24 * 3600000).toISOString() },
-  { id: '7', transactionId: 'TXN-2024-007', memberId: 'm7', memberName: 'Karthik Nair', amount: 299, type: 'nutrition', status: 'refunded', gateway: 'razorpay', createdAt: new Date(Date.now() - 48 * 3600000).toISOString() },
-];
+import { usePayments } from '@/hooks/usePayments';
 
 const statusVariantMap: Record<string, 'success' | 'danger' | 'warning' | 'info' | 'muted'> = {
   completed: 'success',
+  success: 'success',
   pending: 'warning',
   failed: 'danger',
   refunded: 'info',
@@ -24,23 +16,41 @@ const statusVariantMap: Record<string, 'success' | 'danger' | 'warning' | 'info'
 
 const TABS = ['All', 'Completed', 'Pending', 'Failed', 'Refunded'];
 
-import { usePayments } from '@/hooks/usePayments';
-
 export default function PaymentsPage() {
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('All');
   const [page, setPage] = useState(1);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+
   const { data: payments = [], isLoading } = usePayments();
 
   const filtered = payments.filter((p) => {
-    if (search && !p.memberName.toLowerCase().includes(search.toLowerCase()) && !p.transactionId.toLowerCase().includes(search.toLowerCase())) return false;
+    const query = search.toLowerCase();
+    const matchesSearch =
+      !search ||
+      p.memberName.toLowerCase().includes(query) ||
+      p.transactionId.toLowerCase().includes(query) ||
+      (p.memberEmail && p.memberEmail.toLowerCase().includes(query)) ||
+      (p.planName && p.planName.toLowerCase().includes(query));
+
+    if (!matchesSearch) return false;
+    if (activeTab === 'Completed') return p.status === 'completed' || p.status === 'success';
     if (activeTab !== 'All' && p.status !== activeTab.toLowerCase()) return false;
     return true;
   });
 
-  const totalRevenue = payments.filter((p) => p.status === 'completed').reduce((a, p) => a + p.amount, 0);
-  const pendingAmount = payments.filter((p) => p.status === 'pending').reduce((a, p) => a + p.amount, 0);
-  const refundAmount = payments.filter((p) => p.status === 'refunded').reduce((a, p) => a + p.amount, 0);
+  const totalRevenue = payments
+    .filter((p) => p.status === 'completed' || p.status === 'success')
+    .reduce((a, p) => a + Number(p.amount || 0), 0);
+
+  const pendingAmount = payments
+    .filter((p) => p.status === 'pending')
+    .reduce((a, p) => a + Number(p.amount || 0), 0);
+
+  const refundAmount = payments
+    .filter((p) => p.status === 'refunded')
+    .reduce((a, p) => a + Number(p.amount || 0), 0);
+
   const failedCount = payments.filter((p) => p.status === 'failed').length;
 
   const stats = [
@@ -50,21 +60,28 @@ export default function PaymentsPage() {
     { title: 'Failed Payments', value: failedCount, icon: TrendingDown, iconColor: 'text-aura-danger' },
   ];
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <DashboardLayout
       breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Payments' }]}
     >
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-aura-text">Payments</h1>
-          <p className="text-sm text-aura-muted mt-0.5">Track all transactions and revenue</p>
+          <h1 className="text-xl font-bold text-aura-text">Payments & Billing</h1>
+          <p className="text-sm text-aura-muted mt-0.5">Track all live transactions, revenue, and customer invoices</p>
         </div>
-        <button className="flex items-center gap-2 bg-aura-card border border-aura-border text-aura-text text-sm font-medium px-4 py-2 rounded-md hover:border-aura-primary/50 transition-colors">
-          <Download className="h-4 w-4" /> Export
+        <button
+          onClick={handlePrint}
+          className="flex items-center gap-2 bg-aura-card border border-aura-border text-aura-text text-sm font-medium px-4 py-2 rounded-md hover:border-aura-primary/50 transition-colors"
+        >
+          <Download className="h-4 w-4" /> Export Report
         </button>
       </div>
 
-      {/* Stats */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {stats.map((s, i) => (
           <StatCard key={s.title} {...s} index={i} />
@@ -82,7 +99,7 @@ export default function PaymentsPage() {
                   onClick={() => { setActiveTab(tab); setPage(1); }}
                   className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
                     activeTab === tab
-                      ? 'bg-aura-primary text-aura-bg'
+                      ? 'bg-aura-primary text-aura-bg font-bold'
                       : 'text-aura-muted hover:text-aura-text'
                   }`}
                 >
@@ -90,15 +107,15 @@ export default function PaymentsPage() {
                 </button>
               ))}
             </div>
-            <SearchInput value={search} onChange={setSearch} placeholder="Search transactions..." className="w-64" />
+            <SearchInput value={search} onChange={setSearch} placeholder="Search by customer, plan, TXN ID..." className="w-72" />
           </div>
         </CardHeader>
         <CardContent className="p-0 mt-4">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[800px]">
+            <table className="w-full text-sm min-w-[850px]">
               <thead>
                 <tr className="border-t border-aura-border">
-                  {['Transaction ID', 'Member', 'Type', 'Amount', 'Gateway', 'Status', 'Date'].map((h) => (
+                  {['Transaction ID', 'Customer / Member', 'Plan / Package', 'Amount', 'Gateway', 'Status', 'Date', 'Action'].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-aura-muted uppercase tracking-wider first:pl-6">
                       {h}
                     </th>
@@ -107,35 +124,165 @@ export default function PaymentsPage() {
               </thead>
               <tbody className="divide-y divide-aura-border">
                 {filtered.map((payment) => (
-                  <tr key={payment.id} className="hover:bg-white/3 transition-colors">
+                  <tr
+                    key={payment.id}
+                    onClick={() => setSelectedPayment(payment)}
+                    className="hover:bg-white/5 transition-colors cursor-pointer group"
+                  >
                     <td className="px-4 py-3.5 pl-6">
-                      <span className="font-mono text-xs text-aura-primary">{payment.transactionId}</span>
+                      <span className="font-mono text-xs text-aura-primary font-medium">{payment.transactionId}</span>
                     </td>
-                    <td className="px-4 py-3.5 text-aura-text font-medium">{payment.memberName}</td>
-                    <td className="px-4 py-3.5 capitalize text-aura-muted">{payment.type}</td>
-                    <td className="px-4 py-3.5 font-semibold text-aura-text">{formatCurrency(payment.amount)}</td>
+                    <td className="px-4 py-3.5">
+                      <div className="font-medium text-aura-text">{payment.memberName}</div>
+                      {payment.memberEmail && (
+                        <div className="text-xs text-aura-muted">{payment.memberEmail}</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5 text-aura-text font-medium">
+                      {payment.planName || 'Membership Plan'}
+                    </td>
+                    <td className="px-4 py-3.5 font-bold text-aura-text">{formatCurrency(payment.amount)}</td>
                     <td className="px-4 py-3.5 capitalize text-aura-muted">{payment.gateway}</td>
                     <td className="px-4 py-3.5">
                       <Badge variant={statusVariantMap[payment.status] ?? 'muted'} className="capitalize">
-                        {payment.status}
+                        {payment.status === 'completed' || payment.status === 'success' ? 'Success' : payment.status}
                       </Badge>
                     </td>
                     <td className="px-4 py-3.5 text-aura-muted text-xs">{formatDateTime(payment.createdAt)}</td>
+                    <td className="px-4 py-3.5">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedPayment(payment);
+                        }}
+                        className="flex items-center gap-1.5 text-xs text-aura-primary bg-aura-primary/10 hover:bg-aura-primary/20 px-2.5 py-1.5 rounded font-medium transition-colors"
+                      >
+                        <FileText className="w-3.5 h-3.5" /> Invoice
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {!filtered.length && (
-            <div className="py-12 text-center text-aura-muted text-sm">No payments found</div>
+
+          {!isLoading && !filtered.length && (
+            <div className="py-12 text-center text-aura-muted text-sm">No transactions found</div>
           )}
+
           {filtered.length > 0 && (
             <div className="px-4 py-4 border-t border-aura-border">
-              <Pagination page={1} totalPages={1} total={filtered.length} limit={10} onPageChange={setPage} />
+              <Pagination page={page} totalPages={Math.ceil(filtered.length / 10) || 1} total={filtered.length} limit={10} onPageChange={setPage} />
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Tax Invoice Slip Modal */}
+      {selectedPayment && (
+        <Modal
+          open={!!selectedPayment}
+          onClose={() => setSelectedPayment(null)}
+          title="Tax Invoice & Receipt"
+          size="md"
+        >
+          {(() => {
+            const total = Number(selectedPayment.amount || 0);
+            const base = Math.round((total / 1.18) * 100) / 100;
+            const gst = Math.round((total - base) * 100) / 100;
+
+            return (
+              <div className="space-y-5 text-aura-text">
+                {/* Header Banner */}
+                <div className="bg-aura-card border border-aura-border rounded-xl p-5 text-center relative overflow-hidden">
+                  <div className="flex justify-center items-center gap-2 mb-2">
+                    <Building2 className="w-5 h-5 text-aura-primary" />
+                    <span className="text-sm font-bold tracking-wide uppercase text-aura-muted">Apex Fitness Center</span>
+                  </div>
+                  <div className="text-3xl font-black text-aura-text mb-1">
+                    {formatCurrency(total)}
+                  </div>
+                  <div className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-xs font-semibold">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> PAYMENT VERIFIED & SETTLED
+                  </div>
+                </div>
+
+                {/* Details Breakdown */}
+                <div className="space-y-2.5 text-xs">
+                  <div className="flex justify-between py-1.5 border-b border-aura-border">
+                    <span className="text-aura-muted">Invoice Reference</span>
+                    <span className="font-mono font-bold text-aura-primary">INV-{selectedPayment.id.slice(0, 8).toUpperCase()}</span>
+                  </div>
+                  <div className="flex justify-between py-1.5 border-b border-aura-border">
+                    <span className="text-aura-muted">Razorpay Payment ID</span>
+                    <span className="font-mono font-medium text-aura-text">{selectedPayment.transactionId}</span>
+                  </div>
+                  <div className="flex justify-between py-1.5 border-b border-aura-border">
+                    <span className="text-aura-muted">Customer Name</span>
+                    <span className="font-semibold text-aura-text">{selectedPayment.memberName}</span>
+                  </div>
+                  {selectedPayment.memberEmail && (
+                    <div className="flex justify-between py-1.5 border-b border-aura-border">
+                      <span className="text-aura-muted">Customer Email</span>
+                      <span className="text-aura-text">{selectedPayment.memberEmail}</span>
+                    </div>
+                  )}
+                  {selectedPayment.memberPhone && (
+                    <div className="flex justify-between py-1.5 border-b border-aura-border">
+                      <span className="text-aura-muted">Contact Phone</span>
+                      <span className="text-aura-text">{selectedPayment.memberPhone}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between py-1.5 border-b border-aura-border">
+                    <span className="text-aura-muted">Purchased Plan</span>
+                    <span className="font-semibold text-aura-primary">{selectedPayment.planName || 'Membership Plan'}</span>
+                  </div>
+                  <div className="flex justify-between py-1.5 border-b border-aura-border">
+                    <span className="text-aura-muted">Transaction Timestamp</span>
+                    <span className="text-aura-text">{formatDateTime(selectedPayment.createdAt)}</span>
+                  </div>
+                  <div className="flex justify-between py-1.5 border-b border-aura-border">
+                    <span className="text-aura-muted">Payment Channel</span>
+                    <span className="capitalize font-medium text-aura-text">{selectedPayment.gateway} (Secured)</span>
+                  </div>
+                </div>
+
+                {/* Tax Breakdown Table */}
+                <div className="bg-aura-bg border border-aura-border rounded-lg p-3.5 space-y-2 text-xs">
+                  <div className="flex justify-between text-aura-muted">
+                    <span>Base Membership Fee</span>
+                    <span>₹{base.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-aura-muted">
+                    <span>GST (18% Goods & Services Tax)</span>
+                    <span>₹{gst.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-aura-border font-bold text-sm text-aura-text">
+                    <span>Total Amount Paid</span>
+                    <span className="text-aura-primary">₹{total.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {/* Footer Controls */}
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={handlePrint}
+                    className="flex-1 flex items-center justify-center gap-2 bg-aura-primary text-aura-bg py-2.5 rounded-lg text-xs font-bold hover:bg-aura-primary/90 transition-colors"
+                  >
+                    <Printer className="w-4 h-4" /> Print / Save PDF Invoice
+                  </button>
+                  <button
+                    onClick={() => setSelectedPayment(null)}
+                    className="px-4 py-2.5 bg-aura-card border border-aura-border text-aura-muted text-xs font-medium rounded-lg hover:text-aura-text transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+        </Modal>
+      )}
     </DashboardLayout>
   );
 }

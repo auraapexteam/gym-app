@@ -30,6 +30,10 @@ export interface PaymentDto {
   razorpayPaymentId: string | null;
   paidAt: string | null;
   createdAt: string;
+  memberName?: string;
+  memberEmail?: string | null;
+  memberPhone?: string | null;
+  planName?: string;
 }
 
 /** Checkout parameters returned to the client to open Razorpay. */

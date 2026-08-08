@@ -106,7 +106,11 @@ export function SubscriptionHistoryScreen() {
           renderItem={({ item }) => {
             const isActive = item.status === 'active';
             const invNumber = `INV-${item.id.slice(0, 8).toUpperCase()}`;
-            const planPrice = item.plans?.price || item.amount || 2999;
+            const planPrice = Number(item.plan?.price ?? item.plans?.price ?? item.amount ?? 499);
+            const planName = item.plan?.name ?? item.plans?.name ?? item.planName ?? 'Gym Membership';
+            const startDate = item.startDate ?? item.start_date ?? item.createdAt ?? item.created_at;
+            const endDate = item.endDate ?? item.end_date;
+            const durationDays = item.plan?.durationDays ?? item.plan?.duration_days ?? 30;
 
             return (
               <View style={styles.card}>
@@ -115,7 +119,7 @@ export function SubscriptionHistoryScreen() {
                     <Award size={16} color={isActive ? colors.success : colors.mutedForeground} />
                   </View>
                   <View style={styles.headerTitles}>
-                    <Text style={styles.planName}>{item.plans?.name || item.planName || 'Membership Plan'}</Text>
+                    <Text style={styles.planName}>{planName}</Text>
                     <Text style={styles.invoiceNumberText}>{invNumber}</Text>
                   </View>
                   <View style={[styles.statusPill, { backgroundColor: isActive ? colors.successSoft : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)') }]}>
@@ -134,14 +138,14 @@ export function SubscriptionHistoryScreen() {
                   </View>
                   <View style={styles.detailItem}>
                     <Text style={styles.detailLabel}>BILLING CYCLE</Text>
-                    <Text style={styles.detailValue}>{item.plans?.billing_interval === 'year' ? 'Annual' : 'Monthly'}</Text>
+                    <Text style={styles.detailValue}>{durationDays >= 365 ? 'Annual (365 Days)' : `${durationDays} Days (Monthly)`}</Text>
                   </View>
                 </View>
 
                 <View style={styles.row}>
                   <Calendar size={13} color={colors.mutedForeground} style={{ marginRight: 6 }} />
                   <Text style={styles.dateText}>
-                    {formatDate(item.start_date)} - {formatDate(item.end_date)}
+                    {formatDate(startDate)} — {formatDate(endDate)}
                   </Text>
                 </View>
 
@@ -196,9 +200,12 @@ export function SubscriptionHistoryScreen() {
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
               {selectedInvoice && (() => {
-                const total = selectedInvoice.plans?.price || selectedInvoice.amount || 2999;
+                const total = Number(selectedInvoice.plan?.price ?? selectedInvoice.plans?.price ?? selectedInvoice.amount ?? 499);
                 const base = Math.round((total / 1.18) * 100) / 100;
                 const gst = Math.round((total - base) * 100) / 100;
+                const planTitle = selectedInvoice.plan?.name ?? selectedInvoice.plans?.name ?? selectedInvoice.planName ?? 'Gym Membership';
+                const sDate = selectedInvoice.startDate ?? selectedInvoice.start_date ?? selectedInvoice.createdAt ?? selectedInvoice.created_at;
+                const eDate = selectedInvoice.endDate ?? selectedInvoice.end_date;
 
                 return (
                   <>
@@ -218,7 +225,7 @@ export function SubscriptionHistoryScreen() {
                       </View>
                       <View style={styles.receiptRow}>
                         <Text style={styles.receiptLabel}>Transaction Date:</Text>
-                        <Text style={styles.receiptVal}>{formatDateTime(selectedInvoice.created_at || selectedInvoice.start_date)}</Text>
+                        <Text style={styles.receiptVal}>{formatDateTime(sDate)}</Text>
                       </View>
                       <View style={styles.receiptRow}>
                         <Text style={styles.receiptLabel}>Billed To:</Text>
@@ -226,11 +233,11 @@ export function SubscriptionHistoryScreen() {
                       </View>
                       <View style={styles.receiptRow}>
                         <Text style={styles.receiptLabel}>Package:</Text>
-                        <Text style={styles.receiptVal}>{selectedInvoice.plans?.name || 'Membership Plan'}</Text>
+                        <Text style={styles.receiptVal}>{planTitle}</Text>
                       </View>
                       <View style={styles.receiptRow}>
                         <Text style={styles.receiptLabel}>Validity Period:</Text>
-                        <Text style={styles.receiptVal}>{formatDate(selectedInvoice.start_date)} - {formatDate(selectedInvoice.end_date)}</Text>
+                        <Text style={styles.receiptVal}>{formatDate(sDate)} — {formatDate(eDate)}</Text>
                       </View>
                       <View style={styles.receiptRow}>
                         <Text style={styles.receiptLabel}>Payment Gateway:</Text>

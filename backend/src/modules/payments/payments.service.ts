@@ -216,6 +216,10 @@ export class PaymentService {
     }
   }
 
+  /**
+   * Enriched payment list for gym owners and staff: joins real member names,
+   * emails, phones, and plan titles so the dashboard never shows generic placeholders.
+   */
   static async list(
     gymId: string,
     query: ListQuery,
@@ -231,7 +235,37 @@ export class PaymentService {
       status: filters.status,
       memberId: filters.memberId,
     });
-    return { ...result, items: result.items.map(toPaymentDto) };
+
+    const memberIds = Array.from(new Set(result.items.map((p) => p.member_id).filter(Boolean))) as string[];
+    const subIds = Array.from(new Set(result.items.map((p) => p.subscription_id).filter(Boolean))) as string[];
+
+    const [membersRes, subsRes] = await Promise.all([
+      memberIds.length > 0
+        ? supabase.from('members').select('id, full_name, email, phone').in('id', memberIds)
+        : { data: [] },
+      subIds.length > 0
+        ? supabase.from('subscriptions').select('id, plan:plans(name)').in('id', subIds)
+        : { data: [] },
+    ]);
+
+    const memberMap = new Map((membersRes.data || []).map((m: any) => [m.id, m]));
+    const subMap = new Map((subsRes.data || []).map((s: any) => [s.id, s.plan?.name]));
+
+    const items: PaymentDto[] = result.items.map((row) => {
+      const dto = toPaymentDto(row);
+      const m = row.member_id ? memberMap.get(row.member_id) : null;
+      const planName = row.subscription_id ? subMap.get(row.subscription_id) : null;
+
+      return {
+        ...dto,
+        memberName: m?.full_name || m?.email || 'Gym Customer',
+        memberEmail: m?.email || null,
+        memberPhone: m?.phone || null,
+        planName: planName || 'Membership Plan',
+      };
+    });
+
+    return { ...result, items };
   }
 
   static async getById(gymId: string, id: string): Promise<PaymentDto> {
@@ -260,6 +294,38 @@ export class PaymentService {
     }
 
     return toPaymentDto(updated);
+  }
+
+  /** Post-payment auto-join & activation lifecycle handler. */
+  private static async handlePostPaymentAutoJoin(gymId: string, memberId: string): Promise<void> {
+    try {
+      const member = await MemberService.getById(gymId, memberId).catch(() => null);
+      if (member) {
+        // 1. Activate member status
+        await supabase
+          .from('members')
+          .update({ status: 'active', updated_at: new Date().toISOString() })
+          .eq('id', memberId)
+          .eq('gym_id', gymId);
+
+        // 2. Link member's profile to gym if user profile is present
+        if (member.profileId) {
+          await supabase
+            .from('profiles')
+            .update({ gym_id: gymId })
+            .eq('id', member.profileId);
+
+          // 3. Mark any existing join request approved
+          await supabase
+            .from('gym_join_requests')
+            .update({ status: 'approved', updated_at: new Date().toISOString() })
+            .eq('profile_id', member.profileId)
+            .eq('gym_id', gymId);
+        }
+      }
+    } catch (err: any) {
+      logger.error(err, 'Failed to complete post-payment auto-join');
+    }
   }
 
   private static async resolveMemberId(

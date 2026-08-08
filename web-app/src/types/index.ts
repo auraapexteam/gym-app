@@ -241,6 +241,9 @@ export interface Payment {
   transactionId: string;
   memberId: string;
   memberName: string;
+  memberEmail?: string | null;
+  memberPhone?: string | null;
+  planName?: string;
   amount: number;
   type: 'membership' | 'nutrition' | 'class' | 'other';
   status: PaymentStatus;
