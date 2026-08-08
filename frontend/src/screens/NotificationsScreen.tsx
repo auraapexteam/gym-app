@@ -108,7 +108,7 @@ export function NotificationsScreen() {
                 )}
               </View>
               <Text style={[styles.cardBody, item.isRead && styles.readText]}>
-                {item.message}
+                {item.body || item.message}
               </Text>
               <Text style={styles.cardTime}>
                 {new Date(item.created_at).toLocaleDateString('en-IN', {
