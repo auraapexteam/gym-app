@@ -6,17 +6,17 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-  SafeAreaView,
   TouchableOpacity,
   Modal,
   Dimensions,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import RazorpayCheckout from 'react-native-razorpay';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/useAuthStore';
 import { useTheme } from '../context/ThemeContext';
-import { Check } from 'lucide-react-native';
+import { Check, Building2 } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -183,6 +183,24 @@ export function PlansScreen({ route, navigation }: any) {
         {loading ? (
           <View style={styles.centerLoader}>
             <ActivityIndicator size="large" color="#6366f1" />
+          </View>
+        ) : plans.length === 0 ? (
+          <View style={styles.noGymCard}>
+            <View style={styles.noGymIconBadge}>
+              <Building2 size={36} color={colors.primary} />
+            </View>
+            <Text style={styles.noGymTitle}>Find & Join a Gym</Text>
+            <Text style={styles.noGymSubtitle}>
+              You haven't selected a gym yet. Browse our verified fitness centers to explore their specific membership tiers and pricing.
+            </Text>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={styles.browseGymsBtn}
+              onPress={() => navigation.navigate('GymDirectory')}
+            >
+              <Building2 size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.browseGymsBtnText}>Explore Gym Directory</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <ScrollView
@@ -685,6 +703,67 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   successSubtitle: {
     fontSize: 12,
     color: colors.mutedForeground,
-    fontWeight: '500',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  noGymCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: isDark ? 0 : 0.04,
+    shadowRadius: 8,
+    elevation: isDark ? 0 : 1,
+  },
+  noGymIconBadge: {
+    width: 80,
+    height: 80,
+    borderRadius: 28,
+    backgroundColor: colors.primarySoft,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  noGymTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: colors.foreground,
+    textAlign: 'center',
+  },
+  noGymSubtitle: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 20,
+    marginBottom: 24,
+    maxWidth: 290,
+  },
+  browseGymsBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 9999,
+    height: 48,
+    paddingHorizontal: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  browseGymsBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });
