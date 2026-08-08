@@ -5,18 +5,24 @@ rootProject.name = 'SubscriptionManagement'
 include ':app'
 includeBuild('../node_modules/@react-native/gradle-plugin')
 
-gradle.beforeProject { project ->
-    project.plugins.withId("com.android.library") {
-        if (project.android.hasProperty("externalNativeBuild")) {
-            project.android.externalNativeBuild.cmake {
-                buildStagingDirectory = file("C:/tmp/cxx/${project.name}")
+// Windows-only workaround for the 260-character path limit (see README §7).
+// Guarded so Linux/macOS builds keep their default (per-project) build dirs
+// instead of creating a literal "C:" directory in the repo.
+def isWindowsHost = System.getProperty('os.name').toLowerCase().contains('windows')
+if (isWindowsHost) {
+    gradle.beforeProject { project ->
+        project.plugins.withId("com.android.library") {
+            if (project.android.hasProperty("externalNativeBuild")) {
+                project.android.externalNativeBuild.cmake {
+                    buildStagingDirectory = file("C:/tmp/cxx/${project.name}")
+                }
             }
         }
-    }
-    project.plugins.withId("com.android.application") {
-        if (project.android.hasProperty("externalNativeBuild")) {
-            project.android.externalNativeBuild.cmake {
-                buildStagingDirectory = file("C:/tmp/cxx/${project.name}")
+        project.plugins.withId("com.android.application") {
+            if (project.android.hasProperty("externalNativeBuild")) {
+                project.android.externalNativeBuild.cmake {
+                    buildStagingDirectory = file("C:/tmp/cxx/${project.name}")
+                }
             }
         }
     }

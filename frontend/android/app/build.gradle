@@ -106,15 +106,16 @@ android {
         }
     }
 
-    // Redirect C++ build staging to bypass Windows 260-character path limit
-    externalNativeBuild {
-        cmake {
-            buildStagingDirectory = file("C:/tmp/cxx/${project.name}")
+    // Windows-only: redirect C++ staging and build outputs to short paths to
+    // bypass the 260-character path limit. On Linux/macOS the defaults apply.
+    if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+        externalNativeBuild {
+            cmake {
+                buildStagingDirectory = file("C:/tmp/cxx/${project.name}")
+            }
         }
+        buildDir = "C:/tmp/build/${project.name}"
     }
-
-    // Redirect Gradle build outputs
-    buildDir = "C:/tmp/build/${project.name}"
 }
 
 dependencies {
