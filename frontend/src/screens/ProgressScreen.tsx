@@ -7,12 +7,12 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  SafeAreaView,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Polyline, Path, Rect, ClipPath, Defs } from 'react-native-svg';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { apiClient } from '../api/client';
