@@ -4,7 +4,6 @@ import {
   Text,
   View,
   TouchableOpacity,
-  SafeAreaView,
   ActivityIndicator,
   ScrollView,
   Modal,
@@ -13,6 +12,7 @@ import {
   Dimensions,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Polyline, Path, Rect, ClipPath, Defs } from 'react-native-svg';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/useAuthStore';
