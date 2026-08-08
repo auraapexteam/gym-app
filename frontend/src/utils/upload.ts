@@ -14,7 +14,8 @@ export interface PickedImageAsset {
 /**
  * Requests a signed upload URL from the backend, uploads the picked image
  * directly to Supabase Storage using React Native multipart FormData, and returns
- * its public URL.
+ * its public URL. Throws if the upload fails — callers must not treat a thrown
+ * upload as saved.
  */
 export async function uploadPersonalImage(asset: PickedImageAsset, purpose: UploadPurpose): Promise<string> {
   const fileName = asset.fileName || `${purpose}-${Date.now()}.jpg`;
@@ -34,26 +35,15 @@ export async function uploadPersonalImage(asset: PickedImageAsset, purpose: Uplo
   };
 
   const formData = new FormData();
-  formData.append('file', fileData as any);
+  formData.append('file', fileData as unknown as Blob);
 
-  try {
-    const { error } = await supabase.storage.from(bucket).uploadToSignedUrl(path, token, formData as any, {
-      contentType: mimeType,
-      upsert: true,
-    });
-    if (error) {
-      await supabase.storage.from(bucket).upload(path, formData as any, {
-        contentType: mimeType,
-        upsert: true,
-      });
-    }
-  } catch {
-    await supabase.storage.from(bucket).upload(path, formData as any, {
-      contentType: mimeType,
-      upsert: true,
-    });
+  const { error } = await supabase.storage.from(bucket).uploadToSignedUrl(path, token, formData, {
+    contentType: mimeType,
+    upsert: true,
+  });
+  if (error) {
+    throw new Error(error.message || 'Image upload failed. Please try again.');
   }
 
   return publicUrl as string;
 }
-
