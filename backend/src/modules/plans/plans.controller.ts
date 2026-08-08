@@ -17,14 +17,15 @@ export class PlanController {
     let gymId: string;
     let isActive: boolean | undefined;
 
-    if (user.role === Role.CUSTOMER) {
-      const requested = req.query.gymId;
-      const targetGymId = typeof requested === 'string' && requested ? requested : user.gymId;
+    const requested = typeof req.query.gymId === 'string' && req.query.gymId ? req.query.gymId : undefined;
+
+    if (user.role === Role.CUSTOMER || requested) {
+      const targetGymId = requested || user.gymId;
       if (!targetGymId) {
         throw new BadRequestError('gymId query parameter is required or user must be linked to a gym', 'GYM_ID_REQUIRED');
       }
       gymId = targetGymId;
-      isActive = true; // customers only ever see purchasable plans
+      isActive = true; // customers and gym browsers only see purchasable plans
     } else {
       gymId = requireGymId(user);
       isActive = typeof req.query.isActive === 'boolean' ? req.query.isActive : undefined;

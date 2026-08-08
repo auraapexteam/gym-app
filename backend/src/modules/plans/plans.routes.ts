@@ -11,21 +11,23 @@ import { Permission } from '@/shared/rbac';
 
 const router = Router();
 
-router.use(authenticate, requireGym);
-
+// Read plans: any authenticated user (customer, unlinked browser, staff, owner) can list or get plans
 router.get(
   '/',
-  requirePermission(Permission.PLAN_READ),
+  authenticate,
   validate(listPlansSchema),
   asyncHandler(PlanController.list),
 );
 
 router.get(
   '/:id',
-  requirePermission(Permission.PLAN_READ),
+  authenticate,
   validate(planIdSchema),
   asyncHandler(PlanController.getById),
 );
+
+// Management routes: require a gym context and appropriate permissions
+router.use(authenticate, requireGym);
 
 router.post(
   '/',
