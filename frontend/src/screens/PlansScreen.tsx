@@ -24,7 +24,6 @@ import {
   MapPin,
   Clock,
   ShieldCheck,
-  Sparkles,
   CreditCard,
   X,
 } from 'lucide-react-native';
@@ -58,13 +57,13 @@ export function PlansScreen({ route, navigation }: any) {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [payPhase, setPayPhase] = useState<'form' | 'loading' | 'success'>('form');
 
-  // 1. Initial Gym Resolution
+  // 1. Initial Gym Directory Fetch
   useEffect(() => {
     fetchDirectory();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount fetch
   }, []);
 
-  // Update selectedGymId from params or profile or fallback to first directory gym
+  // Update selectedGymId from params or profile or first directory gym
   useEffect(() => {
     const paramId = route?.params?.gymId;
     const profileId = userProfile?.gym_id || userProfile?.gymId;
@@ -77,7 +76,7 @@ export function PlansScreen({ route, navigation }: any) {
     }
   }, [route?.params?.gymId, userProfile?.gym_id, directory]);
 
-  // 2. Fetch Gym Info and Plans whenever selectedGymId changes
+  // 2. Fetch Live Gym Profile & Plans whenever selectedGymId changes
   useEffect(() => {
     if (selectedGymId) {
       loadGymData(selectedGymId);
@@ -89,7 +88,7 @@ export function PlansScreen({ route, navigation }: any) {
       setGymLoading(true);
       setLoading(true);
 
-      // Check if gym is already in directory store, else fetch public profile
+      // Check directory cache or fetch public profile from live API
       const localGym = directory.find((g) => g.id === gymId);
       if (localGym) {
         setGymDetails(localGym);
@@ -100,41 +99,40 @@ export function PlansScreen({ route, navigation }: any) {
             setGymDetails(gymRes.data.data);
           }
         } catch {
-          // Fallback if public endpoint is unavailable
           if (localGym) setGymDetails(localGym);
         }
       }
 
-      // Fetch plans for this specific gym
+      // Fetch live database plans for this gym
       const plansRes = await apiClient.get(`/plans?gymId=${gymId}`);
       if (plansRes.data && plansRes.data.success) {
-        const list = plansRes.data.data.map((p: Plan) => {
-          let features = ['Full floor & equipment access', 'Locker room & shower access', '1 Trainer fitness assessment'];
-          if (p.name.toLowerCase().includes('standard') || p.name.toLowerCase().includes('pro')) {
-            features = [
-              'All Starter perks',
-              'Unlimited group classes & spin',
-              'Sauna & steam recovery access',
-              'Progress & metric tracking logs',
-            ];
+        const rawPlans = plansRes.data.data || [];
+        const liveList: Plan[] = rawPlans.map((p: any) => {
+          let planFeatures: string[] = [];
+          if (Array.isArray(p.features) && p.features.length > 0) {
+            planFeatures = p.features;
+          } else if (p.description) {
+            planFeatures = [p.description];
+          } else {
+            planFeatures = ['Standard Gym Access', 'Digital QR Check-In'];
           }
-          if (p.name.toLowerCase().includes('elite') || p.name.toLowerCase().includes('gold') || p.name.toLowerCase().includes('premium')) {
-            features = [
-              'All Standard perks',
-              'Personal trainer 4x / month',
-              'Personalized nutrition meal plan',
-              'Recovery lounge & hydromassage',
-              'Priority booking & guest passes',
-            ];
-          }
-          return { ...p, features };
+
+          return {
+            id: p.id,
+            name: p.name,
+            description: p.description || '',
+            price: Number(p.price),
+            billing_interval: (p.duration_days ?? p.durationDays) >= 365 ? 'year' : 'month',
+            features: planFeatures,
+          };
         });
-        setPlans(list);
+        setPlans(liveList);
       } else {
         setPlans([]);
       }
     } catch (err: any) {
       console.warn('Failed to load gym plans:', err);
+      setPlans([]);
     } finally {
       setGymLoading(false);
       setLoading(false);
@@ -153,7 +151,7 @@ export function PlansScreen({ route, navigation }: any) {
     try {
       setPayPhase('loading');
 
-      // 1. Create a Razorpay order on the backend for this plan
+      // 1. Create a Razorpay order on backend for this live plan
       const orderRes = await apiClient.post('/payments/orders', {
         planId: selectedPlan.id,
       });
@@ -164,7 +162,7 @@ export function PlansScreen({ route, navigation }: any) {
 
       const { orderId, amountInPaise, currency, razorpayKeyId } = orderRes.data.data;
 
-      // 2. Open Razorpay's native one-time checkout
+      // 2. Open Razorpay native SDK checkout
       const options = {
         description: `${selectedPlan.name} Membership`,
         currency: currency || 'INR',
@@ -253,10 +251,10 @@ export function PlansScreen({ route, navigation }: any) {
           <Text style={styles.screenSubtitle}>Select and activate your membership tier.</Text>
         </View>
 
-        {/* 1. Gym Quick-Selector Bar (if multiple gyms exist in network) */}
+        {/* 1. Gym Switcher Pills (if multiple gyms exist in directory) */}
         {directory.length > 1 && (
           <View style={styles.gymSelectorWrapper}>
-            <Text style={styles.gymSelectorLabel}>SELECT GYM PARTNER</Text>
+            <Text style={styles.gymSelectorLabel}>SELECT PARTNER GYM</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gymPillsScroll}>
               {directory.map((gym) => {
                 const isSelected = gym.id === selectedGymId;
@@ -278,8 +276,8 @@ export function PlansScreen({ route, navigation }: any) {
           </View>
         )}
 
-        {/* 2. Rich Gym Information Banner / Card */}
-        {gymDetails ? (
+        {/* 2. Live Gym Info Banner */}
+        {gymDetails && (
           <View style={styles.gymHeroCard}>
             <View style={styles.gymHeroTop}>
               {gymDetails.logoUrl ? (
@@ -291,11 +289,9 @@ export function PlansScreen({ route, navigation }: any) {
               )}
 
               <View style={styles.gymHeroInfo}>
-                <View style={styles.gymBadgeRow}>
-                  <Text style={styles.gymHeroName} numberOfLines={1}>
-                    {gymDetails.name}
-                  </Text>
-                </View>
+                <Text style={styles.gymHeroName} numberOfLines={1}>
+                  {gymDetails.name}
+                </Text>
                 <View style={styles.verifiedBadge}>
                   <ShieldCheck size={12} color="#10B981" style={{ marginRight: 4 }} />
                   <Text style={styles.verifiedText}>Verified Fitness Partner</Text>
@@ -303,7 +299,7 @@ export function PlansScreen({ route, navigation }: any) {
               </View>
             </View>
 
-            {/* Address & Timings */}
+            {/* Address & Info */}
             <View style={styles.gymDetailsList}>
               {!!gymDetails.address && (
                 <View style={styles.gymDetailItem}>
@@ -328,18 +324,18 @@ export function PlansScreen({ route, navigation }: any) {
               )}
             </View>
           </View>
-        ) : null}
+        )}
 
-        {/* 3. Available Membership Plans Carousel */}
+        {/* 3. Live Membership Plans Section */}
         <View style={styles.plansSectionHeader}>
           <Text style={styles.plansSectionTitle}>Available Packages</Text>
-          <Text style={styles.plansSectionSubtitle}>Instant digital activation via Razorpay</Text>
+          <Text style={styles.plansSectionSubtitle}>Live membership tiers for {gymDetails?.name || 'this gym'}</Text>
         </View>
 
         {loading || gymLoading ? (
           <View style={styles.centerLoader}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loaderLabel}>Loading gym membership packages…</Text>
+            <Text style={styles.loaderLabel}>Loading plans from database…</Text>
           </View>
         ) : plans.length === 0 ? (
           <View style={styles.noGymCard}>
@@ -348,7 +344,7 @@ export function PlansScreen({ route, navigation }: any) {
             </View>
             <Text style={styles.noGymTitle}>No Plans Available</Text>
             <Text style={styles.noGymSubtitle}>
-              {gymDetails?.name || 'This gym'} has not published any public membership plans yet. Browse other partner gyms in our network.
+              {gymDetails?.name || 'This gym'} has not published any membership tiers yet. Browse other partner gyms in our network.
             </Text>
             <TouchableOpacity
               activeOpacity={0.85}
@@ -368,7 +364,6 @@ export function PlansScreen({ route, navigation }: any) {
             contentContainerStyle={styles.carouselContainer}
           >
             {plans.map((p) => {
-              const isElite = p.name.toLowerCase().includes('elite') || p.name.toLowerCase().includes('gold') || p.name.toLowerCase().includes('pro');
               const isCurrent = isCurrentPlan(p);
               const remDays = isCurrent ? getRemainingDays() : 0;
 
@@ -377,22 +372,16 @@ export function PlansScreen({ route, navigation }: any) {
                   key={p.id}
                   style={[
                     styles.planCard,
-                    isElite ? styles.featuredCard : styles.standardCard,
-                    isCurrent && styles.activePlanCard,
+                    isCurrent ? styles.activePlanCard : styles.standardCard,
                   ]}
                 >
-                  {isCurrent ? (
+                  {isCurrent && (
                     <View style={styles.activeBadge}>
-                      <Text style={styles.activeBadgeText}>CURRENT ACTIVE PLAN</Text>
+                      <Text style={styles.activeBadgeText}>ACTIVE MEMBERSHIP</Text>
                     </View>
-                  ) : isElite ? (
-                    <View style={styles.popBadge}>
-                      <Sparkles size={11} color="#FFFFFF" style={{ marginRight: 4 }} />
-                      <Text style={styles.popBadgeText}>Most Popular</Text>
-                    </View>
-                  ) : null}
+                  )}
 
-                  <Text style={[styles.tierName, isElite ? styles.textPrimary : styles.textMuted]}>
+                  <Text style={styles.tierName}>
                     {p.name.toUpperCase()}
                   </Text>
 
@@ -416,17 +405,14 @@ export function PlansScreen({ route, navigation }: any) {
                     <View style={styles.activePlanBtnContainer}>
                       <Text style={styles.activePlanBtnTitle}>✓ ONGOING ACTIVE PLAN</Text>
                       <Text style={styles.activePlanBtnSubtext}>
-                        {remDays > 0 ? `${remDays} Days Remaining` : 'Active Membership'}
+                        {remDays > 0 ? `${remDays} Days Remaining` : 'Active Access'}
                       </Text>
                     </View>
                   ) : (
                     <TouchableOpacity
                       onPress={() => handleOpenCheckout(p)}
                       activeOpacity={0.85}
-                      style={[
-                        styles.subscribeBtn,
-                        isElite ? styles.subscribeBtnElite : styles.subscribeBtnStandard,
-                      ]}
+                      style={styles.subscribeBtn}
                     >
                       <CreditCard size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
                       <Text style={styles.subscribeBtnText}>Select & Pay via Razorpay</Text>
@@ -646,10 +632,6 @@ const getStyles = (colors: any, isDark: boolean) =>
     gymHeroInfo: {
       flex: 1,
     },
-    gymBadgeRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
     gymHeroName: {
       fontSize: 17,
       fontWeight: '800',
@@ -768,7 +750,7 @@ const getStyles = (colors: any, isDark: boolean) =>
       width: width * 0.76,
       borderRadius: 24,
       padding: 20,
-      minHeight: 350,
+      minHeight: 320,
       justifyContent: 'space-between',
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 8 },
@@ -781,12 +763,8 @@ const getStyles = (colors: any, isDark: boolean) =>
       borderWidth: 1,
       borderColor: colors.border,
     },
-    featuredCard: {
-      backgroundColor: isDark ? '#1a1e2e' : '#f8faff',
-      borderWidth: 2,
-      borderColor: colors.primary,
-    },
     activePlanCard: {
+      backgroundColor: isDark ? colors.surfaceDark : colors.surface,
       borderColor: '#10B981',
       borderWidth: 2,
     },
@@ -804,32 +782,11 @@ const getStyles = (colors: any, isDark: boolean) =>
       color: '#FFFFFF',
       letterSpacing: 0.8,
     },
-    popBadge: {
-      alignSelf: 'flex-start',
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.primary,
-      paddingHorizontal: 9,
-      paddingVertical: 4,
-      borderRadius: 99,
-      marginBottom: 8,
-    },
-    popBadgeText: {
-      fontSize: 9.5,
-      fontWeight: '800',
-      color: '#FFFFFF',
-      letterSpacing: 0.8,
-    },
     tierName: {
       fontSize: 13,
       fontWeight: '800',
-      letterSpacing: 1.2,
-    },
-    textPrimary: {
       color: colors.primary,
-    },
-    textMuted: {
-      color: colors.mutedForeground,
+      letterSpacing: 1.2,
     },
     priceRow: {
       flexDirection: 'row',
@@ -873,11 +830,6 @@ const getStyles = (colors: any, isDark: boolean) =>
       justifyContent: 'center',
       paddingVertical: 13,
       borderRadius: 14,
-    },
-    subscribeBtnStandard: {
-      backgroundColor: colors.primary,
-    },
-    subscribeBtnElite: {
       backgroundColor: colors.primary,
     },
     subscribeBtnText: {
