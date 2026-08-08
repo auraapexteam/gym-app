@@ -19,7 +19,6 @@ import { GymDirectoryScreen } from '../screens/GymDirectoryScreen';
 import { SubscriptionHistoryScreen } from '../screens/SubscriptionHistoryScreen';
 import { AttendanceHistoryScreen } from '../screens/AttendanceHistoryScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
-import { ThemeProvider } from '../context/ThemeContext';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { ThemeSettingsScreen } from '../screens/ThemeSettingsScreen';
 import { NotificationSettingsScreen } from '../screens/NotificationSettingsScreen';
@@ -33,7 +32,7 @@ import { AboutSettingsScreen } from '../screens/AboutSettingsScreen';
 const Stack = createNativeStackNavigator();
 
 export function AppNavigator() {
-  const { accessToken, userProfile, setSession, loading } = useAuthStore();
+  const { accessToken, userProfile, setSession, initializing } = useAuthStore();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -49,7 +48,11 @@ export function AppNavigator() {
     };
   }, [setSession]);
 
-  if (accessToken && !userProfile && loading) {
+  // Hold on the splash loader until the persisted session (and, when logged
+  // in, the profile that decides role-based routing) has been restored.
+  // Without this the Login screen flashes for signed-in users on cold start,
+  // and owners can briefly see the customer stack before their role loads.
+  if (initializing || (accessToken && !userProfile)) {
     return (
       <View style={styles.loaderContainer}>
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -57,14 +60,12 @@ export function AppNavigator() {
     );
   }
 
-  const isStaffOrOwner =
-    userProfile?.role === 'owner' ||
-    userProfile?.role === 'staff' ||
-    userProfile?.role === 'admin';
+  // Every non-customer role (owner, staff, trainer, super_admin) manages the
+  // gym from the web portal — the mobile customer stack is customers-only.
+  const isStaffOrOwner = !!userProfile?.role && userProfile.role !== 'customer';
 
   return (
-    <ThemeProvider>
-      <NavigationContainer>
+    <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: true }}>
           {accessToken ? (
             isStaffOrOwner ? (
@@ -175,8 +176,7 @@ export function AppNavigator() {
             </>
           )}
         </Stack.Navigator>
-      </NavigationContainer>
-    </ThemeProvider>
+    </NavigationContainer>
   );
 }
 
