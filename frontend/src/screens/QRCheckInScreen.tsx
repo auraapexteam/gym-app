@@ -15,13 +15,19 @@ import Svg, { Circle } from 'react-native-svg';
 import { Camera } from 'react-native-camera-kit';
 import { apiClient } from '../api/client';
 import { useTheme } from '../context/ThemeContext';
-import { QrCode, Check } from 'lucide-react-native';
+import { useAuthStore } from '../store/useAuthStore';
+import { QrCode, Check, Building2, CreditCard, Lock } from 'lucide-react-native';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export function QRCheckInScreen({ navigation }: any) {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
+  const { userProfile, subscription } = useAuthStore();
+
+  const isLinked = !!userProfile?.gym_id;
+  const isSubscribed = subscription && subscription.status === 'active';
+
   const [token, setToken] = useState('');
   const [phase, setPhase] = useState<'idle' | 'scanning' | 'success'>('idle');
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
@@ -134,6 +140,54 @@ export function QRCheckInScreen({ navigation }: any) {
     inputRange: [0, 1],
     outputRange: [circ, 0],
   });
+
+  if (!isLinked) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.lockContainer}>
+          <View style={[styles.lockIconBadge, { backgroundColor: colors.primarySoft }]}>
+            <Building2 size={44} color={colors.primary} />
+          </View>
+          <Text style={styles.lockTitle}>No Gym Linked</Text>
+          <Text style={styles.lockSubtitle}>
+            You haven't joined a gym yet. Browse available fitness centers and join one to unlock reception QR check-ins.
+          </Text>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={styles.lockBtn}
+            onPress={() => navigation.navigate('GymDirectory')}
+          >
+            <Building2 size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.lockBtnText}>Browse & Join a Gym</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!isSubscribed) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.lockContainer}>
+          <View style={[styles.lockIconBadge, { backgroundColor: colors.primarySoft }]}>
+            <CreditCard size={44} color={colors.primary} />
+          </View>
+          <Text style={styles.lockTitle}>Membership Plan Required</Text>
+          <Text style={styles.lockSubtitle}>
+            Select and activate a membership plan to unlock your digital QR check-in pass and reception camera scanner.
+          </Text>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={styles.lockBtn}
+            onPress={() => navigation.navigate('PlansTab')}
+          >
+            <CreditCard size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.lockBtnText}>View Membership Plans</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -358,5 +412,54 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.mutedForeground,
+  },
+  lockContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 36,
+  },
+  lockIconBadge: {
+    width: 88,
+    height: 88,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  lockTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: colors.foreground,
+    textAlign: 'center',
+  },
+  lockSubtitle: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 21,
+    marginBottom: 28,
+  },
+  lockBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 9999,
+    height: 50,
+    paddingHorizontal: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  lockBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });

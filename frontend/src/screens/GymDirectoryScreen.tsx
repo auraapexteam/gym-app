@@ -121,13 +121,22 @@ export function GymDirectoryScreen({ navigation }: any) {
             <Text style={styles.refreshBtnText}>Check for updates</Text>
           </TouchableOpacity>
 
-          {isApproved && (
+          {isApproved ? (
             <TouchableOpacity
               activeOpacity={0.85}
               style={styles.primaryBtn}
-              onPress={() => navigation.navigate('MainTabs', { screen: 'HomeTab' })}
+              onPress={() => navigation.navigate('HomeTab')}
             >
               <Text style={styles.primaryBtnText}>Go to Home</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={[styles.primaryBtn, { backgroundColor: colors.primary, marginTop: 12 }]}
+              onPress={() => navigation.navigate('PlansTab', { gymId: myRequest.gym_id })}
+            >
+              <Building2 size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.primaryBtnText}>View Plans & Join Instantly</Text>
             </TouchableOpacity>
           )}
         </View>

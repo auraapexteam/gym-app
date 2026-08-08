@@ -242,6 +242,14 @@ export default function BrowseGymsPage() {
                   </div>
                 </div>
 
+                <Button
+                  variant="primary"
+                  onClick={() => navigate(`/customer/plans?gymId=${pendingGym?.id || joinStatus?.gymId}`)}
+                  className="gap-2 font-bold text-xs px-6 py-2.5 bg-gradient-to-r from-aura-primary to-indigo-600 shadow-aura-sm mb-3"
+                >
+                  <CreditCard className="h-4 w-4" /> Skip Waiting & Pay Plan to Join Instantly
+                </Button>
+
                 <p className="text-xs text-aura-muted italic">
                   Need assistance? Contact reception directly or wait for approval notification.
                 </p>
