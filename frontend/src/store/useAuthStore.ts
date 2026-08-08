@@ -31,11 +31,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Load user profile first to determine role
       await get().loadUserProfile();
 
-      // Only load subscription for CUSTOMER role with a linked gym
+      // Always load subscription — loadSubscription handles the no-gym case gracefully
+      // and will refresh userProfile if an active sub is found without a gym_id in profile.
       const profile = get().userProfile;
-      const isCustomer = profile?.role === 'customer' || !profile?.role;
-      const hasGym = !!profile?.gym_id;
-      if (isCustomer && hasGym) {
+      const isCustomer = !profile?.role || profile.role === 'customer';
+      if (isCustomer) {
         await get().loadSubscription();
       }
     } else {
@@ -66,10 +66,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ loading: true });
       const response = await apiClient.get('/subscriptions/me');
       if (response.data && response.data.success) {
-        set({ subscription: response.data.data });
+        const rawData = response.data.data;
+        // /subscriptions/me returns either an array or a single object
+        const subs: any[] = Array.isArray(rawData) ? rawData : [rawData].filter(Boolean);
+        // Pick the most recent active subscription; fall back to the most recent one
+        const activeSub = subs.find((s) => s.status === 'active') ?? subs[0] ?? null;
+        set({ subscription: activeSub });
+
+        // If a subscription is active and userProfile.gym_id is not yet set in memory, refresh the profile so
+        // gymStatus recomputes to 'linked' and the HomeScreen shows the active plan card immediately.
+        if (activeSub?.status === 'active' && !get().userProfile?.gym_id) {
+          await get().loadUserProfile();
+        }
       }
     } catch (error: any) {
-      // 404 = no active subscription, that's normal for new customers
+      // 404 = no active subscription — normal for new customers
       if (error?.response?.status !== 404) {
         console.warn('Error loading subscription:', error?.response?.data?.message || error.message);
       }

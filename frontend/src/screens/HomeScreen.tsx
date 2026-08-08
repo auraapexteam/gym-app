@@ -239,16 +239,20 @@ export function HomeScreen({ navigation }: any) {
       ? 'Declined'
       : 'No Gym';
 
-  // Subscription calculation
-  const isSubscribed = subscription && subscription.status === 'active';
-  const planName = subscription?.plans?.name || 'Elite';
+  // Subscription calculation — subscription is always a single resolved SubscriptionDto (or null)
+  const isSubscribed = !!(subscription && subscription.status === 'active');
+  // DTO uses `plan` (camelCase nested), legacy path falls back to `plans`
+  const resolvedPlan = subscription?.plan ?? subscription?.plans ?? null;
+  const planName = resolvedPlan?.name || 'Membership Plan';
 
   const daysLeft = useMemo(() => {
-    if (subscription?.current_period_end) {
-      const diff = new Date(subscription.current_period_end).getTime() - Date.now();
-      return Math.max(1, Math.ceil(diff / 86400000));
+    // DTO field is endDate; also accept end_date and current_period_end
+    const end = subscription?.endDate ?? subscription?.end_date ?? subscription?.current_period_end;
+    if (end) {
+      const diff = new Date(end).getTime() - Date.now();
+      return Math.max(0, Math.ceil(diff / 86400000));
     }
-    return 21; // Prototype default
+    return 30;
   }, [subscription]);
 
   const progress = 1 - daysLeft / 30;
@@ -404,12 +408,14 @@ export function HomeScreen({ navigation }: any) {
                   <Text style={styles.planBadge}>{planName.toUpperCase()} PLAN</Text>
                 </View>
                 <Text style={styles.planPrice}>
-                  ₹{subscription?.plans?.price ? subscription.plans.price.toLocaleString() : '—'}
+                  ₹{resolvedPlan?.price ? Number(resolvedPlan.price).toLocaleString() : '—'}
                   <Text style={styles.planPricePeriod}>/mo</Text>
                 </Text>
-                <Text style={styles.planDates}>Active Access</Text>
+                <Text style={styles.planDates}>
+                  {daysLeft > 0 ? `${daysLeft} days remaining` : 'Active Access'}
+                </Text>
               </View>
-              <ProgressRing size={72} stroke={7} progress={progress} label={`${daysLeft}`} sublabel="Days left" />
+              <ProgressRing size={72} stroke={7} progress={Math.max(0, Math.min(1, 1 - daysLeft / (resolvedPlan?.durationDays ?? resolvedPlan?.duration_days ?? 30)))} label={`${daysLeft}`} sublabel="Days left" />
             </View>
 
             {/* Streak Card */}
