@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Modal } from '@/components/ui';
 import { usePlans } from '@/hooks/usePlans';
@@ -6,19 +7,24 @@ import { useCreateManualSubscription, useMySubscriptions } from '@/hooks/useSubs
 import { useJoinRequestStatus, useGymDirectory } from '@/hooks/useGyms';
 import { useAuthStore } from '@/store';
 import { formatDate } from '@/utils';
-import { Zap, CheckCircle2, CreditCard, ShieldCheck, Building2, Sparkles } from 'lucide-react';
+import { Zap, CheckCircle2, CreditCard, ShieldCheck, Building2, Sparkles, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function CustomerPlansPage() {
   const { user } = useAuthStore();
+  const [searchParams] = useSearchParams();
+  const urlGymId = searchParams.get('gymId');
+
   const { data: joinStatus } = useJoinRequestStatus();
   const { data: gyms = [] } = useGymDirectory();
   const { data: mySubscriptions = [] } = useMySubscriptions();
   const createSubscriptionMutation = useCreateManualSubscription();
 
+  const selectedGym = urlGymId ? gyms.find((g) => g.id === urlGymId) : null;
   const isApproved = joinStatus?.status === 'approved';
   const approvedGym = isApproved ? gyms.find((g) => g.id === joinStatus?.gymId) : null;
-  const targetGymId = approvedGym?.id || joinStatus?.gymId || user?.gymId;
+  const activeGym = selectedGym || approvedGym;
+  const targetGymId = urlGymId || approvedGym?.id || joinStatus?.gymId || user?.gymId;
 
   const { data: plansData, isLoading: plansLoading } = usePlans(targetGymId);
 
@@ -34,18 +40,18 @@ export default function CustomerPlansPage() {
   };
 
   return (
-    <DashboardLayout breadcrumbs={[{ label: 'Customer Portal', href: '/dashboard' }, { label: 'Membership Plans' }]}>
+    <DashboardLayout breadcrumbs={[{ label: 'Customer Portal', href: '/browse-gyms' }, { label: 'Membership Plans' }]}>
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="bg-aura-card border border-aura-border p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-aura-text">Membership Plans & Packages</h1>
             <p className="text-sm text-aura-muted mt-1">
-              Select and activate a membership plan for <span className="text-aura-text font-semibold">{approvedGym?.name || joinStatus?.gymName || 'your gym'}</span>
+              Select and activate a membership plan for <span className="text-aura-text font-semibold">{activeGym?.name || joinStatus?.gymName || 'your gym'}</span>
             </p>
           </div>
           <Badge variant="success" className="gap-1 text-xs">
-            <Building2 className="h-3.5 w-3.5" /> {approvedGym?.name || joinStatus?.gymName || 'Active Gym Member'}
+            <Building2 className="h-3.5 w-3.5" /> {activeGym?.name || joinStatus?.gymName || 'Active Gym Member'}
           </Badge>
         </div>
 

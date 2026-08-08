@@ -187,18 +187,20 @@ export function GymDirectoryScreen({ navigation }: any) {
 
               <TouchableOpacity
                 activeOpacity={0.85}
-                style={styles.joinBtn}
+                style={styles.viewPlansBtn}
+                onPress={() => navigation.navigate('PlansTab', { gymId: item.id })}
+              >
+                <Building2 size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.viewPlansBtnText}>View Plans & Join</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.joinBtnSecondary}
                 disabled={submitting}
                 onPress={() => handleJoin(item)}
               >
-                {submitting ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <>
-                    <Send size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
-                    <Text style={styles.joinBtnText}>Request to Join</Text>
-                  </>
-                )}
+                <Text style={styles.joinBtnSecondaryText}>Or request manual approval</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -270,6 +272,28 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     alignItems: 'center',
   },
   joinBtnText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
+  viewPlansBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 9999,
+    height: 44,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 4,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  viewPlansBtnText: { fontSize: 13, fontWeight: '800', color: '#FFFFFF' },
+  joinBtnSecondary: {
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  joinBtnSecondaryText: { fontSize: 11, fontWeight: '600', color: colors.mutedForeground },
   emptyText: { color: colors.mutedForeground, fontSize: 14 },
   statusWrapper: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
   statusIconBadge: {

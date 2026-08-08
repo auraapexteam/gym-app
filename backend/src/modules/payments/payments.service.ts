@@ -100,6 +100,10 @@ export class PaymentService {
       durationDays: ctx.durationDays,
     });
 
+    if (ctx.gymId && ctx.memberId) {
+      await this.handlePostPaymentAutoJoin(ctx.gymId, ctx.memberId);
+    }
+
     return {
       subscriptionId: result.subscription_id,
       paymentId: result.payment_id,
@@ -126,6 +130,10 @@ export class PaymentService {
       method,
       durationDays: ctx.durationDays,
     });
+
+    if (ctx.gymId && ctx.memberId) {
+      await this.handlePostPaymentAutoJoin(ctx.gymId, ctx.memberId);
+    }
   }
 
   /** Mark a payment failed from a verified webhook. */

@@ -336,14 +336,21 @@ export default function BrowseGymsPage() {
                         </div>
                       </CardContent>
 
-                      <div className="p-6 pt-0">
+                      <div className="p-6 pt-0 space-y-2">
                         <Button
                           variant="primary"
+                          onClick={() => navigate(`/customer/plans?gymId=${gym.id}`)}
+                          className="w-full gap-2 text-xs py-2.5 font-bold bg-gradient-to-r from-aura-primary to-indigo-600 hover:from-aura-primary/90 hover:to-indigo-500 shadow-aura-sm"
+                        >
+                          <CreditCard className="h-4 w-4" /> View Plans & Join Gym
+                        </Button>
+                        <Button
+                          variant="ghost"
                           disabled={applyMutation.isPending}
                           onClick={() => applyMutation.mutate(gym.id)}
-                          className="w-full gap-2 text-xs py-2.5 font-semibold"
+                          className="w-full gap-1.5 text-[11px] py-1.5 text-aura-muted hover:text-aura-text"
                         >
-                          <ShieldCheck className="h-4 w-4" /> Apply to Join Gym
+                          <ShieldCheck className="h-3.5 w-3.5" /> Request Manual Approval Instead
                         </Button>
                       </div>
                     </Card>
