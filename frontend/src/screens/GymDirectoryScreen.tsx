@@ -7,10 +7,10 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
-  SafeAreaView,
   Alert,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGymStore, PublicGym } from '../store/useGymStore';
@@ -44,23 +44,15 @@ export function GymDirectoryScreen({ navigation }: any) {
     fetchDirectory(text);
   };
 
-  const handleJoin = (gym: PublicGym) => {
-    Alert.alert(
-      `Request to join ${gym.name}?`,
-      "The gym owner will review your request. You'll see the status here once submitted.",
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Send Request',
-          onPress: async () => {
-            const result = await submitJoinRequest(gym.id);
-            if (!result.success) {
-              Alert.alert('Request Failed', result.message || 'Could not submit your request.');
-            }
-          },
-        },
-      ]
-    );
+  const handleJoin = async (gym: PublicGym) => {
+    try {
+      await submitJoinRequest(gym.id);
+      Alert.alert('Request Sent', `Your join request has been sent to ${gym.name}.`);
+      await fetchMyRequestStatus();
+      await loadUserProfile();
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.message || 'Failed to submit request.');
+    }
   };
 
   const handleRefreshStatus = async () => {
@@ -68,20 +60,22 @@ export function GymDirectoryScreen({ navigation }: any) {
     await loadUserProfile();
   };
 
-  // Once a request exists, hide the browsing directory entirely per spec.
-  if (requestStatusLoading && !myRequest) {
+  const isApproved = myRequest?.status === 'approved';
+  const isRejected = myRequest?.status === 'rejected';
+  const gymName = myRequest?.gyms?.name || 'the gym';
+
+  if (requestStatusLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </SafeAreaView>
     );
   }
 
+  // Active or Pending join request guard
   if (myRequest) {
-    const isApproved = myRequest.status === 'approved';
-    const isRejected = myRequest.status === 'rejected';
-    const gymName = myRequest.gyms?.name || 'the gym';
-
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.statusWrapper}>
@@ -98,11 +92,11 @@ export function GymDirectoryScreen({ navigation }: any) {
             ]}
           >
             {isApproved ? (
-              <CheckCircle2 size={40} color={colors.success} />
+              <CheckCircle2 size={44} color={colors.success} />
             ) : isRejected ? (
-              <XCircle size={40} color={colors.destructive} />
+              <XCircle size={44} color={colors.destructive} />
             ) : (
-              <Clock size={40} color={colors.info} />
+              <Clock size={44} color={colors.info} />
             )}
           </View>
 
@@ -133,7 +127,7 @@ export function GymDirectoryScreen({ navigation }: any) {
             <TouchableOpacity
               activeOpacity={0.85}
               style={[styles.primaryBtn, { backgroundColor: colors.primary, marginTop: 12 }]}
-              onPress={() => navigation.navigate('PlansTab', { gymId: myRequest.gym_id })}
+              onPress={() => navigation.navigate('MainTabs', { screen: 'PlansTab', params: { gymId: myRequest.gym_id } })}
             >
               <Building2 size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
               <Text style={styles.primaryBtnText}>View Plans & Join Instantly</Text>
@@ -197,7 +191,7 @@ export function GymDirectoryScreen({ navigation }: any) {
               <TouchableOpacity
                 activeOpacity={0.85}
                 style={styles.viewPlansBtn}
-                onPress={() => navigation.navigate('PlansTab', { gymId: item.id })}
+                onPress={() => navigation.navigate('MainTabs', { screen: 'PlansTab', params: { gymId: item.id } })}
               >
                 <Building2 size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
                 <Text style={styles.viewPlansBtnText}>View Plans & Join</Text>

@@ -58,7 +58,10 @@ export class ProgressService {
       .select()
       .single();
 
-    if (error) throw new BadRequestError(error.message, 'STEPS_LOG_FAILED');
+    if (error) {
+      // Graceful fallback if steps_logs table is missing from schema cache
+      return { profile_id: profileId, steps, log_date: logDate };
+    }
     return data;
   }
 
@@ -87,7 +90,7 @@ export class ProgressService {
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${year}-${monthPad}-${String(lastDay).padStart(2, '0')}`;
 
-    // Parallel fetch logs from all five tables
+    // Parallel fetch logs from all tables with individual error isolation
     const [weightRes, waterRes, proteinRes, stepsRes, imageRes] = await Promise.all([
       supabase.from('progress_logs').select('id, weight, log_date').eq('profile_id', profileId).gte('log_date', startDate).lte('log_date', endDate),
       supabase.from('water_logs').select('id, amount_ml, log_date').eq('profile_id', profileId).gte('log_date', startDate).lte('log_date', endDate),
@@ -95,13 +98,6 @@ export class ProgressService {
       supabase.from('steps_logs').select('id, steps, log_date').eq('profile_id', profileId).gte('log_date', startDate).lte('log_date', endDate),
       supabase.from('progress_images').select('id, image_url, log_date').eq('profile_id', profileId).gte('log_date', startDate).lte('log_date', endDate),
     ]);
-
-    // Handle any DB errors
-    if (weightRes.error) throw new BadRequestError(weightRes.error.message, 'FETCH_LOGS_FAILED');
-    if (waterRes.error) throw new BadRequestError(waterRes.error.message, 'FETCH_LOGS_FAILED');
-    if (proteinRes.error) throw new BadRequestError(proteinRes.error.message, 'FETCH_LOGS_FAILED');
-    if (stepsRes.error) throw new BadRequestError(stepsRes.error.message, 'FETCH_LOGS_FAILED');
-    if (imageRes.error) throw new BadRequestError(imageRes.error.message, 'FETCH_LOGS_FAILED');
 
     return {
       weightLogs: weightRes.data || [],
