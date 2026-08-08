@@ -64,6 +64,15 @@ const TabButton = React.memo(({ isFocused, label, IconComponent, activeColor, is
     };
   });
 
+  const animatedButtonContainerStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: buttonScale.value }],
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: 56,
+    };
+  });
+
   return (
     <Pressable
       onPressIn={handlePressIn}
@@ -71,7 +80,7 @@ const TabButton = React.memo(({ isFocused, label, IconComponent, activeColor, is
       onPress={onPress}
       style={styles.tabButton}
     >
-      <Animated.View style={{ transform: [{ scale: buttonScale.value }], alignItems: 'center', justifyContent: 'center', height: 56 }}>
+      <Animated.View style={animatedButtonContainerStyle}>
         <AnimatedIcon
           size={20}
           style={animatedIconStyle}
@@ -123,9 +132,6 @@ function CustomTabBar({ state, navigation }: any) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Reanimated shared values are stable refs by design
   }, []);
 
-  const scale = interpolate(pulseVal.value, [0, 1], [0.8, 1.25]);
-  const opacity = interpolate(pulseVal.value, [0, 1], [0.8, 0]);
-
   const animatedPillStyle = useAnimatedStyle(() => {
     if (containerWidth.value === 0) return { opacity: 0 };
     
@@ -149,8 +155,8 @@ function CustomTabBar({ state, navigation }: any) {
 
   const fabPulseStyle = useAnimatedStyle(() => {
     return {
-      transform: [{ scale }],
-      opacity,
+      transform: [{ scale: interpolate(pulseVal.value, [0, 1], [0.8, 1.25]) }],
+      opacity: interpolate(pulseVal.value, [0, 1], [0.8, 0]),
     };
   });
 
