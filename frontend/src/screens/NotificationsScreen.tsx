@@ -6,9 +6,9 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  SafeAreaView,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { apiClient } from '../api/client';
 import { useTheme } from '../context/ThemeContext';
 import { Bell, Check, Eye } from 'lucide-react-native';

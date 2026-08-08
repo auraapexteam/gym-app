@@ -7,12 +7,12 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  SafeAreaView,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGymStore } from '../store/useGymStore';
