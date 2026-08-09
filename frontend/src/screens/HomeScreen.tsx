@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -11,13 +11,16 @@ import {
   Platform,
   Dimensions,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import Svg, { Circle, Polyline, Path, Rect, ClipPath, Defs } from 'react-native-svg';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGymStore } from '../store/useGymStore';
 import { useTheme } from '../context/ThemeContext';
+import { toLocalDateString, todayLocalDateString } from '../utils/date';
 import {
   Bell,
   Flame,
@@ -132,7 +135,7 @@ export function HomeScreen({ navigation }: any) {
   const { subscription, loadSubscription, userProfile } = useAuthStore();
   const { myRequest, fetchMyRequestStatus } = useGymStore();
 
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = todayLocalDateString();
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     if (hour < 12) return 'GOOD MORNING';
@@ -140,25 +143,29 @@ export function HomeScreen({ navigation }: any) {
     return 'GOOD EVENING';
   }, []);
 
-  // Today's metrics — loaded from the real Logbook (/progress/month), same
-  // data ProgressScreen writes to. Defaults only apply until the first log.
-  const [todayWater, setTodayWater] = useState(1500);
-  const [todayProtein, setTodayProtein] = useState(95);
-  const [todayWeight, setTodayWeight] = useState(72.0);
-  const [todaySteps, setTodaySteps] = useState(0);
+  // Today's metrics — loaded from the real Logbook (/progress/month), the same
+  // data ProgressScreen writes to. Null means "not logged yet"; the UI never
+  // shows made-up values.
+  const [todayWater, setTodayWater] = useState<number | null>(null);
+  const [todayProtein, setTodayProtein] = useState<number | null>(null);
+  const [todayWeight, setTodayWeight] = useState<number | null>(null);
+  const [todaySteps, setTodaySteps] = useState<number | null>(null);
+  const [weightHistory, setWeightHistory] = useState<number[]>([]);
 
   // Real attendance history, used to derive this week's check-in dots and streak.
   const [attendanceDates, setAttendanceDates] = useState<string[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [savingLog, setSavingLog] = useState(false);
 
   // Quick log temp states
-  const [tempWeight, setTempWeight] = useState('72.0');
-  const [tempWater, setTempWater] = useState(1500);
-  const [tempProtein, setTempProtein] = useState(95);
+  const [tempWeight, setTempWeight] = useState('');
+  const [tempWater, setTempWater] = useState(0);
+  const [tempProtein, setTempProtein] = useState(0);
   const [tempSteps, setTempSteps] = useState(0);
 
-  const fetchTodayMetrics = async () => {
+  const fetchTodayMetrics = useCallback(async () => {
     try {
       const now = new Date();
       const res = await apiClient.get('/progress/month', {
@@ -166,41 +173,78 @@ export function HomeScreen({ navigation }: any) {
       });
       if (res.data?.success) {
         const summary = res.data.data;
+        // Postgres NUMERIC columns arrive as strings — always coerce.
         const w = summary.weightLogs?.find((l: any) => l.log_date === todayIso)?.weight;
         const wa = summary.waterLogs?.find((l: any) => l.log_date === todayIso)?.amount_ml;
         const p = summary.proteinLogs?.find((l: any) => l.log_date === todayIso)?.amount_g;
         const s = summary.stepsLogs?.find((l: any) => l.log_date === todayIso)?.steps;
-        if (w) setTodayWeight(w);
-        if (wa) setTodayWater(wa);
-        if (p) setTodayProtein(p);
-        if (s) setTodaySteps(s);
+        setTodayWeight(w != null ? Number(w) : null);
+        setTodayWater(wa != null ? Number(wa) : null);
+        setTodayProtein(p != null ? Number(p) : null);
+        setTodaySteps(s != null ? Number(s) : null);
+
+        const series = (summary.weightLogs || [])
+          .slice()
+          .sort((a: any, b: any) => String(a.log_date).localeCompare(String(b.log_date)))
+          .map((l: any) => Number(l.weight))
+          .filter((n: number) => Number.isFinite(n));
+        setWeightHistory(series.slice(-7));
       }
     } catch (err) {
       console.warn('Failed to load today\'s logbook metrics:', err);
     }
-  };
+  }, [todayIso]);
 
-  useEffect(() => {
+  const fetchAttendance = useCallback(async () => {
+    try {
+      const res = await apiClient.get('/attendance/me');
+      if (res.data?.success) {
+        const items = res.data.data.items || res.data.data || [];
+        setAttendanceDates(
+          items.map((i: any) => String(i.attendance_date || i.created_at).slice(0, 10))
+        );
+      }
+    } catch (err) {
+      console.warn('Failed to load attendance for dashboard:', err);
+    }
+  }, []);
+
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const res = await apiClient.get('/notifications/unread-count');
+      if (res.data?.success) {
+        setUnreadCount(Number(res.data.data?.count) || 0);
+      }
+    } catch {
+      // Non-critical badge — leave the previous value.
+    }
+  }, []);
+
+  const refreshDashboard = useCallback(() => {
     loadSubscription();
     fetchMyRequestStatus();
     fetchTodayMetrics();
-
-    const fetchAttendance = async () => {
-      try {
-        const res = await apiClient.get('/attendance/me');
-        if (res.data?.success) {
-          const items = res.data.data.items || res.data.data || [];
-          setAttendanceDates(
-            items.map((i: any) => String(i.attendance_date || i.created_at).slice(0, 10))
-          );
-        }
-      } catch (err) {
-        console.warn('Failed to load attendance for dashboard:', err);
-      }
-    };
     fetchAttendance();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only fetch; store actions are stable
-  }, [loadSubscription, fetchMyRequestStatus]);
+    fetchUnreadCount();
+  }, [loadSubscription, fetchMyRequestStatus, fetchTodayMetrics, fetchAttendance, fetchUnreadCount]);
+
+  // Refetch whenever the Home tab regains focus so a fresh check-in, payment
+  // or logbook entry made elsewhere is reflected immediately.
+  useFocusEffect(
+    useCallback(() => {
+      refreshDashboard();
+    }, [refreshDashboard])
+  );
+
+  const onPullRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      refreshDashboard();
+    } finally {
+      // The individual fetches manage their own state; just end the spinner.
+      setTimeout(() => setRefreshing(false), 600);
+    }
+  }, [refreshDashboard]);
 
   const weekCheckIns = attendanceDates;
 
@@ -208,13 +252,12 @@ export function HomeScreen({ navigation }: any) {
   // day not yet checked into doesn't immediately zero the streak).
   const streak = useMemo(() => {
     const dateSet = new Set(attendanceDates);
-    const toIso = (d: Date) => d.toISOString().slice(0, 10);
     let count = 0;
     let cursor = new Date();
-    if (!dateSet.has(toIso(cursor))) {
+    if (!dateSet.has(toLocalDateString(cursor))) {
       cursor.setDate(cursor.getDate() - 1);
     }
-    while (dateSet.has(toIso(cursor))) {
+    while (dateSet.has(toLocalDateString(cursor))) {
       count += 1;
       cursor.setDate(cursor.getDate() - 1);
     }
@@ -247,15 +290,16 @@ export function HomeScreen({ navigation }: any) {
 
   const daysLeft = useMemo(() => {
     // DTO field is endDate; also accept end_date and current_period_end
-    const end = subscription?.endDate ?? subscription?.end_date ?? subscription?.current_period_end;
+    const end =
+      subscription?.endDate ??
+      subscription?.end_date ??
+      (subscription?.current_period_end as string | undefined);
     if (end) {
       const diff = new Date(end).getTime() - Date.now();
       return Math.max(0, Math.ceil(diff / 86400000));
     }
-    return 30;
+    return null; // unknown end date — show "Active Access" instead of a made-up count
   }, [subscription]);
-
-  const progress = 1 - daysLeft / 30;
 
   // Calendar dates for the week
   const weekDates = useMemo(() => {
@@ -264,7 +308,7 @@ export function HomeScreen({ navigation }: any) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       arr.push({
-        date: d.toISOString().slice(0, 10),
+        date: toLocalDateString(d),
         label: ['S', 'M', 'T', 'W', 'T', 'F', 'S'][d.getDay()],
         day: d.getDate(),
       });
@@ -278,30 +322,40 @@ export function HomeScreen({ navigation }: any) {
   );
 
   const openLogSheet = () => {
-    setTempWeight(todayWeight.toFixed(1));
-    setTempWater(todayWater);
-    setTempProtein(todayProtein);
-    setTempSteps(todaySteps);
+    setTempWeight(todayWeight != null ? todayWeight.toFixed(1) : '');
+    setTempWater(todayWater ?? 0);
+    setTempProtein(todayProtein ?? 0);
+    setTempSteps(todaySteps ?? 0);
     setLogModalOpen(true);
   };
 
   const handleSaveLog = async () => {
-    const wtNum = parseFloat(tempWeight) || todayWeight;
+    const trimmedWeight = tempWeight.trim();
+    const wtNum = trimmedWeight ? parseFloat(trimmedWeight) : null;
+    if (trimmedWeight && (!Number.isFinite(wtNum) || wtNum! < 1 || wtNum! > 500)) {
+      Alert.alert('Invalid Weight', 'Weight must be a number between 1 and 500 kg.');
+      return;
+    }
+
     try {
       setSavingLog(true);
-      await Promise.all([
-        apiClient.post('/progress/weight', { weight: wtNum, logDate: todayIso }),
+      const requests = [
         apiClient.post('/progress/water', { amountMl: tempWater, logDate: todayIso }),
         apiClient.post('/progress/protein', { amountG: tempProtein, logDate: todayIso }),
         apiClient.post('/progress/steps', { steps: tempSteps, logDate: todayIso }),
-      ]);
-      setTodayWeight(wtNum);
-      setTodayWater(tempWater);
-      setTodayProtein(tempProtein);
-      setTodaySteps(tempSteps);
+      ];
+      // Weight is optional — only send it when the user actually entered one.
+      if (wtNum != null) {
+        requests.push(apiClient.post('/progress/weight', { weight: wtNum, logDate: todayIso }));
+      }
+      await Promise.all(requests);
       setLogModalOpen(false);
+      // Re-sync from the server so the cards reflect exactly what was stored.
+      fetchTodayMetrics();
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.message || 'Failed to save your log.');
+      // Partial saves are possible — refresh so the UI matches the server.
+      fetchTodayMetrics();
     } finally {
       setSavingLog(false);
     }
@@ -334,15 +388,23 @@ export function HomeScreen({ navigation }: any) {
               onPress={() => navigation.navigate('Notifications')}
               activeOpacity={0.7}
               style={styles.bellButton}
+              accessibilityRole="button"
+              accessibilityLabel={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
             >
               <Bell size={16} color={colors.foreground} />
-              <View style={styles.bellDot} />
+              {unreadCount > 0 && <View style={styles.bellDot} />}
             </TouchableOpacity>
           </View>
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onPullRefresh} tintColor={colors.primary} />
+        }
+      >
         {gymStatus !== 'linked' ? (
           /* Not yet linked to a gym — real state, no fabricated plan data. */
           <TouchableOpacity
@@ -412,10 +474,20 @@ export function HomeScreen({ navigation }: any) {
                   <Text style={styles.planPricePeriod}>/mo</Text>
                 </Text>
                 <Text style={styles.planDates}>
-                  {daysLeft > 0 ? `${daysLeft} days remaining` : 'Active Access'}
+                  {daysLeft != null && daysLeft > 0 ? `${daysLeft} days remaining` : 'Active Access'}
                 </Text>
               </View>
-              <ProgressRing size={72} stroke={7} progress={Math.max(0, Math.min(1, 1 - daysLeft / (resolvedPlan?.durationDays ?? resolvedPlan?.duration_days ?? 30)))} label={`${daysLeft}`} sublabel="Days left" />
+              <ProgressRing
+                size={72}
+                stroke={7}
+                progress={
+                  daysLeft != null
+                    ? Math.max(0, Math.min(1, 1 - daysLeft / (resolvedPlan?.durationDays ?? resolvedPlan?.duration_days ?? 30)))
+                    : 0
+                }
+                label={daysLeft != null ? `${daysLeft}` : '—'}
+                sublabel="Days left"
+              />
             </View>
 
             {/* Streak Card */}
@@ -438,11 +510,15 @@ export function HomeScreen({ navigation }: any) {
               <Text style={styles.metricTitle}>Weight</Text>
             </View>
             <Text style={styles.metricValue}>
-              {todayWeight.toFixed(1)}
+              {todayWeight != null ? todayWeight.toFixed(1) : '—'}
               <Text style={styles.metricUnit}>kg</Text>
             </Text>
             <View style={styles.sparklineContainer}>
-              <Sparkline data={[74, 73.6, 73.2, 73, 72.5, 72.2, todayWeight]} color="#10b981" />
+              {weightHistory.length >= 2 ? (
+                <Sparkline data={weightHistory} color="#10b981" />
+              ) : (
+                <Text style={styles.metricEmptyHint}>No trend yet</Text>
+              )}
             </View>
           </View>
 
@@ -455,11 +531,11 @@ export function HomeScreen({ navigation }: any) {
               <Text style={styles.metricTitle}>Water</Text>
             </View>
             <Text style={styles.metricValue}>
-              {(todayWater / 1000).toFixed(1)}
+              {todayWater != null ? (todayWater / 1000).toFixed(1) : '—'}
               <Text style={styles.metricUnit}>L</Text>
             </Text>
             <View style={styles.waterContainer}>
-              <WaterGlass value={todayWater / 3000} />
+              <WaterGlass value={(todayWater ?? 0) / 3000} />
             </View>
           </View>
 
@@ -472,11 +548,11 @@ export function HomeScreen({ navigation }: any) {
               <Text style={styles.metricTitle}>Protein</Text>
             </View>
             <Text style={styles.metricValue}>
-              {todayProtein}
+              {todayProtein != null ? todayProtein : '—'}
               <Text style={styles.metricUnit}>g</Text>
             </Text>
             <View style={styles.proteinRingContainer}>
-              <ProgressRing size={44} stroke={4} progress={todayProtein / 150} color="#f87171" />
+              <ProgressRing size={44} stroke={4} progress={Math.min(1, (todayProtein ?? 0) / 150)} color="#f87171" />
             </View>
           </View>
 
@@ -489,10 +565,10 @@ export function HomeScreen({ navigation }: any) {
               <Text style={styles.metricTitle}>Steps</Text>
             </View>
             <Text style={styles.metricValue} numberOfLines={1} adjustsFontSizeToFit>
-              {todaySteps.toLocaleString()}
+              {todaySteps != null ? todaySteps.toLocaleString() : '—'}
             </Text>
             <View style={styles.proteinRingContainer}>
-              <ProgressRing size={44} stroke={4} progress={Math.min(1, todaySteps / 10000)} color="#fbbf24" />
+              <ProgressRing size={44} stroke={4} progress={Math.min(1, (todaySteps ?? 0) / 10000)} color="#fbbf24" />
             </View>
           </View>
         </View>
@@ -506,7 +582,7 @@ export function HomeScreen({ navigation }: any) {
           <View style={styles.weekScroll}>
             {weekDates.map((d) => {
               const checked = weekCheckIns.includes(d.date);
-              const isToday = d.date === new Date().toISOString().slice(0, 10);
+              const isToday = d.date === todayIso;
               return (
                 <View
                   key={d.date}
@@ -567,18 +643,16 @@ export function HomeScreen({ navigation }: any) {
                     value={tempWeight}
                     onChangeText={setTempWeight}
                     keyboardType="decimal-pad"
+                    placeholder="—"
+                    placeholderTextColor={colors.mutedForeground}
                     style={styles.weightTextInput}
                   />
                 </View>
-                {/* Visual Weight graph simulator */}
-                <View style={{ height: 26, marginVertical: 8, alignItems: 'center' }}>
-                  <Sparkline
-                    data={[74, 73.6, 73.2, 73, 72.5, 72.2, parseFloat(tempWeight) || todayWeight]}
-                    color="#10b981"
-                    width={260}
-                    height={26}
-                  />
-                </View>
+                {weightHistory.length >= 2 && (
+                  <View style={{ height: 26, marginVertical: 8, alignItems: 'center' }}>
+                    <Sparkline data={weightHistory} color="#10b981" width={260} height={26} />
+                  </View>
+                )}
               </View>
 
               {/* Water Adjustment Box */}
@@ -620,7 +694,7 @@ export function HomeScreen({ navigation }: any) {
                   >
                     <Minus size={16} color={colors.foreground} />
                   </TouchableOpacity>
-                  <ProgressRing size={32} stroke={3.5} progress={tempProtein / 150} color="#f87171" />
+                  <ProgressRing size={32} stroke={3.5} progress={Math.min(1, tempProtein / 150)} color="#f87171" />
                   <TouchableOpacity
                     onPress={() => setTempProtein(tempProtein + 5)}
                     activeOpacity={0.7}
@@ -913,6 +987,12 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   sparklineContainer: {
     marginTop: 10,
     alignItems: 'center',
+  },
+  metricEmptyHint: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    paddingVertical: 6,
   },
   waterContainer: {
     marginTop: 6,
