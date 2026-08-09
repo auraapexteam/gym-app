@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -13,11 +13,13 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import Svg, { Circle, Polyline, Path, Rect, ClipPath, Defs } from 'react-native-svg';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { apiClient } from '../api/client';
 import { useTheme } from '../context/ThemeContext';
 import { uploadPersonalImage } from '../utils/upload';
+import { todayLocalDateString } from '../utils/date';
 import {
   ChevronLeft,
   ChevronRight,
@@ -112,7 +114,8 @@ function Sparkline({ data, color = '#10b981', width = 280, height = 36 }: any) {
 /* ============ Interfaces ============ */
 
 interface LogSummary {
-  weightLogs: { weight: number; log_date: string }[];
+  // Postgres NUMERIC columns are serialized as strings by the API.
+  weightLogs: { weight: number | string; log_date: string }[];
   waterLogs: { amount_ml: number; log_date: string }[];
   proteinLogs: { amount_g: number; log_date: string }[];
   stepsLogs: { steps: number; log_date: string }[];
@@ -128,10 +131,10 @@ export function ProgressScreen() {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1); // 1-indexed
 
   // Selected state
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
-  const [weight, setWeight] = useState('72.0');
-  const [water, setWater] = useState(1500);
-  const [protein, setProtein] = useState(95);
+  const [selectedDate, setSelectedDate] = useState(todayLocalDateString());
+  const [weight, setWeight] = useState('');
+  const [water, setWater] = useState(0);
+  const [protein, setProtein] = useState(0);
   const [steps, setSteps] = useState(0);
 
   const [summary, setSummary] = useState<LogSummary>({
@@ -147,17 +150,28 @@ export function ProgressScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- re-fetch only when the viewed month changes
   }, [currentYear, currentMonth]);
 
+  // Refresh when the tab regains focus so quick-logs made on the Home screen
+  // show up without switching months.
+  useFocusEffect(
+    useCallback(() => {
+      fetchMonthSummary();
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- stable fetch
+    }, [currentYear, currentMonth])
+  );
+
   useEffect(() => {
-    // Populate fields when selected date changes
+    // Populate fields from what was actually logged on the selected date.
+    // Unlogged fields stay empty/zero — never pre-filled with invented values.
     const dWeight = summary.weightLogs.find((l) => l.log_date === selectedDate)?.weight;
     const dWater = summary.waterLogs.find((l) => l.log_date === selectedDate)?.amount_ml;
     const dProtein = summary.proteinLogs.find((l) => l.log_date === selectedDate)?.amount_g;
     const dSteps = summary.stepsLogs.find((l) => l.log_date === selectedDate)?.steps;
 
-    setWeight(dWeight ? String(dWeight.toFixed(1)) : '72.0');
-    setWater(dWater ? dWater : 1500);
-    setProtein(dProtein ? dProtein : 95);
-    setSteps(dSteps ? dSteps : 0);
+    const weightNum = dWeight != null ? Number(dWeight) : null;
+    setWeight(weightNum != null && Number.isFinite(weightNum) ? weightNum.toFixed(1) : '');
+    setWater(dWater ?? 0);
+    setProtein(dProtein ?? 0);
+    setSteps(dSteps ?? 0);
   }, [selectedDate, summary]);
 
   const fetchMonthSummary = async () => {
@@ -177,7 +191,7 @@ export function ProgressScreen() {
   };
 
   const handleUploadPhoto = async () => {
-    if (selectedDate > new Date().toISOString().slice(0, 10)) {
+    if (selectedDate > todayLocalDateString()) {
       Alert.alert('Invalid Date', 'You cannot log a snapshot for future dates.');
       return;
     }
@@ -204,48 +218,38 @@ export function ProgressScreen() {
   };
 
   const handleSaveLogs = async () => {
-    if (selectedDate > new Date().toISOString().slice(0, 10)) {
+    if (selectedDate > todayLocalDateString()) {
       Alert.alert('Invalid Date', 'You cannot log metrics for future dates.');
+      return;
+    }
+
+    const trimmedWeight = weight.trim();
+    const weightNum = trimmedWeight ? parseFloat(trimmedWeight) : null;
+    if (trimmedWeight && (!Number.isFinite(weightNum) || weightNum! < 1 || weightNum! > 500)) {
+      Alert.alert('Invalid Weight', 'Weight must be a number between 1 and 500 kg.');
       return;
     }
 
     try {
       setLoading(true);
-      const promises = [];
+      const promises = [
+        apiClient.post('/progress/water', { amountMl: water, logDate: selectedDate }),
+        apiClient.post('/progress/protein', { amountG: protein, logDate: selectedDate }),
+        apiClient.post('/progress/steps', { steps: steps, logDate: selectedDate }),
+      ];
 
-      promises.push(
-        apiClient.post('/progress/weight', {
-          weight: Number(weight),
-          logDate: selectedDate,
-        })
-      );
-
-      promises.push(
-        apiClient.post('/progress/water', {
-          amountMl: Number(water),
-          logDate: selectedDate,
-        })
-      );
-
-      promises.push(
-        apiClient.post('/progress/protein', {
-          amountG: Number(protein),
-          logDate: selectedDate,
-        })
-      );
-
-      promises.push(
-        apiClient.post('/progress/steps', {
-          steps: Number(steps),
-          logDate: selectedDate,
-        })
-      );
+      // Weight is optional — only send it when the user actually entered one.
+      if (weightNum != null) {
+        promises.push(apiClient.post('/progress/weight', { weight: weightNum, logDate: selectedDate }));
+      }
 
       await Promise.all(promises);
       Alert.alert('Logs Saved', 'Your progress logs have been updated.');
       fetchMonthSummary();
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.message || 'Failed to save logs.');
+      // Partial saves are possible — refresh so the UI matches the server.
+      fetchMonthSummary();
     } finally {
       setLoading(false);
     }
@@ -294,12 +298,14 @@ export function ProgressScreen() {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  // Dynamic sparkline weights array
+  // Dynamic sparkline weights array — real data only; Sparkline renders
+  // nothing until there are at least two logged weights.
   const weightSeries = useMemo(() => {
-    const list = summary.weightLogs.map(l => l.weight);
-    if (list.length === 0) return [72, 72, 72, 72];
-    if (list.length === 1) return [list[0], list[0]];
-    return list;
+    return summary.weightLogs
+      .slice()
+      .sort((a, b) => a.log_date.localeCompare(b.log_date))
+      .map((l) => Number(l.weight))
+      .filter((n) => Number.isFinite(n));
   }, [summary.weightLogs]);
 
   return (
@@ -353,7 +359,7 @@ export function ProgressScreen() {
                 const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 const isSelected = selectedDate === dateStr;
                 const hasLogged = daysLoggedSet.has(dateStr);
-                const isFuture = dateStr > new Date().toISOString().slice(0, 10);
+                const isFuture = dateStr > todayLocalDateString();
 
                 return (
                   <TouchableOpacity
@@ -393,6 +399,8 @@ export function ProgressScreen() {
                   value={weight}
                   onChangeText={setWeight}
                   keyboardType="decimal-pad"
+                  placeholder="—"
+                  placeholderTextColor={colors.mutedForeground}
                   style={styles.weightTextInput}
                 />
               </View>
@@ -441,7 +449,7 @@ export function ProgressScreen() {
                 >
                   <Minus size={16} color={colors.foreground} />
                 </TouchableOpacity>
-                <ProgressRing size={32} stroke={3.5} progress={protein / 150} color="#f87171" />
+                <ProgressRing size={32} stroke={3.5} progress={Math.min(1, protein / 150)} color="#f87171" />
                 <TouchableOpacity
                   onPress={() => setProtein(protein + 5)}
                   activeOpacity={0.7}
