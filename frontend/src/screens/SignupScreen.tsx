@@ -14,8 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../api/supabase';
 import { useTheme } from '../context/ThemeContext';
-import { Sparkles, Apple, Check, X } from 'lucide-react-native';
-import Svg, { Path } from 'react-native-svg';
+import { Sparkles, Check, X } from 'lucide-react-native';
 
 const SPECIAL_CHAR_REGEX = /[!@#$%^&*(),.?":{}|<>_\-+=~`[\]\\;'/]/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -70,12 +69,12 @@ export function SignupScreen({ navigation }: any) {
 
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
           data: {
-            full_name: fullName || undefined,
+            full_name: fullName.trim() || undefined,
           },
         },
       });
@@ -89,10 +88,14 @@ export function SignupScreen({ navigation }: any) {
         } else {
           Alert.alert('Sign Up Failed', error.message);
         }
-      } else {
+      } else if (!data.session) {
+        // Email confirmation required — the auth stack is still mounted, so
+        // returning to Login is valid. (With auto-confirm, a session comes
+        // back, the auth listener switches stacks, and no navigation is
+        // needed — navigating to 'Login' would target a removed route.)
         Alert.alert(
           'Account Created',
-          'Account created successfully. Please verify your email if required, or sign in.',
+          'Account created successfully. Please verify your email if required, then sign in.',
           [
             {
               text: 'OK',
@@ -245,30 +248,6 @@ export function SignupScreen({ navigation }: any) {
               )}
             </TouchableOpacity>
 
-            {/* Divider */}
-            <View style={styles.dividerWrapper}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or continue with</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Social Row */}
-            <View style={styles.socialRow}>
-              <TouchableOpacity activeOpacity={0.7} style={styles.socialButton}>
-                <Svg width={16} height={16} viewBox="0 0 24 24">
-                  <Path
-                    fill="#EA4335"
-                    d="M12 10v3.9h5.5c-.2 1.4-1.6 4.1-5.5 4.1-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.9 3.2 14.7 2.3 12 2.3 6.7 2.3 2.5 6.6 2.5 12s4.2 9.7 9.5 9.7c5.5 0 9.1-3.8 9.1-9.3 0-.6-.1-1.1-.2-1.6H12z"
-                  />
-                </Svg>
-                <Text style={styles.socialButtonText}>Google</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity activeOpacity={0.7} style={styles.socialButton}>
-                <Apple size={16} color={colors.foreground} />
-                <Text style={styles.socialButtonText}>Apple</Text>
-              </TouchableOpacity>
-            </View>
           </View>
 
           {/* Footer Account Link */}
@@ -433,43 +412,6 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
-  },
-  dividerWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 18,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border,
-  },
-  dividerText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.mutedForeground,
-    marginHorizontal: 12,
-  },
-  socialRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  socialButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 48,
-    borderRadius: 9999,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
-    gap: 8,
-  },
-  socialButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.foreground,
   },
   footer: {
     marginTop: 24,
