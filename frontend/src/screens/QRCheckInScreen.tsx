@@ -16,7 +16,8 @@ import { Camera } from 'react-native-camera-kit';
 import { apiClient } from '../api/client';
 import { useTheme } from '../context/ThemeContext';
 import { useAuthStore } from '../store/useAuthStore';
-import { QrCode, Check, Building2, CreditCard, Lock } from 'lucide-react-native';
+import { useGymStore } from '../store/useGymStore';
+import { QrCode, Check, Building2, CreditCard } from 'lucide-react-native';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -24,13 +25,20 @@ export function QRCheckInScreen({ navigation }: any) {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const { userProfile, subscription } = useAuthStore();
+  const { myRequest } = useGymStore();
 
   const isLinked = !!userProfile?.gym_id;
-  const isSubscribed = subscription && subscription.status === 'active';
+  const isSubscribed = !!subscription && subscription.status === 'active';
+  const gymName = myRequest?.gyms?.name || 'Your Gym';
 
   const [token, setToken] = useState('');
   const [phase, setPhase] = useState<'idle' | 'scanning' | 'success'>('idle');
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+
+  // Prevents the camera's repeated onReadCode events (or a double tap on the
+  // manual submit button) from firing duplicate check-in requests.
+  const submittingRef = useRef(false);
+  const navigateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Animation values
   const spinValue = useRef(new Animated.Value(0)).current;
@@ -95,40 +103,52 @@ export function QRCheckInScreen({ navigation }: any) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Animated.Value refs are stable by design
   }, [phase]);
 
+  // Clear any pending post-success navigation timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (navigateTimerRef.current) {
+        clearTimeout(navigateTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleStartCheckIn = async (scannedToken?: string) => {
-    const activeToken = scannedToken || token;
-    if (!activeToken.trim()) {
+    const activeToken = (scannedToken || token).trim();
+    if (!activeToken) {
       Alert.alert('Required Field', 'Please enter or scan a valid gym QR token.');
       return;
     }
+    if (submittingRef.current) return;
+    submittingRef.current = true;
 
-    // Stop active camera scanner by switching to scanning animation phase
+    // Switching phase unmounts the camera and shows the scanning animation
+    // while the real request is in flight.
     setPhase('scanning');
 
-    // Wait 2.2 seconds to simulate scanning animation
-    setTimeout(async () => {
-      try {
-        const response = await apiClient.post('/attendance/check-in', {
-          token: activeToken.trim(),
-        });
+    try {
+      const response = await apiClient.post('/attendance/check-in', { token: activeToken });
 
-        if (response.data && response.data.success) {
-          setPhase('success');
-          // Autohide success screen and navigate back
-          setTimeout(() => {
-            navigation.navigate('MainTabs', { screen: 'HomeTab' });
-          }, 1600);
-        }
-      } catch (error: any) {
+      if (response.data && response.data.success) {
+        setPhase('success');
+        // Auto-dismiss the success screen back to Home.
+        navigateTimerRef.current = setTimeout(() => {
+          navigation.navigate('MainTabs', { screen: 'HomeTab' });
+        }, 1600);
+      } else {
         setPhase('idle');
-        const errCode = error.response?.data?.error?.code;
-        if (errCode === 'ALREADY_CHECKED_IN') {
-          Alert.alert('Already Checked In', 'You have already checked in today.');
-        } else {
-          Alert.alert('Check-in Failed', error.response?.data?.message || 'Invalid or expired QR token.');
-        }
+        Alert.alert('Check-in Failed', response.data?.message || 'Invalid or expired QR token.');
       }
-    }, 2200);
+    } catch (error: any) {
+      setPhase('idle');
+      const errCode = error.response?.data?.error?.code;
+      if (errCode === 'ALREADY_CHECKED_IN') {
+        Alert.alert('Already Checked In', 'You have already checked in today.');
+      } else {
+        Alert.alert('Check-in Failed', error.response?.data?.message || 'Invalid or expired QR token.');
+      }
+    } finally {
+      submittingRef.current = false;
+    }
   };
 
   const spinAngle = spinValue.interpolate({
@@ -193,7 +213,7 @@ export function QRCheckInScreen({ navigation }: any) {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         {/* Gym header info */}
-        <Text style={styles.gymHeaderSub}>Aura Downtown</Text>
+        <Text style={styles.gymHeaderSub}>{gymName}</Text>
         <Text style={styles.gymHeaderTitle}>
           {phase === 'scanning' ? 'Scanning…' : phase === 'success' ? 'Checked in!' : 'One-tap check-in'}
         </Text>
@@ -259,7 +279,7 @@ export function QRCheckInScreen({ navigation }: any) {
         {/* Status guidance message */}
         <Text style={styles.helperText}>
           {phase === 'scanning'
-            ? 'Hold steady near the reader. Code refreshes every 30 seconds.'
+            ? 'Checking you in…'
             : phase === 'success'
             ? 'Enjoy your session!'
             : hasPermission
