@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGymStore, PublicGym } from '../store/useGymStore';
-import { Search, Building2, MapPin, Clock, Send, CheckCircle2, XCircle } from 'lucide-react-native';
+import { Search, Building2, MapPin, Clock, CheckCircle2, XCircle } from 'lucide-react-native';
 
 export function GymDirectoryScreen({ navigation }: any) {
   const { colors, isDark } = useTheme();
@@ -23,6 +23,7 @@ export function GymDirectoryScreen({ navigation }: any) {
   const {
     directory,
     directoryLoading,
+    directoryError,
     myRequest,
     requestStatusLoading,
     submitting,
@@ -32,26 +33,40 @@ export function GymDirectoryScreen({ navigation }: any) {
   } = useGymStore();
 
   const [search, setSearch] = useState('');
+  // After a rejected request the user can still browse and apply elsewhere.
+  const [browseAfterRejection, setBrowseAfterRejection] = useState(false);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetchMyRequestStatus();
     fetchDirectory();
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only fetch; store actions are stable
   }, []);
 
   const handleSearch = (text: string) => {
     setSearch(text);
-    fetchDirectory(text);
+    // Debounced so we don't fire one request per keystroke; the store also
+    // drops stale responses so results can't arrive out of order.
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    searchDebounceRef.current = setTimeout(() => fetchDirectory(text), 300);
   };
 
   const handleJoin = async (gym: PublicGym) => {
-    try {
-      await submitJoinRequest(gym.id);
+    // submitJoinRequest never throws — it returns { success, message }.
+    const result = await submitJoinRequest(gym.id);
+    if (result.success) {
+      setBrowseAfterRejection(false);
       Alert.alert('Request Sent', `Your join request has been sent to ${gym.name}.`);
-      await fetchMyRequestStatus();
       await loadUserProfile();
-    } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.message || 'Failed to submit request.');
+    } else {
+      Alert.alert('Request Failed', result.message || 'Failed to submit request.');
     }
   };
 
@@ -74,8 +89,9 @@ export function GymDirectoryScreen({ navigation }: any) {
     );
   }
 
-  // Active or Pending join request guard
-  if (myRequest) {
+  // Active or Pending join request guard. A rejected user may choose to keep
+  // browsing (otherwise this screen would be a dead end for them).
+  if (myRequest && !(isRejected && browseAfterRejection)) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.statusWrapper}>
@@ -119,9 +135,18 @@ export function GymDirectoryScreen({ navigation }: any) {
             <TouchableOpacity
               activeOpacity={0.85}
               style={styles.primaryBtn}
-              onPress={() => navigation.navigate('HomeTab')}
+              onPress={() => navigation.navigate('MainTabs', { screen: 'HomeTab' })}
             >
               <Text style={styles.primaryBtnText}>Go to Home</Text>
+            </TouchableOpacity>
+          ) : isRejected ? (
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={[styles.primaryBtn, { backgroundColor: colors.primary, marginTop: 12 }]}
+              onPress={() => setBrowseAfterRejection(true)}
+            >
+              <Building2 size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.primaryBtnText}>Browse Other Gyms</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
@@ -209,7 +234,20 @@ export function GymDirectoryScreen({ navigation }: any) {
           )}
           ListEmptyComponent={
             <View style={styles.center}>
-              <Text style={styles.emptyText}>No gyms found.</Text>
+              {directoryError ? (
+                <>
+                  <Text style={styles.emptyText}>{directoryError}</Text>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={[styles.primaryBtn, { marginTop: 16 }]}
+                    onPress={() => fetchDirectory(search)}
+                  >
+                    <Text style={styles.primaryBtnText}>Retry</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <Text style={styles.emptyText}>No gyms found.</Text>
+              )}
             </View>
           }
         />

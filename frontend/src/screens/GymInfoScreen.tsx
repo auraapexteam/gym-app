@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View, ActivityIndicator, ScrollView, SafeAreaView, Image } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
-import { Building2, Phone, Mail, CheckCircle2 } from 'lucide-react-native';
+import { Phone, Mail, CheckCircle2 } from 'lucide-react-native';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -26,7 +26,11 @@ export function GymInfoScreen() {
   const [logoError, setLogoError] = useState(false);
 
   const fetchGymInfo = async () => {
-    if (!userProfile?.gym_id) return;
+    if (!userProfile?.gym_id) {
+      // No linked gym — resolve to the empty state instead of spinning forever.
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const res = await apiClient.get('/gyms/me');
@@ -42,6 +46,7 @@ export function GymInfoScreen() {
 
   useEffect(() => {
     fetchGymInfo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch only when the linked gym changes
   }, [userProfile?.gym_id]);
 
   if (loading) {
