@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, TouchableOpacity, StyleSheet, Dimensions, Platform, Pressable } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Animated, {
@@ -45,7 +45,9 @@ const TabButton = React.memo(({ isFocused, label, IconComponent, activeColor, is
     buttonScale.value = withSpring(1.0, premiumSpringConfig);
   };
 
-  const AnimatedIcon = Animated.createAnimatedComponent(IconComponent);
+  // Memoized — creating an animated component type on every render would
+  // remount the icon subtree and restart its animations each time.
+  const AnimatedIcon = useMemo(() => Animated.createAnimatedComponent(IconComponent), [IconComponent]);
 
   const animatedIconStyle = useAnimatedStyle(() => {
     return {
@@ -79,6 +81,9 @@ const TabButton = React.memo(({ isFocused, label, IconComponent, activeColor, is
       onPressOut={handlePressOut}
       onPress={onPress}
       style={styles.tabButton}
+      accessibilityRole="tab"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: isFocused }}
     >
       <Animated.View style={animatedButtonContainerStyle}>
         <AnimatedIcon
@@ -235,6 +240,8 @@ function CustomTabBar({ state, navigation }: any) {
         onPress={() => navigation.navigate('QRCheckIn')}
         activeOpacity={0.85}
         style={styles.fabButton}
+        accessibilityRole="button"
+        accessibilityLabel="QR check-in"
       >
         <Animated.View style={[styles.fabGlowRing, fabPulseStyle]} />
         <QrCode size={26} color="#FFFFFF" strokeWidth={2.5} />
