@@ -113,7 +113,7 @@ export function SettingsScreen({ navigation }: any) {
               {userProfile?.full_name || 'Athlete'}
             </Text>
             <Text style={[styles.headerEmail, { color: colors.mutedForeground }]}>
-              {userProfile?.email || 'member@auraapex.com'}
+              {userProfile?.email || ''}
             </Text>
           </View>
         </View>

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Linking,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { ChevronDown, ChevronUp, ChevronRight, Mail, Phone, MessageSquare } from 'lucide-react-native';
@@ -36,8 +37,25 @@ export function HelpSettingsScreen() {
     setExpandedIndex(expandedIndex === idx ? null : idx);
   };
 
-  const handleContactAction = (method: string) => {
-    Alert.alert('Support Contact', `Opening default system ${method} client to reach our help desk...`, [{ text: 'OK' }]);
+  const SUPPORT_EMAIL = 'support@auraapex.com';
+  const SUPPORT_PHONE = '+919876543210';
+
+  const openLink = async (url: string) => {
+    try {
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert('Unavailable', 'No app on this device can handle that action.');
+    }
+  };
+
+  const handleContactAction = (method: 'email' | 'phone' | 'feedback') => {
+    if (method === 'email') {
+      openLink(`mailto:${SUPPORT_EMAIL}`);
+    } else if (method === 'phone') {
+      openLink(`tel:${SUPPORT_PHONE}`);
+    } else {
+      openLink(`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Aura Apex — Feedback / Bug Report')}`);
+    }
   };
 
   return (
@@ -90,7 +108,7 @@ export function HelpSettingsScreen() {
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.row}
-              onPress={() => handleContactAction('Email')}
+              onPress={() => handleContactAction('email')}
             >
               <View style={styles.rowLeft}>
                 <View style={[styles.iconWrapper, { backgroundColor: 'rgba(99, 102, 241, 0.1)' }]}>
@@ -104,7 +122,7 @@ export function HelpSettingsScreen() {
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.row}
-              onPress={() => handleContactAction('Phone')}
+              onPress={() => handleContactAction('phone')}
             >
               <View style={styles.rowLeft}>
                 <View style={[styles.iconWrapper, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
@@ -118,7 +136,7 @@ export function HelpSettingsScreen() {
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.row}
-              onPress={() => handleContactAction('Feedback')}
+              onPress={() => handleContactAction('feedback')}
             >
               <View style={styles.rowLeft}>
                 <View style={[styles.iconWrapper, { backgroundColor: 'rgba(251, 191, 36, 0.1)' }]}>

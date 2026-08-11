@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -6,118 +6,127 @@ import {
   SafeAreaView,
   TouchableOpacity,
   ScrollView,
-  Alert,
-  ActivityIndicator,
+  Linking,
+  PermissionsAndroid,
+  Platform,
+  AppState,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
-import { ChevronRight, ShieldCheck } from 'lucide-react-native';
+import { ShieldCheck, ShieldAlert, ExternalLink } from 'lucide-react-native';
+
+type PermissionStatus = 'granted' | 'denied' | 'unknown';
 
 export function AppSettingsScreen() {
   const { colors } = useTheme();
-  const [cacheSize, setCacheSize] = useState('14.2 MB');
-  const [clearing, setClearing] = useState(false);
+  const [cameraStatus, setCameraStatus] = useState<PermissionStatus>('unknown');
+  const [notifStatus, setNotifStatus] = useState<PermissionStatus>('unknown');
 
-  const permissionsList = [
-    { label: 'Camera Permission', status: 'Granted' },
-    { label: 'Storage Access', status: 'Granted' },
-    { label: 'Notifications Access', status: 'Granted' },
+  const checkPermissions = useCallback(async () => {
+    if (Platform.OS !== 'android') return;
+    try {
+      const camera = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.CAMERA);
+      setCameraStatus(camera ? 'granted' : 'denied');
+    } catch {
+      setCameraStatus('unknown');
+    }
+    try {
+      // POST_NOTIFICATIONS only exists on Android 13+; older versions grant implicitly.
+      if (Platform.Version >= 33 && PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS) {
+        const notif = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+        setNotifStatus(notif ? 'granted' : 'denied');
+      } else {
+        setNotifStatus('granted');
+      }
+    } catch {
+      setNotifStatus('unknown');
+    }
+  }, []);
+
+  useEffect(() => {
+    checkPermissions();
+    // Re-check when returning from the system settings screen.
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') checkPermissions();
+    });
+    return () => sub.remove();
+  }, [checkPermissions]);
+
+  const permissionsList: { label: string; desc: string; status: PermissionStatus }[] = [
+    { label: 'Camera', desc: 'Used to scan gym check-in QR codes.', status: cameraStatus },
+    { label: 'Notifications', desc: 'Allows gym announcements to alert you.', status: notifStatus },
   ];
 
-  const handleClearCache = () => {
-    if (cacheSize === '0.0 KB') {
-      Alert.alert('Cache Clean', 'App cache is already cleared.');
-      return;
-    }
-    
-    setClearing(true);
-    setTimeout(() => {
-      setClearing(false);
-      setCacheSize('0.0 KB');
-      Alert.alert('Success', 'Cache cleared successfully.');
-    }, 1200);
-  };
-
-  const handlePlaceholderAction = (action: string) => {
-    Alert.alert(action, `This action represents the ${action} config screen, which will integrate with native device APIs.`, [{ text: 'OK' }]);
-  };
+  const statusLabel = (s: PermissionStatus) =>
+    s === 'granted' ? 'Granted' : s === 'denied' ? 'Not granted' : '—';
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.title, { color: colors.foreground }]}>Storage & Cache</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>Storage & Permissions</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Manage disk space, clear cached images, and check device permissions.
+          Review the device permissions this app uses and manage its storage from system settings.
         </Text>
 
-        {/* Cache management card */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Cache management</Text>
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
-                <Text style={[styles.rowLabel, { color: colors.foreground }]}>App cache size</Text>
-                <Text style={[styles.rowDesc, { color: colors.mutedForeground }]}>
-                  Temporary image assets and session cache.
-                </Text>
-              </View>
-              <Text style={[styles.valueLabel, { color: colors.foreground }]}>{cacheSize}</Text>
-            </View>
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.clearRow}
-              onPress={handleClearCache}
-              disabled={clearing}
-            >
-              {clearing ? (
-                <ActivityIndicator size="small" color={colors.primary} />
-              ) : (
-                <Text style={[styles.clearText, { color: colors.primary }]}>Clear cached assets</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Storage stats Card */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Storage details</Text>
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={styles.row}>
-              <Text style={[styles.rowLabel, { color: colors.foreground }]}>Total space used</Text>
-              <Text style={[styles.valueLabel, { color: colors.foreground }]}>84.0 MB</Text>
-            </View>
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.row}
-              onPress={() => handlePlaceholderAction('Manage Storage Preferences')}
-            >
-              <Text style={[styles.rowLabel, { color: colors.foreground }]}>Storage settings</Text>
-              <ChevronRight size={14} color={colors.mutedForeground} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Permissions Card */}
+        {/* Permissions Card — real, live statuses. */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>App permissions</Text>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            {permissionsList.map((perm, idx) => (
-              <View key={idx}>
-                <View style={styles.row}>
-                  <View style={styles.rowLeft}>
-                    <Text style={[styles.rowLabel, { color: colors.foreground }]}>{perm.label}</Text>
+            {permissionsList.map((perm, idx) => {
+              const granted = perm.status === 'granted';
+              return (
+                <View key={perm.label}>
+                  <View style={styles.row}>
+                    <View style={styles.rowLeft}>
+                      <Text style={[styles.rowLabel, { color: colors.foreground }]}>{perm.label}</Text>
+                      <Text style={[styles.rowDesc, { color: colors.mutedForeground }]}>{perm.desc}</Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.badgeRow,
+                        { backgroundColor: granted ? 'rgba(16, 185, 129, 0.12)' : 'rgba(251, 191, 36, 0.12)' },
+                      ]}
+                    >
+                      {granted ? (
+                        <ShieldCheck size={14} color={colors.success} style={{ marginRight: 4 }} />
+                      ) : (
+                        <ShieldAlert size={14} color={colors.secondary} style={{ marginRight: 4 }} />
+                      )}
+                      <Text
+                        style={[
+                          styles.badgeText,
+                          { color: granted ? colors.success : colors.secondary },
+                        ]}
+                      >
+                        {statusLabel(perm.status)}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.badgeRow}>
-                    <ShieldCheck size={14} color={colors.success} style={{ marginRight: 4 }} />
-                    <Text style={[styles.badgeText, { color: colors.success }]}>{perm.status}</Text>
-                  </View>
+                  {idx < permissionsList.length - 1 && (
+                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                  )}
                 </View>
-                {idx < permissionsList.length - 1 && (
-                  <View style={[styles.divider, { backgroundColor: colors.border }]} />
-                )}
+              );
+            })}
+          </View>
+        </View>
+
+        {/* System settings link — storage and cache are managed by Android. */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Storage</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.row}
+              onPress={() => Linking.openSettings()}
+            >
+              <View style={styles.rowLeft}>
+                <Text style={[styles.rowLabel, { color: colors.foreground }]}>Open system app settings</Text>
+                <Text style={[styles.rowDesc, { color: colors.mutedForeground }]}>
+                  View storage usage, clear cache, or change permissions from Android settings.
+                </Text>
               </View>
-            ))}
+              <ExternalLink size={16} color={colors.mutedForeground} />
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
@@ -166,15 +175,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 14,
   },
-  clearRow: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-  },
-  clearText: {
-    fontSize: 15,
-    fontWeight: '800',
-  },
   rowLeft: {
     flex: 1,
     paddingRight: 16,
@@ -189,14 +189,9 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     fontWeight: '500',
   },
-  valueLabel: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,

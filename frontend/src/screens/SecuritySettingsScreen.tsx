@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   TouchableOpacity,
-  Switch,
   ScrollView,
   Alert,
   Modal,
@@ -13,62 +12,39 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
 import { useAuthStore } from '../store/useAuthStore';
 import { supabase } from '../api/supabase';
 import {
-  ShieldAlert,
   Smartphone,
   ChevronRight,
   LogOut,
   Key,
-  ShieldCheck,
-  Lock,
   X,
-  CheckCircle,
 } from 'lucide-react-native';
 
-const PIN_STORAGE_KEY = '@aura_apex_security_pin';
-
-export function SecuritySettingsScreen({ navigation }: any) {
+export function SecuritySettingsScreen() {
   const { colors, isDark } = useTheme();
-  const { user, userProfile, signOut } = useAuthStore();
+  const { user, signOut } = useAuthStore();
 
-  // Toggles
-  const [twoFactor, setTwoFactor] = useState(false);
-  const [biometric, setBiometric] = useState(true);
-
-  // Security Modals
+  // Password modal
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
 
-  // PIN Modal
-  const [pinModalOpen, setPinModalOpen] = useState(false);
-  const [pinCode, setPinCode] = useState('');
-  const [savedPin, setSavedPin] = useState<string | null>(null);
-
-  // Live session metadata
-  const [authSession, setAuthSession] = useState<any>(null);
-
-  useEffect(() => {
-    AsyncStorage.getItem(PIN_STORAGE_KEY).then((val) => {
-      if (val) setSavedPin(val);
-    });
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (data?.session) {
-        setAuthSession(data.session);
-      }
-    });
-  }, []);
-
   const handleChangePassword = async () => {
-    if (!newPassword || newPassword.length < 8) {
-      Alert.alert('Weak Password', 'New password must be at least 8 characters long.');
+    // Mirror the signup policy so users can't set a weaker password here.
+    const strongEnough =
+      newPassword.length >= 8 &&
+      /[A-Z]/.test(newPassword) &&
+      /[0-9]/.test(newPassword) &&
+      /[!@#$%^&*(),.?":{}|<>_\-+=~`[\]\\;'/]/.test(newPassword);
+    if (!strongEnough) {
+      Alert.alert(
+        'Weak Password',
+        'Password must be at least 8 characters and include an uppercase letter, a number, and a special symbol.'
+      );
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -83,7 +59,6 @@ export function SecuritySettingsScreen({ navigation }: any) {
 
       Alert.alert('Password Updated', 'Your account password has been changed successfully.');
       setPasswordModalOpen(false);
-      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
@@ -91,19 +66,6 @@ export function SecuritySettingsScreen({ navigation }: any) {
     } finally {
       setSavingPassword(false);
     }
-  };
-
-  const handleSavePin = async () => {
-    if (pinCode.length !== 4 || !/^\d+$/.test(pinCode)) {
-      Alert.alert('Invalid PIN', 'Please enter a 4-digit numeric security PIN.');
-      return;
-    }
-
-    await AsyncStorage.setItem(PIN_STORAGE_KEY, pinCode);
-    setSavedPin(pinCode);
-    Alert.alert('PIN Configured', 'Your 4-digit security PIN has been set.');
-    setPinModalOpen(false);
-    setPinCode('');
   };
 
   const handleLogoutAllDevices = async () => {
@@ -153,60 +115,6 @@ export function SecuritySettingsScreen({ navigation }: any) {
               </View>
               <ChevronRight size={16} color={colors.mutedForeground} />
             </TouchableOpacity>
-
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.row}
-              onPress={() => setPinModalOpen(true)}
-            >
-              <View style={styles.rowLeft}>
-                <Text style={[styles.rowLabel, { color: colors.foreground }]}>
-                  {savedPin ? 'Update Security PIN' : 'Set Up Security PIN'}
-                </Text>
-                <Text style={[styles.rowDesc, { color: colors.mutedForeground }]}>
-                  {savedPin ? '4-digit quick unlock PIN is active' : 'Set a 4-digit code for quick check-in pass unlock'}
-                </Text>
-              </View>
-              <ChevronRight size={16} color={colors.mutedForeground} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Verification Options Card */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Authentication</Text>
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={styles.toggleRow}>
-              <View style={styles.rowLeft}>
-                <Text style={[styles.rowLabel, { color: colors.foreground }]}>Two-factor authentication</Text>
-                <Text style={[styles.rowDesc, { color: colors.mutedForeground }]}>
-                  Require verification code sent to your registered email/phone.
-                </Text>
-              </View>
-              <Switch
-                value={twoFactor}
-                onValueChange={setTwoFactor}
-                trackColor={{ false: 'rgba(255,255,255,0.08)', true: colors.primary }}
-              />
-            </View>
-
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-            <View style={styles.toggleRow}>
-              <View style={styles.rowLeft}>
-                <Text style={[styles.rowLabel, { color: colors.foreground }]}>Biometric quick access</Text>
-                <Text style={[styles.rowDesc, { color: colors.mutedForeground }]}>
-                  Allow fingerprint or face biometric unlock.
-                </Text>
-              </View>
-              <Switch
-                value={biometric}
-                onValueChange={setBiometric}
-                trackColor={{ false: 'rgba(255,255,255,0.08)', true: colors.primary }}
-              />
-            </View>
           </View>
         </View>
 
@@ -289,42 +197,6 @@ export function SecuritySettingsScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
-
-      {/* Security PIN Modal */}
-      <Modal visible={pinModalOpen} transparent={true} animationType="slide" onRequestClose={() => setPinModalOpen(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalTitleGroup}>
-                <ShieldCheck size={20} color={colors.primary} style={{ marginRight: 8 }} />
-                <Text style={[styles.modalTitle, { color: colors.foreground }]}>Security PIN</Text>
-              </View>
-              <TouchableOpacity onPress={() => setPinModalOpen(false)}>
-                <X size={20} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={[styles.inputLabel, { color: colors.mutedForeground }]}>Enter 4-Digit Numeric Code</Text>
-            <TextInput
-              style={[styles.modalInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', borderColor: colors.border, color: colors.foreground, textAlign: 'center', fontSize: 24, letterSpacing: 8 }]}
-              placeholder="••••"
-              placeholderTextColor={colors.mutedForeground}
-              keyboardType="numeric"
-              maxLength={4}
-              secureTextEntry={true}
-              value={pinCode}
-              onChangeText={setPinCode}
-            />
-
-            <TouchableOpacity
-              style={[styles.submitBtn, { backgroundColor: colors.primary }]}
-              onPress={handleSavePin}
-            >
-              <Text style={styles.submitBtnText}>Save Security PIN</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -369,12 +241,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 16,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
   },
   rowLeft: {
     flex: 1,
