@@ -1,45 +1,111 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, Text, View, SafeAreaView } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../store/useAuthStore';
 import { Theme } from '../theme/Theme';
 import { useTheme } from '../context/ThemeContext';
 import { AppButton } from '../components/AppButton';
+import { apiClient } from '../api/client';
+
+interface DashboardStats {
+  activeMembers: number | null;
+  todayCheckIns: number | null;
+  monthlyRevenue: number | null;
+}
 
 export function OwnerDashboardScreen() {
   const { userProfile, signOut } = useAuthStore();
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
 
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        const res = await apiClient.get('/analytics/dashboard');
+        if (cancelled) return;
+        if (res.data?.success) {
+          const d = res.data.data || {};
+          setStats({
+            activeMembers: d.members?.active ?? d.members?.total ?? null,
+            todayCheckIns: d.attendance?.today ?? null,
+            monthlyRevenue: d.revenue?.thisMonth ?? d.revenue?.total ?? null,
+          });
+          setStatsError(null);
+        }
+      } catch (err: any) {
+        if (cancelled) return;
+        // Staff/trainer roles don't have analytics access — that's expected.
+        setStatsError(
+          err?.response?.status === 403
+            ? 'Analytics are available to gym owners on the web portal.'
+            : 'Could not load analytics. Manage your gym from the web portal.'
+        );
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchStats();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const formatStat = (value: number | null) =>
+    value != null ? Number(value).toLocaleString('en-IN') : '—';
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerSubtitle}>SaaS Console</Text>
         <Text style={styles.title}>Gym Owner Dashboard</Text>
-        <Text style={styles.subtitle}>Welcome back, {userProfile?.full_name || 'Admin'}</Text>
+        <Text style={styles.subtitle}>Welcome back, {userProfile?.full_name || 'there'}</Text>
         <View style={styles.roleBadgeContainer}>
-          <Text style={styles.roleBadge}>Role: {userProfile?.role?.toUpperCase()}</Text>
+          <Text style={styles.roleBadge}>Role: {userProfile?.role?.toUpperCase() || '—'}</Text>
         </View>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Owner Analytics</Text>
-        
+        <Text style={styles.cardTitle}>Gym Analytics</Text>
+
         <View style={styles.divider} />
-        
-        <View style={styles.metricRow}>
-          <Text style={styles.metricLabel}>👥 Active Members</Text>
-          <Text style={styles.metricValue}>1,245</Text>
-        </View>
 
-        <View style={styles.metricRow}>
-          <Text style={styles.metricLabel}>✅ Today's Check-ins</Text>
-          <Text style={styles.metricValue}>312</Text>
-        </View>
+        {loading ? (
+          <View style={styles.loaderRow}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        ) : statsError ? (
+          <Text style={styles.errorText}>{statsError}</Text>
+        ) : (
+          <>
+            <View style={styles.metricRow}>
+              <Text style={styles.metricLabel}>👥 Active Members</Text>
+              <Text style={styles.metricValue}>{formatStat(stats?.activeMembers ?? null)}</Text>
+            </View>
 
-        <View style={styles.metricRow}>
-          <Text style={styles.metricLabel}>💰 Monthly Revenue</Text>
-          <Text style={[styles.metricValue, { color: colors.primary }]}>₹1,85,000</Text>
-        </View>
+            <View style={styles.metricRow}>
+              <Text style={styles.metricLabel}>✅ Today's Check-ins</Text>
+              <Text style={styles.metricValue}>{formatStat(stats?.todayCheckIns ?? null)}</Text>
+            </View>
+
+            <View style={styles.metricRow}>
+              <Text style={styles.metricLabel}>💰 Monthly Revenue</Text>
+              <Text style={[styles.metricValue, { color: colors.primary }]}>
+                {stats?.monthlyRevenue != null ? `₹${Number(stats.monthlyRevenue).toLocaleString('en-IN')}` : '—'}
+              </Text>
+            </View>
+          </>
+        )}
+
+        <View style={styles.divider} />
+        <Text style={styles.portalHint}>
+          Full management tools (members, plans, QR, staff) live in the Aura Apex web portal.
+        </Text>
       </View>
 
       <View style={styles.footer}>
@@ -113,6 +179,16 @@ const getStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.border,
     marginVertical: 14,
   },
+  loaderRow: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    lineHeight: 19,
+    paddingVertical: 8,
+  },
   metricRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -128,6 +204,11 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontSize: 15,
     fontWeight: 'bold',
     color: colors.foreground,
+  },
+  portalHint: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    lineHeight: 17,
   },
   footer: {
     paddingHorizontal: 24,
