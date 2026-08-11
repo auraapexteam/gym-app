@@ -19,6 +19,7 @@ import { useGymStore } from '../store/useGymStore';
 import { apiClient } from '../api/client';
 import { useTheme } from '../context/ThemeContext';
 import { uploadPersonalImage } from '../utils/upload';
+import { toLocalDateString } from '../utils/date';
 import {
   User as UserIcon,
   Phone,
@@ -70,11 +71,10 @@ export function ProfileScreen({ navigation }: any) {
 
   const streak = useMemo(() => {
     const dateSet = new Set(attendanceDates);
-    const toIso = (d: Date) => d.toISOString().slice(0, 10);
     let count = 0;
     let cursor = new Date();
-    if (!dateSet.has(toIso(cursor))) cursor.setDate(cursor.getDate() - 1);
-    while (dateSet.has(toIso(cursor))) {
+    if (!dateSet.has(toLocalDateString(cursor))) cursor.setDate(cursor.getDate() - 1);
+    while (dateSet.has(toLocalDateString(cursor))) {
       count += 1;
       cursor.setDate(cursor.getDate() - 1);
     }
@@ -146,7 +146,22 @@ export function ProfileScreen({ navigation }: any) {
   ];
 
   const isSubscribed = subscription?.status === 'active';
-  const planName = subscription?.plans?.name;
+  // DTO uses `plan`; legacy responses used `plans`.
+  const planName = subscription?.plan?.name ?? subscription?.plans?.name;
+
+  const handleCancelEdit = () => {
+    // Discard unsaved edits so the header doesn't keep showing them.
+    setFullName(userProfile?.full_name || '');
+    setPhone(userProfile?.phone || '');
+    setIsEditing(false);
+  };
+
+  const handleLogout = () => {
+    Alert.alert('Log out', 'Are you sure you want to log out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Log out', style: 'destructive', onPress: () => signOut() },
+    ]);
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -298,7 +313,7 @@ export function ProfileScreen({ navigation }: any) {
                     styles.editBtn,
                     { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' },
                   ]}
-                  onPress={() => setIsEditing(false)}
+                  onPress={handleCancelEdit}
                 >
                   <Text style={[styles.saveText, { color: colors.foreground }]}>Cancel</Text>
                 </TouchableOpacity>
@@ -332,7 +347,7 @@ export function ProfileScreen({ navigation }: any) {
           {/* Destructive Log out */}
           <TouchableOpacity
             style={styles.logoutBtn}
-            onPress={signOut}
+            onPress={handleLogout}
             activeOpacity={0.8}
           >
             <LogOut size={16} color="#f87171" style={{ marginRight: 8 }} />
