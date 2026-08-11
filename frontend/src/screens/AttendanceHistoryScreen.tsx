@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View, FlatList, ActivityIndicator, SafeAreaView } from 'react-native';
+import { StyleSheet, Text, View, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { Calendar, QrCode } from 'lucide-react-native';
 import { apiClient } from '../api/client';
@@ -9,16 +10,18 @@ export function AttendanceHistoryScreen() {
   const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchAttendance = async () => {
     try {
       setLoading(true);
+      setError(null);
       const res = await apiClient.get('/attendance/me');
       if (res.data?.success) {
         setHistory(res.data.data.items || res.data.data || []);
       }
     } catch (err: any) {
-      console.warn('Failed to load attendance history:', err);
+      setError(err?.message || 'Failed to load attendance history.');
     } finally {
       setLoading(false);
     }
@@ -65,7 +68,16 @@ export function AttendanceHistoryScreen() {
           )}
           ListEmptyComponent={
             <View style={styles.center}>
-              <Text style={styles.emptyText}>No attendance history found.</Text>
+              {error ? (
+                <>
+                  <Text style={styles.emptyText}>{error}</Text>
+                  <TouchableOpacity style={styles.retryBtn} onPress={fetchAttendance}>
+                    <Text style={styles.retryBtnText}>Retry</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <Text style={styles.emptyText}>No attendance history found.</Text>
+              )}
             </View>
           }
         />
@@ -105,5 +117,13 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   dateText: { fontSize: 15, fontWeight: '700', color: colors.foreground },
   methodRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   methodText: { fontSize: 12, color: colors.mutedForeground, fontWeight: '600' },
-  emptyText: { color: colors.mutedForeground, fontSize: 15 },
+  emptyText: { color: colors.mutedForeground, fontSize: 15, textAlign: 'center' },
+  retryBtn: {
+    marginTop: 16,
+    backgroundColor: colors.primary,
+    borderRadius: 9999,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+  },
+  retryBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
 });

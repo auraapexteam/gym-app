@@ -19,16 +19,18 @@ export function NotificationsScreen() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchNotifications = async () => {
     try {
       setLoading(true);
+      setError(null);
       const res = await apiClient.get('/notifications');
       if (res.data?.success) {
-        setNotifications(res.data.data.items || res.data.data);
+        setNotifications(res.data.data.items || res.data.data || []);
       }
     } catch (err: any) {
-      console.warn('Failed to load notifications:', err);
+      setError(err?.message || 'Failed to load notifications.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -54,16 +56,14 @@ export function NotificationsScreen() {
 
   const handleMarkAllRead = async () => {
     try {
-      setLoading(true);
+      // No full-screen loader here — blanking the list for a tiny PATCH-style
+      // action reads as a glitch. The rows simply flip to their read style.
       const res = await apiClient.post('/notifications/read-all');
       if (res.data?.success) {
         setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-        Alert.alert('Success', 'All notifications marked as read.');
       }
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.message || 'Failed to update notifications');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -111,18 +111,34 @@ export function NotificationsScreen() {
                 {item.body || item.message}
               </Text>
               <Text style={styles.cardTime}>
-                {new Date(item.created_at).toLocaleDateString('en-IN', {
-                  day: 'numeric',
-                  month: 'short',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
+                {/* API DTO sends createdAt (camelCase); accept snake_case too. */}
+                {(() => {
+                  const ts = item.createdAt ?? item.created_at;
+                  const d = ts ? new Date(ts) : null;
+                  return d && !isNaN(d.getTime())
+                    ? d.toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                    : '';
+                })()}
               </Text>
             </View>
           )}
           ListEmptyComponent={
             <View style={styles.center}>
-              <Text style={styles.emptyText}>You have no notifications.</Text>
+              {error ? (
+                <>
+                  <Text style={styles.emptyText}>{error}</Text>
+                  <TouchableOpacity style={styles.retryBtn} onPress={fetchNotifications}>
+                    <Text style={styles.retryBtnText}>Retry</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <Text style={styles.emptyText}>You have no notifications.</Text>
+              )}
             </View>
           }
           contentContainerStyle={styles.list}
@@ -177,5 +193,13 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   readBtn: { padding: 4 },
   cardBody: { fontSize: 14, color: colors.foreground, lineHeight: 20, marginBottom: 8 },
   cardTime: { fontSize: 11, color: colors.mutedForeground, fontWeight: '600' },
-  emptyText: { color: colors.mutedForeground, fontSize: 15 },
+  emptyText: { color: colors.mutedForeground, fontSize: 15, textAlign: 'center' },
+  retryBtn: {
+    marginTop: 16,
+    backgroundColor: colors.primary,
+    borderRadius: 9999,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+  },
+  retryBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
 });
