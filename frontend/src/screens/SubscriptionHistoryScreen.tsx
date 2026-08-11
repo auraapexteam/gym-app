@@ -13,27 +13,30 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useAuthStore } from '../store/useAuthStore';
-import { Award, Calendar, XCircle, FileText, CheckCircle2, Building2, CreditCard, X } from 'lucide-react-native';
+import { Award, Calendar, XCircle, FileText, CheckCircle2, Building2, X } from 'lucide-react-native';
 import { apiClient } from '../api/client';
 
 export function SubscriptionHistoryScreen() {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
-  const { userProfile } = useAuthStore();
+  const { userProfile, loadSubscription } = useAuthStore();
 
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
 
   const fetchHistory = async () => {
     try {
       setLoading(true);
+      setError(null);
       const res = await apiClient.get('/subscriptions/me');
       if (res.data?.success) {
-        setHistory(res.data.data.items || res.data.data || []);
+        const raw = res.data.data;
+        setHistory(Array.isArray(raw) ? raw : raw?.items || [raw].filter(Boolean));
       }
     } catch (err: any) {
-      console.warn('Failed to load subscription history:', err);
+      setError(err?.message || 'Failed to load subscription history.');
     } finally {
       setLoading(false);
     }
@@ -59,6 +62,9 @@ export function SubscriptionHistoryScreen() {
               if (res.data?.success) {
                 Alert.alert('Cancelled', 'Your subscription was cancelled successfully.');
                 fetchHistory();
+                // Keep the global auth-store subscription in sync so Home /
+                // QR check-in stop treating the plan as active.
+                loadSubscription();
               }
             } catch (err: any) {
               Alert.alert('Failed', err.response?.data?.message || 'Failed to cancel subscription.');
@@ -106,11 +112,12 @@ export function SubscriptionHistoryScreen() {
           renderItem={({ item }) => {
             const isActive = item.status === 'active';
             const invNumber = `INV-${item.id.slice(0, 8).toUpperCase()}`;
-            const planPrice = Number(item.plan?.price ?? item.plans?.price ?? item.amount ?? 499);
+            const rawPrice = item.plan?.price ?? item.plans?.price ?? item.amount;
+            const planPrice = rawPrice != null ? Number(rawPrice) : null;
             const planName = item.plan?.name ?? item.plans?.name ?? item.planName ?? 'Gym Membership';
             const startDate = item.startDate ?? item.start_date ?? item.createdAt ?? item.created_at;
             const endDate = item.endDate ?? item.end_date;
-            const durationDays = item.plan?.durationDays ?? item.plan?.duration_days ?? 30;
+            const durationDays = item.plan?.durationDays ?? item.plan?.duration_days ?? null;
 
             return (
               <View style={styles.card}>
@@ -134,11 +141,15 @@ export function SubscriptionHistoryScreen() {
                 <View style={styles.detailsGrid}>
                   <View style={styles.detailItem}>
                     <Text style={styles.detailLabel}>AMOUNT PAID</Text>
-                    <Text style={styles.detailValue}>₹{planPrice.toLocaleString()}</Text>
+                    <Text style={styles.detailValue}>
+                      {planPrice != null ? `₹${planPrice.toLocaleString()}` : '—'}
+                    </Text>
                   </View>
                   <View style={styles.detailItem}>
-                    <Text style={styles.detailLabel}>BILLING CYCLE</Text>
-                    <Text style={styles.detailValue}>{durationDays >= 365 ? 'Annual (365 Days)' : `${durationDays} Days (Monthly)`}</Text>
+                    <Text style={styles.detailLabel}>VALIDITY</Text>
+                    <Text style={styles.detailValue}>
+                      {durationDays != null ? `${durationDays} Days` : '—'}
+                    </Text>
                   </View>
                 </View>
 
@@ -173,7 +184,16 @@ export function SubscriptionHistoryScreen() {
           }}
           ListEmptyComponent={
             <View style={styles.center}>
-              <Text style={styles.emptyText}>No subscription history found.</Text>
+              {error ? (
+                <>
+                  <Text style={styles.emptyText}>{error}</Text>
+                  <TouchableOpacity style={styles.retryBtn} onPress={fetchHistory}>
+                    <Text style={styles.retryBtnText}>Retry</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <Text style={styles.emptyText}>No subscription history found.</Text>
+              )}
             </View>
           }
         />
@@ -191,7 +211,7 @@ export function SubscriptionHistoryScreen() {
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderTitleGroup}>
                 <Building2 size={20} color={colors.primary} style={{ marginRight: 8 }} />
-                <Text style={styles.modalTitle}>Tax Invoice Receipt</Text>
+                <Text style={styles.modalTitle}>Subscription Receipt</Text>
               </View>
               <TouchableOpacity onPress={() => setSelectedInvoice(null)}>
                 <X size={20} color={colors.mutedForeground} />
@@ -200,31 +220,36 @@ export function SubscriptionHistoryScreen() {
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
               {selectedInvoice && (() => {
-                const total = Number(selectedInvoice.plan?.price ?? selectedInvoice.plans?.price ?? selectedInvoice.amount ?? 499);
-                const base = Math.round((total / 1.18) * 100) / 100;
-                const gst = Math.round((total - base) * 100) / 100;
+                // Only what the server actually recorded — no fabricated
+                // amounts, tax lines, or payment-method claims.
+                const rawTotal = selectedInvoice.plan?.price ?? selectedInvoice.plans?.price ?? selectedInvoice.amount;
+                const total = rawTotal != null ? Number(rawTotal) : null;
                 const planTitle = selectedInvoice.plan?.name ?? selectedInvoice.plans?.name ?? selectedInvoice.planName ?? 'Gym Membership';
                 const sDate = selectedInvoice.startDate ?? selectedInvoice.start_date ?? selectedInvoice.createdAt ?? selectedInvoice.created_at;
                 const eDate = selectedInvoice.endDate ?? selectedInvoice.end_date;
+                const status = String(selectedInvoice.status || '').toUpperCase();
+                const isActiveSub = selectedInvoice.status === 'active';
 
                 return (
                   <>
                     <View style={styles.invoiceHero}>
-                      <Text style={styles.invoiceHeroLabel}>TOTAL AMOUNT PAID</Text>
-                      <Text style={styles.invoiceHeroTotal}>₹{total.toLocaleString()}</Text>
+                      <Text style={styles.invoiceHeroLabel}>PLAN AMOUNT</Text>
+                      <Text style={styles.invoiceHeroTotal}>
+                        {total != null ? `₹${total.toLocaleString()}` : '—'}
+                      </Text>
                       <View style={styles.paidBadge}>
                         <CheckCircle2 size={12} color="#10b981" style={{ marginRight: 4 }} />
-                        <Text style={styles.paidBadgeText}>PAYMENT VERIFIED (SUCCESS)</Text>
+                        <Text style={styles.paidBadgeText}>{status || 'SUBSCRIPTION'}</Text>
                       </View>
                     </View>
 
                     <View style={styles.receiptSection}>
                       <View style={styles.receiptRow}>
-                        <Text style={styles.receiptLabel}>Invoice Number:</Text>
+                        <Text style={styles.receiptLabel}>Reference:</Text>
                         <Text style={styles.receiptVal}>INV-{selectedInvoice.id.slice(0, 8).toUpperCase()}</Text>
                       </View>
                       <View style={styles.receiptRow}>
-                        <Text style={styles.receiptLabel}>Transaction Date:</Text>
+                        <Text style={styles.receiptLabel}>Started:</Text>
                         <Text style={styles.receiptVal}>{formatDateTime(sDate)}</Text>
                       </View>
                       <View style={styles.receiptRow}>
@@ -240,23 +265,8 @@ export function SubscriptionHistoryScreen() {
                         <Text style={styles.receiptVal}>{formatDate(sDate)} — {formatDate(eDate)}</Text>
                       </View>
                       <View style={styles.receiptRow}>
-                        <Text style={styles.receiptLabel}>Payment Gateway:</Text>
-                        <Text style={styles.receiptVal}>Razorpay Online (UPI/Card)</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.taxBreakdown}>
-                      <View style={styles.breakdownRow}>
-                        <Text style={styles.breakdownLabel}>Base Membership Fee:</Text>
-                        <Text style={styles.breakdownVal}>₹{base.toFixed(2)}</Text>
-                      </View>
-                      <View style={styles.breakdownRow}>
-                        <Text style={styles.breakdownLabel}>GST (18% Goods & Services Tax):</Text>
-                        <Text style={styles.breakdownVal}>₹{gst.toFixed(2)}</Text>
-                      </View>
-                      <View style={[styles.breakdownRow, styles.breakdownTotalRow]}>
-                        <Text style={styles.breakdownTotalLabel}>Net Total Paid:</Text>
-                        <Text style={styles.breakdownTotalVal}>₹{total.toFixed(2)}</Text>
+                        <Text style={styles.receiptLabel}>Status:</Text>
+                        <Text style={[styles.receiptVal, isActiveSub && { color: '#10b981' }]}>{status || '—'}</Text>
                       </View>
                     </View>
 
@@ -334,7 +344,15 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     borderRadius: 12,
   },
   cancelText: { fontSize: 12, fontWeight: '700', color: colors.destructive },
-  emptyText: { color: colors.mutedForeground, fontSize: 15 },
+  emptyText: { color: colors.mutedForeground, fontSize: 15, textAlign: 'center' },
+  retryBtn: {
+    marginTop: 16,
+    backgroundColor: colors.primary,
+    borderRadius: 9999,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+  },
+  retryBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.75)',
@@ -387,21 +405,6 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   receiptRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   receiptLabel: { fontSize: 12, color: colors.mutedForeground, fontWeight: '600' },
   receiptVal: { fontSize: 12, color: colors.foreground, fontWeight: '700' },
-  taxBreakdown: {
-    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-    padding: 16,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 20,
-    gap: 8,
-  },
-  breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  breakdownLabel: { fontSize: 12, color: colors.mutedForeground, fontWeight: '500' },
-  breakdownVal: { fontSize: 12, color: colors.foreground, fontWeight: '600' },
-  breakdownTotalRow: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8, marginTop: 4 },
-  breakdownTotalLabel: { fontSize: 13, color: colors.foreground, fontWeight: '800' },
-  breakdownTotalVal: { fontSize: 15, color: colors.primary, fontWeight: '900' },
   doneBtn: {
     backgroundColor: colors.primary,
     height: 50,
