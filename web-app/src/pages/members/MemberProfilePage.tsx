@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts';
-import { Card, CardContent, Badge, Avatar, Button, Skeleton, Modal, Select } from '@/components/ui';
+import { Card, CardContent, Badge, Avatar, Button, Skeleton, Modal, Select, Input } from '@/components/ui';
 import { useMember, useUpdateMember } from '@/hooks/useMembers';
 import { useAttendance } from '@/hooks/useAttendance';
 import { usePlans } from '@/hooks/usePlans';
@@ -11,7 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { formatDate, formatCurrency, isExpiringSoon } from '@/utils';
 import {
   Phone, Mail, Calendar, Dumbbell, QrCode, ArrowLeft,
-  Activity, CreditCard, Package, FileText, User, Save, RefreshCw, CheckCircle2
+  Activity, CreditCard, Package, FileText, User, Save, RefreshCw, CheckCircle2, Edit, Plus
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -42,6 +42,13 @@ export default function MemberProfilePage() {
   const [notesText, setNotesText] = useState('');
   const [showRenewModal, setShowRenewModal] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState('');
+
+  // Edit details modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editFullName, setEditFullName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmergencyContact, setEditEmergencyContact] = useState('');
 
   // Live member attendance history
   const { data: attendanceData = [], isLoading: attendanceLoading } = useAttendance({ memberId: id });
@@ -113,6 +120,37 @@ export default function MemberProfilePage() {
 
   const expiring = isExpiringSoon(member.renewDate);
 
+  const handleOpenEditModal = () => {
+    setEditFullName(member.name || '');
+    setEditEmail(member.email || '');
+    setEditPhone(member.phone || '');
+    const emContact = typeof member.emergencyContact === 'string' 
+      ? member.emergencyContact 
+      : (member.emergencyContact?.phone || member.emergencyContact?.name || '');
+    setEditEmergencyContact(emContact);
+    setShowEditModal(true);
+  };
+
+  const handleSaveMemberDetails = () => {
+    updateMemberMutation.mutate(
+      {
+        id: member.id,
+        data: {
+          fullName: editFullName,
+          email: editEmail || undefined,
+          phone: editPhone || undefined,
+          emergencyContact: editEmergencyContact || undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success('Member details updated successfully!');
+          setShowEditModal(false);
+        },
+      }
+    );
+  };
+
   const handleSaveNotes = () => {
     updateMemberMutation.mutate(
       { id: member.id, data: { notes: notesText } },
@@ -175,7 +213,11 @@ export default function MemberProfilePage() {
                     <Mail className="h-3.5 w-3.5" /> {member.email || 'No email provided'}
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <Phone className="h-3.5 w-3.5" /> {member.phone || 'No phone provided'}
+                    <Phone className="h-3.5 w-3.5" /> {member.phone ? member.phone : (
+                      <button onClick={handleOpenEditModal} className="text-aura-primary hover:underline font-semibold flex items-center gap-1">
+                        No phone provided — Add phone
+                      </button>
+                    )}
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Calendar className="h-3.5 w-3.5" /> Joined {formatDate(member.joinedAt)}
@@ -184,6 +226,9 @@ export default function MemberProfilePage() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                <Button variant="secondary" size="sm" onClick={handleOpenEditModal}>
+                  <Edit className="h-4 w-4" /> Edit Details
+                </Button>
                 <Button variant="primary" size="sm" onClick={() => setShowRenewModal(true)}>
                   <RefreshCw className="h-4 w-4" /> Renew / Activate Plan
                 </Button>
@@ -399,10 +444,62 @@ export default function MemberProfilePage() {
             </Button>
             <Button
               variant="primary"
-              disabled={!selectedPlanId || createSubscriptionMutation.isPending}
               onClick={handleActivatePlan}
+              disabled={!selectedPlanId || createSubscriptionMutation.isPending}
             >
-              {createSubscriptionMutation.isPending ? 'Activating...' : 'Activate Plan'}
+              {createSubscriptionMutation.isPending ? 'Activating Plan...' : 'Activate Membership Plan'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Member Details Modal */}
+      <Modal open={showEditModal} onClose={() => setShowEditModal(false)} title={`Edit Member Details: ${member.name}`}>
+        <div className="space-y-4">
+          <p className="text-xs text-aura-muted">Update contact information and profile fields stored in database.</p>
+          <div>
+            <label className="block text-xs font-medium text-aura-text mb-1">Full Name *</label>
+            <Input
+              value={editFullName}
+              onChange={(e) => setEditFullName(e.target.value)}
+              placeholder="e.g. John Doe"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-aura-text mb-1">Phone Number</label>
+            <Input
+              value={editPhone}
+              onChange={(e) => setEditPhone(e.target.value)}
+              placeholder="e.g. +919876543210"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-aura-text mb-1">Email Address</label>
+            <Input
+              type="email"
+              value={editEmail}
+              onChange={(e) => setEditEmail(e.target.value)}
+              placeholder="e.g. member@email.com"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-aura-text mb-1">Emergency Contact Phone</label>
+            <Input
+              value={editEmergencyContact}
+              onChange={(e) => setEditEmergencyContact(e.target.value)}
+              placeholder="e.g. +919876543211"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowEditModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSaveMemberDetails}
+              disabled={!editFullName || updateMemberMutation.isPending}
+            >
+              {updateMemberMutation.isPending ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
         </div>

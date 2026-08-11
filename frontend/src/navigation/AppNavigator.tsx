@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, Platform, PermissionsAndroid } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { supabase } from '../api/supabase';
@@ -35,6 +35,20 @@ export function AppNavigator() {
   const { accessToken, userProfile, setSession, initializing } = useAuthStore();
 
   useEffect(() => {
+    // Request notification permission on Android 13+ (API 33+) on app launch
+    const requestNotificationPermission = async () => {
+      if (Platform.OS === 'android' && Platform.Version >= 33) {
+        try {
+          await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+          );
+        } catch (err) {
+          // ignore
+        }
+      }
+    };
+    requestNotificationPermission();
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });

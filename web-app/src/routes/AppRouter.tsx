@@ -95,6 +95,7 @@ export function AppRouter() {
           <Route path="/equipment" element={<EquipmentPage />} />
           <Route path="/gallery" element={<GalleryPage />} />
           <Route path="/attendance" element={<AttendancePage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/staff" element={<StaffPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/reports" element={<ReportsPage />} />
