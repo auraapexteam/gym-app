@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -35,9 +35,21 @@ interface Plan {
   name: string;
   description: string;
   price: number;
+  durationDays: number;
   billing_interval: 'month' | 'year';
   features?: string[];
 }
+
+const WEEKDAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+const formatTime12h = (t?: string) => {
+  if (!t) return null;
+  const [h, m] = t.split(':').map(Number);
+  if (!Number.isFinite(h)) return null;
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m || 0).padStart(2, '0')} ${period}`;
+};
 
 export function PlansScreen({ route, navigation }: any) {
   const { colors, isDark } = useTheme();
@@ -56,6 +68,16 @@ export function PlansScreen({ route, navigation }: any) {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [payPhase, setPayPhase] = useState<'form' | 'loading' | 'success'>('form');
+  const payingRef = useRef(false);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) {
+        clearTimeout(successTimerRef.current);
+      }
+    };
+  }, []);
 
   // 1. Initial Gym Directory Fetch
   useEffect(() => {
@@ -66,7 +88,7 @@ export function PlansScreen({ route, navigation }: any) {
   // Update selectedGymId from params or profile or first directory gym
   useEffect(() => {
     const paramId = route?.params?.gymId;
-    const profileId = userProfile?.gym_id || userProfile?.gymId;
+    const profileId = userProfile?.gym_id;
     const initialId = paramId || profileId || (directory.length > 0 ? directory[0].id : null);
 
     if (initialId && initialId !== selectedGymId) {
@@ -74,6 +96,7 @@ export function PlansScreen({ route, navigation }: any) {
     } else if (!selectedGymId && directory.length > 0) {
       setSelectedGymId(directory[0].id);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedGymId is compared, not depended on
   }, [route?.params?.gymId, userProfile?.gym_id, directory]);
 
   // 2. Fetch Live Gym Profile & Plans whenever selectedGymId changes
@@ -81,6 +104,7 @@ export function PlansScreen({ route, navigation }: any) {
     if (selectedGymId) {
       loadGymData(selectedGymId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadGymData is stable per render pass
   }, [selectedGymId]);
 
   const loadGymData = async (gymId: string) => {
@@ -94,12 +118,13 @@ export function PlansScreen({ route, navigation }: any) {
         setGymDetails(localGym);
       } else {
         try {
-          const gymRes = await apiClient.get(`/gyms/${gymId}/public`);
+          const gymRes = await apiClient.get(`/gyms/${gymId}`);
           if (gymRes.data?.success && gymRes.data.data) {
             setGymDetails(gymRes.data.data);
           }
         } catch {
-          if (localGym) setGymDetails(localGym);
+          // Non-fatal: the plans list below still renders without the hero card.
+          setGymDetails(null);
         }
       }
 
@@ -117,12 +142,14 @@ export function PlansScreen({ route, navigation }: any) {
             planFeatures = ['Standard Gym Access', 'Digital QR Check-In'];
           }
 
+          const durationDays = Number(p.duration_days ?? p.durationDays) || 30;
           return {
             id: p.id,
             name: p.name,
             description: p.description || '',
             price: Number(p.price),
-            billing_interval: (p.duration_days ?? p.durationDays) >= 365 ? 'year' : 'month',
+            durationDays,
+            billing_interval: durationDays >= 365 ? 'year' : 'month',
             features: planFeatures,
           };
         });
@@ -147,6 +174,8 @@ export function PlansScreen({ route, navigation }: any) {
 
   const handlePay = async () => {
     if (!selectedPlan) return;
+    if (payingRef.current) return; // block double taps while a payment is in flight
+    payingRef.current = true;
 
     try {
       setPayPhase('loading');
@@ -172,8 +201,8 @@ export function PlansScreen({ route, navigation }: any) {
         name: gymDetails?.name || 'Aura Apex Gym',
         prefill: {
           email: user?.email || '',
-          contact: '9876543210',
-          name: userProfile?.full_name || 'Gym Customer',
+          contact: userProfile?.phone || '',
+          name: userProfile?.full_name || '',
         },
         theme: { color: colors.primary },
       };
@@ -196,7 +225,7 @@ export function PlansScreen({ route, navigation }: any) {
       await loadSubscription();
 
       // Delayed close and navigate to HomeTab
-      setTimeout(() => {
+      successTimerRef.current = setTimeout(() => {
         setCheckoutOpen(false);
         navigation.navigate('HomeTab');
       }, 1600);
@@ -206,7 +235,16 @@ export function PlansScreen({ route, navigation }: any) {
         'Payment Failed',
         error.response?.data?.message || error.description || error.message || 'Checkout was cancelled or failed.'
       );
+    } finally {
+      payingRef.current = false;
     }
+  };
+
+  // Ignore dismiss gestures while the payment/verification is in flight so
+  // the sheet can't be closed into an ambiguous state mid-checkout.
+  const handleCloseCheckout = () => {
+    if (payPhase === 'loading') return;
+    setCheckoutOpen(false);
   };
 
   const getIntervalLabel = (plan: Plan) => (plan.billing_interval === 'year' ? '/yr' : '/mo');
@@ -227,10 +265,10 @@ export function PlansScreen({ route, navigation }: any) {
     return (subPlanId && subPlanId === plan.id) || (subPlanName && subPlanName === currentName);
   };
 
-  const getRemainingDays = () => {
-    if (!activeSub) return 0;
+  const getRemainingDays = (): number | null => {
+    if (!activeSub) return null;
     const subEndDate = activeSub.end_date || activeSub.endDate;
-    if (!subEndDate) return 30;
+    if (!subEndDate) return null; // unknown — show "Active Access" instead of a made-up count
     return Math.max(0, Math.ceil((new Date(subEndDate).getTime() - Date.now()) / (1000 * 3600 * 24)));
   };
 
@@ -294,7 +332,7 @@ export function PlansScreen({ route, navigation }: any) {
                 </Text>
                 <View style={styles.verifiedBadge}>
                   <ShieldCheck size={12} color="#10B981" style={{ marginRight: 4 }} />
-                  <Text style={styles.verifiedText}>Verified Fitness Partner</Text>
+                  <Text style={styles.verifiedText}>Partner Gym</Text>
                 </View>
               </View>
             </View>
@@ -310,12 +348,29 @@ export function PlansScreen({ route, navigation }: any) {
                 </View>
               )}
 
-              <View style={styles.gymDetailItem}>
-                <Clock size={13} color={colors.primary} style={{ marginRight: 7, marginTop: 1 }} />
-                <Text style={styles.gymDetailText}>
-                  06:00 AM – 10:00 PM · Open Today
-                </Text>
-              </View>
+              {(() => {
+                // Real hours from the gym profile — no invented schedule.
+                const todayKey = WEEKDAY_KEYS[new Date().getDay()];
+                const isOffToday = (gymDetails.weeklyOff || []).includes(todayKey);
+                const today = gymDetails.timings?.[todayKey];
+                const open = formatTime12h(today?.open);
+                const close = formatTime12h(today?.close);
+                if (isOffToday) {
+                  return (
+                    <View style={styles.gymDetailItem}>
+                      <Clock size={13} color={colors.primary} style={{ marginRight: 7, marginTop: 1 }} />
+                      <Text style={styles.gymDetailText}>Closed today (weekly off)</Text>
+                    </View>
+                  );
+                }
+                if (!open || !close) return null;
+                return (
+                  <View style={styles.gymDetailItem}>
+                    <Clock size={13} color={colors.primary} style={{ marginRight: 7, marginTop: 1 }} />
+                    <Text style={styles.gymDetailText}>{`${open} – ${close} · Today`}</Text>
+                  </View>
+                );
+              })()}
 
               {!!gymDetails.description && (
                 <Text style={styles.gymDescText} numberOfLines={2}>
@@ -335,7 +390,7 @@ export function PlansScreen({ route, navigation }: any) {
         {loading || gymLoading ? (
           <View style={styles.centerLoader}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loaderLabel}>Loading plans from database…</Text>
+            <Text style={styles.loaderLabel}>Loading plans…</Text>
           </View>
         ) : plans.length === 0 ? (
           <View style={styles.noGymCard}>
@@ -365,7 +420,7 @@ export function PlansScreen({ route, navigation }: any) {
           >
             {plans.map((p) => {
               const isCurrent = isCurrentPlan(p);
-              const remDays = isCurrent ? getRemainingDays() : 0;
+              const remDays = isCurrent ? getRemainingDays() : null;
 
               return (
                 <View
@@ -405,7 +460,7 @@ export function PlansScreen({ route, navigation }: any) {
                     <View style={styles.activePlanBtnContainer}>
                       <Text style={styles.activePlanBtnTitle}>✓ ONGOING ACTIVE PLAN</Text>
                       <Text style={styles.activePlanBtnSubtext}>
-                        {remDays > 0 ? `${remDays} Days Remaining` : 'Active Access'}
+                        {remDays != null && remDays > 0 ? `${remDays} Days Remaining` : 'Active Access'}
                       </Text>
                     </View>
                   ) : (
@@ -430,13 +485,13 @@ export function PlansScreen({ route, navigation }: any) {
         animationType="slide"
         transparent={true}
         visible={checkoutOpen}
-        onRequestClose={() => setCheckoutOpen(false)}
+        onRequestClose={handleCloseCheckout}
       >
         <View style={styles.sheetOverlay}>
           <TouchableOpacity
             style={styles.dismissOverlay}
             activeOpacity={1}
-            onPress={() => setCheckoutOpen(false)}
+            onPress={handleCloseCheckout}
           />
           <View style={styles.sheetBody}>
             {payPhase === 'form' && selectedPlan && (
@@ -446,32 +501,22 @@ export function PlansScreen({ route, navigation }: any) {
                     <Text style={styles.sheetTitle}>Membership Checkout</Text>
                     <Text style={styles.sheetSubtitle}>{gymDetails?.name || 'Aura Apex'}</Text>
                   </View>
-                  <TouchableOpacity onPress={() => setCheckoutOpen(false)} style={styles.closeIconBtn}>
+                  <TouchableOpacity onPress={handleCloseCheckout} style={styles.closeIconBtn}>
                     <X size={20} color={colors.foreground} />
                   </TouchableOpacity>
                 </View>
 
-                {/* Plan Invoice Breakdown Card */}
+                {/* Plan Summary Card — shows exactly what the backend will charge. */}
                 <View style={styles.checkoutAmountCard}>
                   <View style={styles.invoiceRow}>
                     <Text style={styles.invoiceLabel}>Selected Package</Text>
                     <Text style={styles.invoiceValue}>{selectedPlan.name}</Text>
                   </View>
                   <View style={styles.invoiceRow}>
-                    <Text style={styles.invoiceLabel}>Billing Duration</Text>
-                    <Text style={styles.invoiceValue}>
-                      {selectedPlan.billing_interval === 'year' ? '12 Months (Annual)' : '1 Month (Monthly)'}
-                    </Text>
+                    <Text style={styles.invoiceLabel}>Validity</Text>
+                    <Text style={styles.invoiceValue}>{selectedPlan.durationDays} days</Text>
                   </View>
-                  <View style={styles.invoiceRow}>
-                    <Text style={styles.invoiceLabel}>Base Price</Text>
-                    <Text style={styles.invoiceValue}>₹{Math.round(selectedPlan.price / 1.18).toLocaleString()}</Text>
-                  </View>
-                  <View style={styles.invoiceRow}>
-                    <Text style={styles.invoiceLabel}>GST (18%)</Text>
-                    <Text style={styles.invoiceValue}>₹{(selectedPlan.price - Math.round(selectedPlan.price / 1.18)).toLocaleString()}</Text>
-                  </View>
-                  
+
                   <View style={styles.invoiceDivider} />
 
                   <View style={styles.invoiceTotalRow}>
