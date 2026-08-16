@@ -18,7 +18,7 @@ export interface SubscriptionRow {
 /** Row shape when plan/member relations are embedded via the read query. */
 export interface SubscriptionDetailRow extends SubscriptionRow {
   plan: { id: string; name: string; price: number; duration_days: number } | null;
-  member: { id: string; full_name: string; email: string | null; phone: string | null } | null;
+  member: { id: string; profile_id?: string | null; full_name: string; email: string | null; phone: string | null } | null;
 }
 
 export interface SubscriptionDto {
@@ -34,7 +34,7 @@ export interface SubscriptionDto {
   createdAt: string;
   updatedAt: string;
   plan: { id: string; name: string; price: number; durationDays: number } | null;
-  member: { id: string; fullName: string; email: string | null; phone: string | null } | null;
+  member: { id: string; profileId?: string | null; fullName: string; email: string | null; phone: string | null } | null;
 }
 
 export interface CreateManualSubscriptionInput {

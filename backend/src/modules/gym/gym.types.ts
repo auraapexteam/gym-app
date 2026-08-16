@@ -78,3 +78,32 @@ export interface UpdateGymInput {
   weeklyOff?: string[];
   settings?: Record<string, unknown>;
 }
+
+export interface SavedGymRow {
+  id: string;
+  profile_id: string;
+  gym_id: string;
+  created_at: string;
+}
+
+export interface SavedGymDto {
+  id: string;
+  name: string;
+  slug?: string | null;
+  address?: string | null;
+  description?: string | null;
+  logoUrl?: string | null;
+  imageUrl?: string | null;
+  rating?: number;
+  monthlyPrice?: number | null;
+  timings?: GymTimings;
+  weeklyOff?: string[];
+  status?: GymStatus;
+  savedAt?: string;
+}
+
+export interface BookmarkToggleResult {
+  isSaved: boolean;
+  gymId: string;
+}
+

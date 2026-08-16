@@ -60,4 +60,24 @@ export class AuthController {
     const profile = await AuthService.updateProfile(user.id, req.body);
     return sendSuccess(res, profile, 'Profile updated successfully');
   }
+
+  static async phoneOtp(req: Request, res: Response): Promise<Response> {
+    const result = await AuthService.sendPhoneOtp(req.body.phone);
+    return sendSuccess(res, null, result.message);
+  }
+
+  static async verifyOtp(req: Request, res: Response): Promise<Response> {
+    const result = await AuthService.verifyPhoneOtp(req.body.phone, req.body.code);
+    await AuditService.record({
+      actorId: result.profile.id,
+      actorRole: result.profile.role,
+      gymId: result.profile.gymId,
+      action: 'auth.verify_otp',
+      resourceType: 'profile',
+      resourceId: result.profile.id,
+      ipAddress: clientIp(req),
+    });
+    return sendSuccess(res, result, 'Phone verification successful');
+  }
 }
+

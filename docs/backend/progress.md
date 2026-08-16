@@ -167,6 +167,66 @@ Save the public URL of a progress photo for a given date.
 
 ---
 
+## Workout Routine Breakdown Endpoints
+
+Base path: `/api/v1/workouts`
+
+### GET /workouts/history
+
+Fetch chronological workout history with exercise breakdowns for the authenticated customer.
+
+**Query Parameters**
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | ❌ | Default `50` |
+| `offset` | integer | ❌ | Default `0` |
+
+**Response 200**
+
+```json
+{
+  "success": true,
+  "message": "Workout history retrieved successfully",
+  "data": [
+    {
+      "id": "w-101",
+      "workoutName": "Chest + Triceps",
+      "category": "Push Day",
+      "durationMin": 55,
+      "caloriesBurned": 420,
+      "exercisesCount": 8,
+      "exercises": [
+        { "name": "Bench Press", "sets": 4, "reps": 10, "weightKg": 80 }
+      ],
+      "logDate": "2026-07-30"
+    }
+  ]
+}
+```
+
+### POST /workouts
+
+Log a detailed exercise routine.
+
+**Request Body**
+
+```json
+{
+  "workoutName": "Chest + Triceps",
+  "category": "Push Day",
+  "durationMin": 55,
+  "caloriesBurned": 420,
+  "exercisesCount": 8,
+  "exercises": [
+    { "name": "Bench Press", "sets": 4, "reps": 10, "weightKg": 80, "notes": "Felt strong" }
+  ],
+  "logDate": "2026-07-30"
+}
+```
+
+---
+
 ## Error Codes
 
 | Code | Meaning |
@@ -176,3 +236,5 @@ Save the public URL of a progress photo for a given date.
 | `PROTEIN_LOG_FAILED` | Supabase upsert error on protein log |
 | `IMAGE_LOG_FAILED` | Supabase upsert error on image log |
 | `FETCH_LOGS_FAILED` | Error fetching month summary from one or more tables |
+| `WORKOUT_LOG_FAILED` | Error creating or fetching workout logs |
+

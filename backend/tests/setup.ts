@@ -95,6 +95,14 @@ vi.mock('@/config/supabase', () => {
         testDbRegistry.mocks[currentTable] = data;
         return chain;
       }),
+      upsert: vi.fn((payload: any) => {
+        const data = {
+          id: '47d7dfca-8857-48f8-b3ab-5c30fbdb7bb9',
+          ...(Array.isArray(payload) ? payload[0] : payload),
+        };
+        testDbRegistry.mocks[currentTable] = data;
+        return chain;
+      }),
       update: vi.fn((payload: any) => {
         const existing = testDbRegistry.mocks[currentTable];
         if (existing) {
@@ -216,6 +224,26 @@ vi.mock('@/config/supabase', () => {
     }),
     signOut: vi.fn(async () => ({ error: null })),
     resetPasswordForEmail: vi.fn(async () => ({ data: {}, error: null })),
+    signInWithOtp: vi.fn(async (_payload: any) => {
+      if (testDbRegistry.mocks['otp:error']) {
+        return { data: {}, error: testDbRegistry.mocks['otp:error'] };
+      }
+      return { data: {}, error: null };
+    }),
+    verifyOtp: vi.fn(async (payload: any) => {
+      if (testDbRegistry.mocks['otp:verifyError'] || payload?.token === '000000') {
+        return { data: { session: null, user: null }, error: { message: 'Invalid OTP code' } };
+      }
+      const phone = payload?.phone || '+919876543210';
+      const id = '47d7dfca-8857-48f8-b3ab-5c30fbdb7ba7';
+      return {
+        data: {
+          session: { access_token: 'test-otp-token', expires_at: Math.floor(Date.now() / 1000) + 3600 },
+          user: { id, phone, email: `${phone.replace(/[^0-9]/g, '')}@phone.auraapex.internal`, user_metadata: { full_name: 'OTP User' } },
+        },
+        error: null,
+      };
+    }),
     admin: {
       createUser: vi.fn(async (payload: any) => {
         const email = payload?.email;

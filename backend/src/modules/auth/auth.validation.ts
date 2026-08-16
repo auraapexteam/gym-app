@@ -50,3 +50,17 @@ export const updateProfileSchema = z.object({
     })
     .partial(),
 });
+
+export const phoneOtpSchema = z.object({
+  body: z.object({
+    phone: z.string().min(8, 'Phone number must be at least 8 digits').max(20),
+  }),
+});
+
+export const verifyOtpSchema = z.object({
+  body: z.object({
+    phone: z.string().min(8).max(20),
+    code: z.string().min(4, 'OTP code must be at least 4 digits').max(10),
+  }),
+});
+

@@ -394,6 +394,28 @@ CREATE TABLE IF NOT EXISTS public.protein_logs (
     CONSTRAINT uq_protein_log UNIQUE (profile_id, log_date)
 );
 
+CREATE TABLE IF NOT EXISTS public.saved_gyms (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    gym_id        UUID NOT NULL REFERENCES public.gyms(id) ON DELETE CASCADE,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    CONSTRAINT uq_saved_gyms UNIQUE (profile_id, gym_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.workout_logs (
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id       UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    workout_name     TEXT NOT NULL,
+    category         TEXT NOT NULL,
+    duration_min     INTEGER NOT NULL CHECK (duration_min > 0),
+    calories_burned  INTEGER NOT NULL DEFAULT 0 CHECK (calories_burned >= 0),
+    exercises_count  INTEGER NOT NULL DEFAULT 0 CHECK (exercises_count >= 0),
+    exercises        JSONB NOT NULL DEFAULT '[]'::jsonb,
+    log_date         DATE NOT NULL,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    updated_at       TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
+);
+
 -- ============================================================================
 --  7. INDEXES  (index every frequently-queried / tenant column)
 -- ============================================================================
@@ -437,6 +459,11 @@ CREATE INDEX IF NOT EXISTS idx_gallery_entity        ON public.gallery_images (g
 CREATE INDEX IF NOT EXISTS idx_gym_join_requests_gym   ON public.gym_join_requests (gym_id);
 CREATE INDEX IF NOT EXISTS idx_gym_join_requests_profile ON public.gym_join_requests (profile_id);
 
+CREATE INDEX IF NOT EXISTS idx_saved_gyms_profile    ON public.saved_gyms (profile_id);
+CREATE INDEX IF NOT EXISTS idx_saved_gyms_gym        ON public.saved_gyms (gym_id);
+
+CREATE INDEX IF NOT EXISTS idx_workout_logs_profile  ON public.workout_logs (profile_id, log_date);
+
 CREATE INDEX IF NOT EXISTS idx_progress_logs_profile ON public.progress_logs(profile_id, log_date);
 CREATE INDEX IF NOT EXISTS idx_progress_images_profile ON public.progress_images(profile_id, log_date);
 CREATE INDEX IF NOT EXISTS idx_water_logs_profile ON public.water_logs(profile_id, log_date);
@@ -456,7 +483,7 @@ DECLARE
     tables TEXT[] := ARRAY[
         'gyms', 'profiles', 'gym_staff', 'members', 'plans', 'subscriptions',
         'payments', 'qr_codes', 'trainers', 'equipment', 'gallery_images', 'gym_join_requests',
-        'progress_logs', 'water_logs', 'protein_logs'
+        'progress_logs', 'water_logs', 'protein_logs', 'workout_logs'
     ];
 BEGIN
     FOREACH t IN ARRAY tables LOOP
@@ -706,6 +733,8 @@ ALTER TABLE public.progress_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.progress_images ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.water_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.protein_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.saved_gyms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.workout_logs ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: a user reads/updates their own profile; super admin sees all.
 DROP POLICY IF EXISTS "profiles_self_read" ON public.profiles;
@@ -809,6 +838,30 @@ CREATE POLICY "protein_logs_read" ON public.protein_logs
     );
 
 CREATE POLICY "protein_logs_write" ON public.protein_logs
+    FOR ALL TO authenticated
+    USING (auth.uid() = profile_id)
+    WITH CHECK (auth.uid() = profile_id);
+
+-- 5. Policies for Saved Gyms (Bookmarks)
+CREATE POLICY "saved_gyms_read" ON public.saved_gyms
+    FOR SELECT TO authenticated
+    USING (auth.uid() = profile_id OR public.is_super_admin());
+
+CREATE POLICY "saved_gyms_write" ON public.saved_gyms
+    FOR ALL TO authenticated
+    USING (auth.uid() = profile_id)
+    WITH CHECK (auth.uid() = profile_id);
+
+-- 6. Policies for Workout Logs
+CREATE POLICY "workout_logs_read" ON public.workout_logs
+    FOR SELECT TO authenticated
+    USING (
+        auth.uid() = profile_id
+        OR profile_id IN (SELECT id FROM public.profiles WHERE gym_id = public.current_gym_id())
+        OR public.is_super_admin()
+    );
+
+CREATE POLICY "workout_logs_write" ON public.workout_logs
     FOR ALL TO authenticated
     USING (auth.uid() = profile_id)
     WITH CHECK (auth.uid() = profile_id);

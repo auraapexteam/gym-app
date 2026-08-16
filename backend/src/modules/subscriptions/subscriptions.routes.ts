@@ -42,9 +42,9 @@ router.get(
   asyncHandler(SubscriptionController.getById),
 );
 
+// Cancel subscription (Customer self-service or Staff/Owner management).
 router.post(
   '/:id/cancel',
-  requirePermission(Permission.SUBSCRIPTION_MANAGE),
   validate(subscriptionIdSchema),
   asyncHandler(SubscriptionController.cancel),
 );

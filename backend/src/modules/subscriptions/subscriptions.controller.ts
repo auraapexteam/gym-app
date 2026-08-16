@@ -30,13 +30,16 @@ export class SubscriptionController {
 
   static async cancel(req: Request, res: Response): Promise<Response> {
     const user = currentUser(req);
-    const gymId = requireGymId(user);
-    const sub = await SubscriptionService.cancel(gymId, req.params.id);
+    const sub = await SubscriptionService.cancel(req.params.id, {
+      id: user.id,
+      role: user.role,
+      gymId: user.gymId,
+    });
 
     await AuditService.record({
       actorId: user.id,
       actorRole: user.role,
-      gymId,
+      gymId: sub.gymId,
       action: 'subscription.cancelled',
       resourceType: 'subscription',
       resourceId: sub.id,

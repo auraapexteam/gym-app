@@ -944,9 +944,39 @@ updated_at  TIMESTAMPTZ
 UNIQUE (profile_id, log_date)
 ```
 
+## saved_gyms
+
+Stores bookmarked/saved partner gyms for a customer profile.
+
+```sql
+id          UUID PRIMARY KEY
+profile_id  UUID REFERENCES profiles(id) ON DELETE CASCADE
+gym_id      UUID REFERENCES gyms(id) ON DELETE CASCADE
+created_at  TIMESTAMPTZ
+UNIQUE (profile_id, gym_id)
+```
+
+## workout_logs
+
+Stores structured workout sessions and exercise breakdowns for a customer.
+
+```sql
+id               UUID PRIMARY KEY
+profile_id       UUID REFERENCES profiles(id) ON DELETE CASCADE
+workout_name     TEXT NOT NULL
+category         TEXT NOT NULL
+duration_min     INTEGER CHECK (duration_min > 0)
+calories_burned  INTEGER DEFAULT 0 CHECK (calories_burned >= 0)
+exercises_count  INTEGER DEFAULT 0 CHECK (exercises_count >= 0)
+exercises        JSONB DEFAULT '[]'::jsonb
+log_date         DATE NOT NULL
+created_at       TIMESTAMPTZ
+updated_at       TIMESTAMPTZ
+```
+
 ## RLS Policies
 
-All four tables have Row Level Security enabled.
+All tables have Row Level Security enabled.
 
 - **Customers** can read and write only their own rows (`auth.uid() = profile_id`).
 - **Gym owners/staff** can read logs of members who belong to their gym.
@@ -959,10 +989,9 @@ idx_progress_logs_profile    ON progress_logs(profile_id, log_date)
 idx_progress_images_profile  ON progress_images(profile_id, log_date)
 idx_water_logs_profile       ON water_logs(profile_id, log_date)
 idx_protein_logs_profile     ON protein_logs(profile_id, log_date)
+idx_saved_gyms_profile       ON saved_gyms(profile_id)
+idx_saved_gyms_gym           ON saved_gyms(gym_id)
+idx_workout_logs_profile     ON workout_logs(profile_id, log_date)
 ```
-
-## Migration
-
-Defined in `supabase/migrations/20260714030000_progress_logbook.sql` and reflected in `schema.sql`.
 
 ---

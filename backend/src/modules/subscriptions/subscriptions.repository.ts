@@ -9,7 +9,7 @@ const BASE_COLUMNS =
 const DETAIL_SELECT =
   `${BASE_COLUMNS}, ` +
   'plan:plans(id, name, price, duration_days), ' +
-  'member:members(id, full_name, email, phone)';
+  'member:members(id, profile_id, full_name, email, phone)';
 
 export interface ListDetailedParams {
   gymId: string;

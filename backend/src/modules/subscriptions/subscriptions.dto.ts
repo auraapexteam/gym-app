@@ -23,6 +23,7 @@ export const toSubscriptionDto = (row: SubscriptionDetailRow): SubscriptionDto =
   member: row.member
     ? {
         id: row.member.id,
+        profileId: row.member.profile_id ?? null,
         fullName: row.member.full_name,
         email: row.member.email,
         phone: row.member.phone,

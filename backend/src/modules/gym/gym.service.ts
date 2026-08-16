@@ -1,11 +1,13 @@
 import { gymRepository } from '@/modules/gym/gym.repository';
-import { toGymDto, toPublicGymDto } from '@/modules/gym/gym.dto';
+import { toGymDto, toPublicGymDto, toSavedGymDto } from '@/modules/gym/gym.dto';
 import {
+  BookmarkToggleResult,
   CreateGymInput,
   GymDto,
   GymRow,
   GymStatus,
   PublicGymDto,
+  SavedGymDto,
   UpdateGymInput,
 } from '@/modules/gym/gym.types';
 import { ListQuery, PaginatedResult } from '@/shared/types';
@@ -391,5 +393,31 @@ export class GymService {
       gymId
     }).catch(err => console.error('Failed to notify customer:', err));
   }
+
+  // --- Saved / Bookmarked Gyms Operations ----------------------------------
+
+  /** Return list of gyms bookmarked by a customer profile. */
+  static async listSaved(profileId: string): Promise<SavedGymDto[]> {
+    const savedRows = await gymRepository.listSavedByProfile(profileId);
+    return savedRows.map(row => {
+      const gymData = row.gyms || {};
+      return toSavedGymDto(gymData, row.created_at);
+    });
+  }
+
+  /** Toggle bookmark status for a gym (saves if not saved, removes if already saved). */
+  static async toggleBookmark(profileId: string, gymId: string): Promise<BookmarkToggleResult> {
+    await this.getRowOrThrow(gymId);
+    const isSaved = await gymRepository.isGymSaved(profileId, gymId);
+
+    if (isSaved) {
+      await gymRepository.removeBookmark(profileId, gymId);
+      return { isSaved: false, gymId };
+    } else {
+      await gymRepository.addBookmark(profileId, gymId);
+      return { isSaved: true, gymId };
+    }
+  }
 }
+
 

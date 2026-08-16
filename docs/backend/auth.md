@@ -603,3 +603,18 @@ Gym
 Attendance
 
 ---
+
+# 123. Phone OTP Authentication Flow
+
+Purpose: Native SMS OTP authentication for frictionless mobile sign-in.
+
+Endpoints:
+- `POST /api/v1/auth/phone-otp`: `{ "phone": "+919876543210" }` → triggers SMS verification code dispatch
+- `POST /api/v1/auth/verify-otp`: `{ "phone": "+919876543210", "code": "123456" }` → verifies OTP and returns `{ session, profile }`
+
+Security Guarantees:
+- Rate limited strictly via `authRateLimiter` (10 attempts per IP per 15 minutes).
+- Automatic creation and synchronization of customer profile upon initial successful OTP verification.
+- Tokens issued follow standard JWT schema and bearer authentication lifecycle.
+
+---

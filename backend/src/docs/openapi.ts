@@ -226,6 +226,41 @@ const AuditLogSchema = registry.register('AuditLog', z.object({
   createdAt:    z.string().datetime(),
 }).openapi('AuditLog'));
 
+const SavedGymSchema = registry.register('SavedGym', z.object({
+  id:           UuidSchema,
+  name:         z.string(),
+  slug:         z.string().nullable().optional(),
+  address:      z.string().nullable().optional(),
+  description:  z.string().nullable().optional(),
+  logoUrl:      z.string().nullable().optional(),
+  imageUrl:     z.string().nullable().optional(),
+  rating:       z.number().optional(),
+  monthlyPrice: z.number().nullable().optional(),
+  timings:      z.record(z.string(), z.unknown()).optional(),
+  weeklyOff:    z.array(z.string()).optional(),
+  status:       z.enum(['active', 'suspended', 'pending']).optional(),
+  savedAt:      z.string().optional(),
+}).openapi('SavedGym'));
+
+const WorkoutLogSchema = registry.register('WorkoutLog', z.object({
+  id:             UuidSchema,
+  workoutName:    z.string(),
+  category:       z.string(),
+  durationMin:    z.number(),
+  caloriesBurned: z.number(),
+  exercisesCount: z.number(),
+  exercises:      z.array(z.object({
+    name:     z.string(),
+    sets:     z.number().optional(),
+    reps:     z.number().optional(),
+    weightKg: z.number().optional(),
+    notes:    z.string().optional(),
+  })),
+  logDate:        z.string(),
+  createdAt:      z.string().datetime(),
+  updatedAt:      z.string().datetime(),
+}).openapi('WorkoutLog'));
+
 // ─── Auth routes ────────────────────────────────────────────────────────────
 
 registry.registerPath({
@@ -252,6 +287,31 @@ registry.registerPath({
   }) } } } },
   responses: {
     200: { description: 'OK', content: { 'application/json': { schema: SuccessEnvelope(z.object({ session: SessionSchema, profile: ProfileSchema }), 'LoginResult') } } },
+    ...errorResponses,
+  },
+});
+
+registry.registerPath({
+  method: 'post', path: '/auth/phone-otp', tags: ['Auth'],
+  summary: 'Trigger SMS OTP code generation for mobile login',
+  request: { body: { content: { 'application/json': { schema: z.object({
+    phone: z.string().min(8).openapi({ example: '+919876543210' }),
+  }) } } } },
+  responses: {
+    200: { description: 'OTP dispatched', content: { 'application/json': { schema: z.object({ success: z.literal(true), message: z.string() }) } } },
+    ...errorResponses,
+  },
+});
+
+registry.registerPath({
+  method: 'post', path: '/auth/verify-otp', tags: ['Auth'],
+  summary: 'Verify SMS OTP code and return session tokens + user profile',
+  request: { body: { content: { 'application/json': { schema: z.object({
+    phone: z.string().min(8).openapi({ example: '+919876543210' }),
+    code:  z.string().min(4).openapi({ example: '123456' }),
+  }) } } } },
+  responses: {
+    200: { description: 'Verification successful', content: { 'application/json': { schema: SuccessEnvelope(z.object({ session: SessionSchema, profile: ProfileSchema }), 'PhoneOtpVerifyResult') } } },
     ...errorResponses,
   },
 });
@@ -304,6 +364,38 @@ registry.registerPath({
 });
 
 // ─── Gym routes ─────────────────────────────────────────────────────────────
+
+registry.registerPath({
+  method: 'get', path: '/gyms/directory', tags: ['Gym'],
+  summary: 'Public directory of active partner gyms with search and pagination',
+  security: auth,
+  request: { query: PaginationQuery },
+  responses: {
+    200: { description: 'OK', content: { 'application/json': { schema: SuccessEnvelope(z.object({ items: z.array(GymSchema), ...PaginatedMeta.shape }), 'GymDirectoryResult') } } },
+    ...errorResponses,
+  },
+});
+
+registry.registerPath({
+  method: 'get', path: '/gyms/saved', tags: ['Gym'],
+  summary: 'List partner gyms bookmarked/saved by authenticated user',
+  security: auth,
+  responses: {
+    200: { description: 'OK', content: { 'application/json': { schema: SuccessEnvelope(z.array(SavedGymSchema), 'SavedGymListResult') } } },
+    ...errorResponses,
+  },
+});
+
+registry.registerPath({
+  method: 'post', path: '/gyms/{id}/bookmark', tags: ['Gym'],
+  summary: 'Toggle bookmark status for a gym (saves if not saved, removes if saved)',
+  security: auth,
+  request: { params: z.object({ id: UuidSchema }) },
+  responses: {
+    200: { description: 'Bookmark toggled', content: { 'application/json': { schema: SuccessEnvelope(z.object({ isSaved: z.boolean(), gymId: UuidSchema }), 'BookmarkToggleResult') } } },
+    ...errorResponses,
+  },
+});
 
 registry.registerPath({
   method: 'get', path: '/gyms/me', tags: ['Gym'],
@@ -503,8 +595,19 @@ registry.registerPath({
 });
 
 registry.registerPath({
+  method: 'get', path: '/subscriptions/me', tags: ['Subscriptions'],
+  summary: 'List all active and historical subscriptions for the authenticated customer',
+  security: auth,
+  responses: {
+    200: { description: 'OK', content: { 'application/json': { schema: SuccessEnvelope(z.array(SubscriptionSchema), 'CustomerSubscriptionsResult') } } },
+    ...errorResponses,
+  },
+});
+
+registry.registerPath({
   method: 'post', path: '/subscriptions/{id}/cancel', tags: ['Subscriptions'],
-  summary: 'Cancel an active subscription (owner)',
+  summary: 'Cancel an active subscription (Customer self-service or Gym staff/owner)',
+  description: 'Allows regular customers to cancel their own membership, or gym staff/owners to manage member cancellations.',
   security: auth,
   request: { params: z.object({ id: UuidSchema }) },
   responses: {
@@ -832,6 +935,118 @@ registry.registerPath({
   },
 });
 
+// ─── Workouts routes ─────────────────────────────────────────────────────────
+
+registry.registerPath({
+  method: 'get', path: '/workouts/history', tags: ['Workouts'],
+  summary: 'Get chronological workout exercise history for the authenticated customer',
+  security: auth,
+  request: { query: z.object({ limit: z.string().optional(), offset: z.string().optional() }) },
+  responses: {
+    200: { description: 'OK', content: { 'application/json': { schema: SuccessEnvelope(z.array(WorkoutLogSchema), 'WorkoutHistoryResult') } } },
+    ...errorResponses,
+  },
+});
+
+registry.registerPath({
+  method: 'post', path: '/workouts', tags: ['Workouts'],
+  summary: 'Log a detailed workout session with exercise breakdowns',
+  security: auth,
+  request: { body: { content: { 'application/json': { schema: z.object({
+    workoutName:    z.string(),
+    category:       z.string(),
+    durationMin:    z.number(),
+    caloriesBurned: z.number().optional(),
+    exercisesCount: z.number().optional(),
+    exercises:      z.array(z.object({
+      name:     z.string(),
+      sets:     z.number().optional(),
+      reps:     z.number().optional(),
+      weightKg: z.number().optional(),
+      notes:    z.string().optional(),
+    })).optional(),
+    logDate:        z.string().optional(),
+  }) } } } },
+  responses: {
+    201: { description: 'Workout logged', content: { 'application/json': { schema: SuccessEnvelope(WorkoutLogSchema, 'WorkoutLogResult') } } },
+    ...errorResponses,
+  },
+});
+
+// ─── Progress routes ─────────────────────────────────────────────────────────
+
+registry.registerPath({
+  method: 'get', path: '/progress/month', tags: ['Progress'],
+  summary: 'Get aggregated monthly progress metrics (weight, water, protein, steps, photo logs)',
+  security: auth,
+  request: { query: z.object({ year: z.string().optional(), month: z.string().optional() }) },
+  responses: {
+    200: { description: 'OK', content: { 'application/json': { schema: SuccessEnvelope(z.object({
+      weightLogs:  z.array(z.unknown()),
+      waterLogs:   z.array(z.unknown()),
+      proteinLogs: z.array(z.unknown()),
+      stepsLogs:   z.array(z.unknown()),
+      imageLogs:   z.array(z.unknown()),
+    }), 'MonthProgressResult') } } },
+    ...errorResponses,
+  },
+});
+
+registry.registerPath({
+  method: 'post', path: '/progress/weight', tags: ['Progress'],
+  summary: 'Log daily body weight',
+  security: auth,
+  request: { body: { content: { 'application/json': { schema: z.object({ weight: z.number(), logDate: z.string().optional() }) } } } },
+  responses: {
+    200: { description: 'Logged', content: { 'application/json': { schema: SuccessEnvelope(z.unknown(), 'WeightLogResult') } } },
+    ...errorResponses,
+  },
+});
+
+registry.registerPath({
+  method: 'post', path: '/progress/water', tags: ['Progress'],
+  summary: 'Log daily water intake (ml)',
+  security: auth,
+  request: { body: { content: { 'application/json': { schema: z.object({ amountMl: z.number(), logDate: z.string().optional() }) } } } },
+  responses: {
+    200: { description: 'Logged', content: { 'application/json': { schema: SuccessEnvelope(z.unknown(), 'WaterLogResult') } } },
+    ...errorResponses,
+  },
+});
+
+registry.registerPath({
+  method: 'post', path: '/progress/protein', tags: ['Progress'],
+  summary: 'Log daily protein intake (g)',
+  security: auth,
+  request: { body: { content: { 'application/json': { schema: z.object({ amountG: z.number(), logDate: z.string().optional() }) } } } },
+  responses: {
+    200: { description: 'Logged', content: { 'application/json': { schema: SuccessEnvelope(z.unknown(), 'ProteinLogResult') } } },
+    ...errorResponses,
+  },
+});
+
+registry.registerPath({
+  method: 'post', path: '/progress/steps', tags: ['Progress'],
+  summary: 'Log daily step count',
+  security: auth,
+  request: { body: { content: { 'application/json': { schema: z.object({ steps: z.number(), logDate: z.string().optional() }) } } } },
+  responses: {
+    200: { description: 'Logged', content: { 'application/json': { schema: SuccessEnvelope(z.unknown(), 'StepsLogResult') } } },
+    ...errorResponses,
+  },
+});
+
+registry.registerPath({
+  method: 'post', path: '/progress/image', tags: ['Progress'],
+  summary: 'Log daily progress photo URL',
+  security: auth,
+  request: { body: { content: { 'application/json': { schema: z.object({ imageUrl: z.string().url(), logDate: z.string().optional() }) } } } },
+  responses: {
+    200: { description: 'Logged', content: { 'application/json': { schema: SuccessEnvelope(z.unknown(), 'ImageProgressResult') } } },
+    ...errorResponses,
+  },
+});
+
 // ─── Webhook (unauthenticated) ─────────────────────────────────────────────
 
 registry.registerPath({
@@ -892,11 +1107,11 @@ export function getOpenApiSpec() {
       { url: 'http://localhost:3000/api/v1', description: 'Local dev' },
     ],
     tags: [
-      { name: 'Auth',          description: 'Authentication — register, login, profile, password reset' },
-      { name: 'Gym',           description: 'Gym profile, timings, settings, staff, join requests' },
+      { name: 'Auth',          description: 'Authentication — register, login, phone OTP, profile, password reset' },
+      { name: 'Gym',           description: 'Gym profile, timings, settings, staff, bookmarks, join requests' },
       { name: 'Members',       description: 'Gym member management' },
       { name: 'Plans',         description: 'Membership plan catalogue' },
-      { name: 'Subscriptions', description: 'Membership lifecycle — manual and online checkout' },
+      { name: 'Subscriptions', description: 'Membership lifecycle — manual, customer self-cancellation, checkout' },
       { name: 'Payments',      description: 'Payment records, Razorpay orders, refunds' },
       { name: 'Attendance',    description: 'QR and manual check-ins, daily stats' },
       { name: 'QR',            description: 'Gym QR code management' },
@@ -905,7 +1120,10 @@ export function getOpenApiSpec() {
       { name: 'Notifications', description: 'In-app notifications' },
       { name: 'Analytics',     description: 'Revenue and attendance reporting' },
       { name: 'Admin',         description: 'Super-admin — cross-tenant gym management, audit logs' },
+      { name: 'Workouts',      description: 'Customer workout routines and exercise history' },
+      { name: 'Progress',      description: 'Customer daily biometric and fitness metrics' },
       { name: 'Webhooks',      description: 'Razorpay event receiver — server-to-server only' },
     ],
   });
 }
+

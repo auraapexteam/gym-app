@@ -12,6 +12,14 @@ import {
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
+const GYM_COVER_FALLBACKS = [
+  'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80',
+  'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80',
+  'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=800&q=80',
+  'https://images.unsplash.com/photo-1571902943202-507ec2618e8f?auto=format&fit=crop&w=800&q=80',
+  'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=800&q=80',
+];
+
 export default function BrowseGymsPage() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
@@ -304,45 +312,75 @@ export default function BrowseGymsPage() {
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredGyms.map((gym, i) => (
-                  <motion.div
-                    key={gym.id}
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                  >
-                    <Card className="h-full flex flex-col justify-between hover:border-aura-primary/40 transition-all duration-300">
-                      <CardContent className="p-6">
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="h-12 w-12 rounded-xl bg-aura-primary/10 border border-aura-primary/20 flex items-center justify-center font-bold text-lg text-aura-primary shrink-0">
-                            {gym.name.charAt(0)}
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-aura-text text-base leading-snug">{gym.name}</h3>
-                            <p className="text-xs text-aura-muted flex items-center gap-1 mt-0.5">
-                              <MapPin className="h-3 w-3 text-aura-primary" /> {gym.city || gym.address || 'India'}
-                            </p>
-                          </div>
-                        </div>
+                {filteredGyms.map((gym: any, i: number) => {
+                  const coverImage = gym.coverUrl || gym.cover_url || (Array.isArray(gym.images) && gym.images[0]) || GYM_COVER_FALLBACKS[i % GYM_COVER_FALLBACKS.length];
+                  const logoImage = gym.logoUrl || gym.logo_url;
 
-                        <div className="space-y-2 text-xs text-aura-muted border-t border-aura-border pt-4 mb-4">
-                          {gym.address && (
-                            <p className="flex items-center gap-2 truncate">
-                              <Building2 className="h-3.5 w-3.5 text-aura-muted shrink-0" /> {gym.address}
-                            </p>
-                          )}
-                          {gym.phone && (
-                            <p className="flex items-center gap-2">
-                              <Phone className="h-3.5 w-3.5 text-aura-muted shrink-0" /> {gym.phone}
-                            </p>
-                          )}
-                          {gym.email && (
-                            <p className="flex items-center gap-2 truncate">
-                              <Mail className="h-3.5 w-3.5 text-aura-muted shrink-0" /> {gym.email}
-                            </p>
-                          )}
+                  return (
+                    <motion.div
+                      key={gym.id}
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                    >
+                      <Card className="h-full flex flex-col justify-between overflow-hidden group hover:border-aura-primary/60 transition-all duration-300 shadow-md">
+                        <div>
+                          {/* Gym Image Banner */}
+                          <div className="relative h-44 w-full overflow-hidden bg-aura-card border-b border-aura-border">
+                            <img
+                              src={coverImage}
+                              alt={gym.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-aura-bg via-aura-bg/30 to-transparent" />
+                            
+                            <Badge variant="success" className="absolute top-3 right-3 shadow-md gap-1 text-[11px]">
+                              <ShieldCheck className="h-3 w-3" /> Partner Gym
+                            </Badge>
+
+                            {/* Gym Logo Avatar overlay */}
+                            <div className="absolute bottom-3 left-4 flex items-center gap-3">
+                              {logoImage ? (
+                                <img
+                                  src={logoImage}
+                                  alt={gym.name}
+                                  className="h-12 w-12 rounded-xl object-cover border-2 border-aura-primary shadow-lg bg-aura-card"
+                                />
+                              ) : (
+                                <div className="h-12 w-12 rounded-xl bg-aura-primary border-2 border-aura-bg text-aura-bg flex items-center justify-center font-black text-xl shadow-lg">
+                                  {gym.name.charAt(0)}
+                                </div>
+                              )}
+                              <div>
+                                <h3 className="font-bold text-white text-base leading-snug drop-shadow-md">{gym.name}</h3>
+                                <p className="text-xs text-aura-primary font-medium flex items-center gap-1">
+                                  <MapPin className="h-3 w-3 text-aura-primary" /> {gym.city || gym.address || 'India'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <CardContent className="p-5 space-y-3">
+                            {gym.description && (
+                              <p className="text-xs text-aura-muted line-clamp-2 leading-relaxed">
+                                {gym.description}
+                              </p>
+                            )}
+
+                            <div className="space-y-1.5 text-xs text-aura-muted border-t border-aura-border/60 pt-3">
+                              {gym.address && (
+                                <p className="flex items-center gap-2 truncate">
+                                  <Building2 className="h-3.5 w-3.5 text-aura-muted shrink-0" /> {gym.address}
+                                </p>
+                              )}
+                              {gym.phone && (
+                                <p className="flex items-center gap-2">
+                                  <Phone className="h-3.5 w-3.5 text-aura-muted shrink-0" /> {gym.phone}
+                                </p>
+                              )}
+                            </div>
+                          </CardContent>
                         </div>
-                      </CardContent>
 
                       <div className="p-6 pt-0 space-y-2">
                         <Button
@@ -363,7 +401,8 @@ export default function BrowseGymsPage() {
                       </div>
                     </Card>
                   </motion.div>
-                ))}
+                );
+              })}
               </div>
             )}
           </div>

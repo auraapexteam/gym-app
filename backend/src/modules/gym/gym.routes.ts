@@ -17,6 +17,8 @@ router.use(authenticate);
 
 // Public directory search & Join requests for customers
 router.get('/directory', asyncHandler(GymController.listPublicDirectory));
+router.get('/saved', asyncHandler(GymController.listSaved));
+router.post('/:id/bookmark', validate(gymIdParamSchema), asyncHandler(GymController.toggleBookmark));
 router.post('/join-request', validate(createJoinRequestSchema), asyncHandler(GymController.createJoinRequest));
 router.get('/join-request/status', asyncHandler(GymController.getJoinRequestStatus));
 

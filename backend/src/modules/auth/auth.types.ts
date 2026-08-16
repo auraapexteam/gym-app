@@ -56,3 +56,13 @@ export interface UpdateProfileInput {
   phone?: string;
   avatarUrl?: string;
 }
+
+export interface SendPhoneOtpInput {
+  phone: string;
+}
+
+export interface VerifyPhoneOtpInput {
+  phone: string;
+  code: string;
+}
+

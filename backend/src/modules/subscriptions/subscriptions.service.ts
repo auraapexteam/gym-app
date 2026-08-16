@@ -7,7 +7,8 @@ import {
 import { PlanService } from '@/modules/plans';
 import { MemberService } from '@/modules/members';
 import { ListQuery, PaginatedResult } from '@/shared/types';
-import { NotFoundError, BusinessRuleError } from '@/shared/errors';
+import { NotFoundError, BusinessRuleError, ForbiddenError } from '@/shared/errors';
+import { Role } from '@/shared/rbac';
 
 /**
  * Subscription (membership) lifecycle. The financial confirmation that
@@ -40,6 +41,12 @@ export class SubscriptionService {
     return toSubscriptionDto(row);
   }
 
+  static async getByIdGlobal(id: string): Promise<SubscriptionDto> {
+    const row = await subscriptionRepository.findDetailedById(id);
+    if (!row) throw new NotFoundError('Subscription not found', 'SUBSCRIPTION_NOT_FOUND');
+    return toSubscriptionDto(row);
+  }
+
   /** All subscriptions for a customer (across every gym they are a member of). */
   static async listForProfile(profileId: string): Promise<SubscriptionDto[]> {
     const memberIds = await MemberService.listMemberIdsForProfile(profileId);
@@ -56,10 +63,44 @@ export class SubscriptionService {
     return active !== null;
   }
 
-  /** Cancel a subscription. */
-  static async cancel(gymId: string, id: string): Promise<SubscriptionDto> {
-    const existing = await subscriptionRepository.findById(id, gymId);
+  /**
+   * Cancel a subscription. Allows self-service cancellation by customer who owns the
+   * subscription, or gym staff/owner with management permissions.
+   */
+  static async cancel(
+    idOrGymId: string,
+    idOrActor?: string | { id: string; role: Role; gymId?: string | null },
+  ): Promise<SubscriptionDto> {
+    // Handle overload: cancel(gymId, id) vs cancel(id, actor)
+    let id: string;
+    let actor: { id: string; role: Role; gymId?: string | null } | string | undefined;
+
+    if (typeof idOrActor === 'string') {
+      id = idOrActor;
+      actor = idOrGymId;
+    } else {
+      id = idOrGymId;
+      actor = idOrActor;
+    }
+
+    const existing = await subscriptionRepository.findDetailedById(id);
     if (!existing) throw new NotFoundError('Subscription not found', 'SUBSCRIPTION_NOT_FOUND');
+
+    if (actor && typeof actor === 'object') {
+      const isSuperAdmin = actor.role === Role.SUPER_ADMIN;
+      const isGymStaff = (actor.role === Role.OWNER || actor.role === Role.STAFF) && actor.gymId === existing.gym_id;
+      const isCustomerOwner = existing.member?.profile_id === actor.id;
+
+      if (!isSuperAdmin && !isGymStaff && !isCustomerOwner) {
+        throw new ForbiddenError('You are not authorized to cancel this subscription', 'FORBIDDEN');
+      }
+    } else if (typeof actor === 'string') {
+      // Legacy gymId match check
+      if (existing.gym_id !== actor) {
+        throw new NotFoundError('Subscription not found', 'SUBSCRIPTION_NOT_FOUND');
+      }
+    }
+
     if (existing.status === 'cancelled') {
       throw new BusinessRuleError('Subscription is already cancelled', 'ALREADY_CANCELLED');
     }
@@ -67,9 +108,9 @@ export class SubscriptionService {
     await subscriptionRepository.update(
       id,
       { status: 'cancelled', cancelled_at: new Date().toISOString() },
-      gymId,
+      existing.gym_id,
     );
-    return this.getById(gymId, id);
+    return this.getById(existing.gym_id, id);
   }
 
   /** Create an immediately-active membership recorded against a cash/manual payment. */

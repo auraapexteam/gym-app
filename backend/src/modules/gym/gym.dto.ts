@@ -1,4 +1,4 @@
-import { GymRow, GymDto, PublicGymDto } from '@/modules/gym/gym.types';
+import { GymRow, GymDto, PublicGymDto, SavedGymDto } from '@/modules/gym/gym.types';
 
 export const toGymDto = (row: GymRow): GymDto => ({
   id: row.id,
@@ -29,3 +29,20 @@ export const toPublicGymDto = (row: GymRow): PublicGymDto => ({
   weeklyOff: row.weekly_off ?? [],
   status: row.status,
 });
+
+export const toSavedGymDto = (row: any, savedAt?: string): SavedGymDto => ({
+  id: row.id,
+  name: row.name,
+  slug: row.slug ?? null,
+  address: row.address ?? null,
+  description: row.description ?? null,
+  logoUrl: row.logo_url ?? null,
+  imageUrl: row.logo_url ?? null,
+  rating: 4.8,
+  monthlyPrice: row.monthly_price ?? (row.plans && row.plans[0] ? Number(row.plans[0].price) : null),
+  timings: row.timings ?? {},
+  weeklyOff: row.weekly_off ?? [],
+  status: row.status ?? 'active',
+  savedAt: savedAt || row.created_at || new Date().toISOString(),
+});
+

@@ -165,5 +165,21 @@ export class GymController {
 
     return sendSuccess(res, null, 'Join request rejected successfully');
   }
+
+  /** List saved/bookmarked partner gyms for authenticated user. */
+  static async listSaved(req: Request, res: Response): Promise<Response> {
+    const user = currentUser(req);
+    const savedGyms = await GymService.listSaved(user.id);
+    return sendSuccess(res, savedGyms, 'Saved gyms fetched successfully');
+  }
+
+  /** Toggle bookmark for a partner gym. */
+  static async toggleBookmark(req: Request, res: Response): Promise<Response> {
+    const user = currentUser(req);
+    const { id } = req.params;
+    const result = await GymService.toggleBookmark(user.id, id);
+    return sendSuccess(res, result, result.isSaved ? 'Gym bookmarked successfully' : 'Gym removed from bookmarks');
+  }
 }
+
 

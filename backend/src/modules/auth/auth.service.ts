@@ -167,4 +167,50 @@ export class AuthService {
       throw new BadRequestError(error.message, 'USER_DELETE_FAILED');
     }
   }
+
+  /** Trigger SMS OTP code generation via Supabase Auth OTP. */
+  static async sendPhoneOtp(phone: string): Promise<{ message: string }> {
+    const { error } = await supabaseAnon.auth.signInWithOtp({
+      phone,
+    });
+
+    if (error) {
+      throw new BadRequestError(error.message ?? 'Failed to send OTP code', 'OTP_SEND_FAILED');
+    }
+
+    return { message: `OTP sent to ${phone}` };
+  }
+
+  /** Verify 6-digit OTP code and return session tokens + profile. */
+  static async verifyPhoneOtp(phone: string, code: string): Promise<AuthResult> {
+    const { data, error } = await supabaseAnon.auth.verifyOtp({
+      phone,
+      token: code,
+      type: 'sms',
+    });
+
+    if (error || !data.session || !data.user) {
+      throw new UnauthorizedError(error?.message ?? 'Invalid or expired OTP code', 'INVALID_OTP');
+    }
+
+    let profile = await profileRepository.findById(data.user.id);
+    if (!profile) {
+      const email = data.user.email || `${phone.replace(/[^0-9]/g, '')}@phone.auraapex.internal`;
+      profile = await profileRepository.create({
+        id: data.user.id,
+        email,
+        phone,
+        full_name: (data.user.user_metadata?.full_name as string) || 'Member',
+        role: Role.CUSTOMER,
+        status: AccountStatus.ACTIVE,
+      });
+    }
+
+    if (profile.status !== AccountStatus.ACTIVE) {
+      throw new ForbiddenError('Account is not active', 'ACCOUNT_INACTIVE');
+    }
+
+    return { session: toSessionDto(data.session), profile: toProfileDto(profile) };
+  }
 }
+

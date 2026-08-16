@@ -186,6 +186,8 @@ Roles: `customer`, `owner`, `staff`, `trainer`, `super_admin`. Roles do **not** 
 | ------ | ------------------ | ---- | ------------ |
 | POST   | `/register`        | 🌐   | `{ email, password, fullName, phone? }` → `{ session, profile }` |
 | POST   | `/login`           | 🌐   | `{ email, password }` → `{ session, profile }` |
+| POST   | `/phone-otp`       | 🌐   | `{ phone }` — trigger SMS OTP generation |
+| POST   | `/verify-otp`      | 🌐   | `{ phone, code }` → verify OTP & return `{ session, profile }` |
 | POST   | `/forgot-password` | 🌐   | `{ email }` — always 200 (no enumeration) |
 | POST   | `/reset-password`  | 🌐   | `{ accessToken, password }` |
 | POST   | `/logout`          | 🔒   | Revokes the session (best-effort) |
@@ -196,14 +198,17 @@ Roles: `customer`, `owner`, `staff`, `trainer`, `super_admin`. Roles do **not** 
 
 ### Gyms — `/api/v1/gyms`
 
-| Method | Path    | Auth | Notes |
-| ------ | ------- | ---- | ----- |
-| GET    | `/me`   | 🔑 `gym.read`   | Caller's own gym (full) |
-| PATCH  | `/me`   | 🔑 `gym.manage` | `{ name?, email?, phone?, address?, description?, logoUrl?, timings?, weeklyOff?, settings? }` |
-| GET    | `/me/staff` | 🔑 `staff.manage` | List all staff members assigned to this gym |
-| POST   | `/me/staff` | 🔑 `staff.manage` | `{ email, password, fullName, permissions? }` — onboard new staff user credentials |
-| DELETE | `/me/staff/:id` | 🔑 `staff.manage` | Delete a staff member (deletes user account) |
-| GET    | `/:id`  | 🔑 `gym.read`   | Public gym profile |
+| Method | Path           | Auth | Notes |
+| ------ | -------------- | ---- | ----- |
+| GET    | `/directory`   | 🔒   | Public partner gyms directory with search & pagination |
+| GET    | `/saved`       | 🔒   | Return list of partner gyms bookmarked/saved by caller |
+| POST   | `/:id/bookmark`| 🔒   | Toggle bookmark status for partner gym (saves/removes) |
+| GET    | `/me`          | 🔑 `gym.read`   | Caller's own gym (full) |
+| PATCH  | `/me`          | 🔑 `gym.manage` | `{ name?, email?, phone?, address?, description?, logoUrl?, timings?, weeklyOff?, settings? }` |
+| GET    | `/me/staff`    | 🔑 `staff.manage` | List all staff members assigned to this gym |
+| POST   | `/me/staff`    | 🔑 `staff.manage` | `{ email, password, fullName, permissions? }` — onboard new staff user credentials |
+| DELETE | `/me/staff/:id`| 🔑 `staff.manage` | Delete a staff member (deletes user account) |
+| GET    | `/:id`         | 🔑 `gym.read`   | Public gym profile |
 
 `timings` = `{ "monday": { "open": "06:00", "close": "22:00" }, … }`. `weeklyOff` = `["sunday"]`.
 
@@ -238,7 +243,25 @@ Roles: `customer`, `owner`, `staff`, `trainer`, `super_admin`. Roles do **not** 
 | GET    | `/`           | 🔑 `subscription.read`   | Gym subscriptions `?status&memberId` |
 | POST   | `/manual`     | 🔑 `subscription.manage` | `{ memberId, planId, method? }` — records cash/manual membership (active immediately) |
 | GET    | `/:id`        | 🔑 `subscription.read`   | |
-| POST   | `/:id/cancel` | 🔑 `subscription.manage` | |
+| POST   | `/:id/cancel` | 🔒   | Self-service cancellation by customer who owns subscription, or Gym Owner/Staff |
+
+### Workouts — `/api/v1/workouts`
+
+| Method | Path       | Auth | Notes |
+| ------ | ---------- | ---- | ----- |
+| GET    | `/history` | 🔒   | Chronological workout history with exercise breakdowns `?limit&offset` |
+| POST   | `/`        | 🔒   | `{ workoutName, category, durationMin, caloriesBurned?, exercisesCount?, exercises?, logDate? }` |
+
+### Progress — `/api/v1/progress`
+
+| Method | Path      | Auth | Notes |
+| ------ | --------- | ---- | ----- |
+| GET    | `/month`  | 🔒   | Monthly aggregated progress logs `?year&month` |
+| POST   | `/weight` | 🔒   | `{ weight, logDate? }` |
+| POST   | `/water`  | 🔒   | `{ amountMl, logDate? }` |
+| POST   | `/protein`| 🔒   | `{ amountG, logDate? }` |
+| POST   | `/steps`  | 🔒   | `{ steps, logDate? }` |
+| POST   | `/image`  | 🔒   | `{ imageUrl, logDate? }` |
 
 ### Payments — `/api/v1/payments`
 
