@@ -7,7 +7,7 @@
 > 3. **Never violate the architecture rules** defined in the [Architecture Constitution](docs/standards/architecture_rules.md).
 > 4. **If implementation conflicts with documentation, stop and ask** instead of making assumptions.
 >
-> 📖 **Engineering Handbook & Documentation**: The complete system architecture, backend/frontend engineering handbook, standards, and ADRs are now organized in the [docs/README.md](docs/README.md) entry point.
+> 📖 **Engineering Handbook & Documentation**: The complete system architecture, backend/frontend engineering handbook, standards, and ADRs are now organized in the [docs/README.md](docs/README.md) entry point..
 
 > **Status:** ✅ Backend Complete — feature-first modular API implementing all documented modules (Auth, Gym, Members, Plans, Subscriptions, Payments, Attendance, QR, Trainers, Equipment, Gallery, Analytics, Notifications, Admin, **Progress Logbook**).  
 > **Frontend Status:** 🏗️ In progress — consumes the backend API described in [`backend/README.md`](backend/README.md).  
