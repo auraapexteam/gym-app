@@ -4,232 +4,70 @@ import {
   Text,
   View,
   TouchableOpacity,
-  ActivityIndicator,
   ScrollView,
-  Modal,
-  TextInput,
-  Platform,
-  Dimensions,
-  Alert,
+  FlatList,
+  ImageBackground,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import Svg, { Circle, Polyline, Path, Rect, ClipPath, Defs } from 'react-native-svg';
-import { apiClient } from '../api/client';
+import { colors, radii } from '../theme/tokens';
+import { useTheme } from '../context/ThemeContext';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGymStore } from '../store/useGymStore';
-import { useTheme } from '../context/ThemeContext';
-import { toLocalDateString, todayLocalDateString } from '../utils/date';
+import { ProgressRing } from '../components/ProgressRing';
+import { StatMiniCard } from '../components/StatMiniCard';
+import { GymCard } from '../components/GymCard';
 import {
   Bell,
-  Flame,
+  Sun,
+  Moon,
+  Heart,
   Droplet,
-  Beef,
-  ArrowUpRight,
-  Plus,
-  Minus,
-  Building2,
-  Clock,
-  XCircle,
-  CreditCard,
-  Footprints,
+  Flame,
+  Play,
+  Zap,
 } from 'lucide-react-native';
-
-/* ============ Vector Components ============ */
-
-function ProgressRing({ size = 60, stroke = 6, progress = 0.5, color = '#6366f1', label, sublabel }: any) {
-  const { isDark } = useTheme();
-  const r = (size - stroke) / 2;
-  const circ = 2 * Math.PI * r;
-  const strokeDashoffset = circ - progress * circ;
-  return (
-    <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
-      <View style={{ transform: [{ rotate: '-90deg' }] }}>
-        <Svg width={size} height={size}>
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={r}
-            stroke={isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)"}
-            strokeWidth={stroke}
-            fill="none"
-          />
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={r}
-            stroke={color}
-            strokeWidth={stroke}
-            fill="none"
-            strokeDasharray={circ}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-          />
-        </Svg>
-      </View>
-      {label && (
-        <View style={{ position: 'absolute', alignItems: 'center' }}>
-          <Text style={{ fontSize: 13, fontWeight: '800', color: isDark ? '#f5f6fa' : '#14161f' }}>{label}</Text>
-          {sublabel && <Text style={{ fontSize: 8, color: isDark ? '#a1a5b7' : '#5b5f70', fontWeight: '600', marginTop: 1 }}>{sublabel}</Text>}
-        </View>
-      )}
-    </View>
-  );
-}
-
-function Sparkline({ data, color = '#10b981', width = 92, height = 22 }: any) {
-  const max = Math.max(...data);
-  const min = Math.min(...data);
-  const range = max - min || 1;
-  const points = data
-    .map((val: number, i: number) => {
-      const x = (i / (data.length - 1)) * width;
-      const y = height - ((val - min) / range) * height;
-      return `${x},${y}`;
-    })
-    .join(' ');
-  return (
-    <Svg width={width} height={height}>
-      <Polyline
-        fill="none"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        points={points}
-      />
-    </Svg>
-  );
-}
-
-function WaterGlass({ value }: { value: number }) {
-  const fillHeight = Math.min(26, value * 26);
-  const yPos = 32 - fillHeight;
-  return (
-    <Svg width={28} height={32} viewBox="0 0 28 32">
-      <Defs>
-        <ClipPath id="glass-clip">
-          <Path d="M4 4 L24 4 L22 30 L6 30 Z" />
-        </ClipPath>
-      </Defs>
-      <Path d="M4 4 L24 4 L22 30 L6 30 Z" fill="none" stroke="#0d94f8" strokeWidth={1.5} />
-      <Rect
-        x={0}
-        y={yPos}
-        width={28}
-        height={fillHeight}
-        fill="#0d94f8"
-        opacity={0.5}
-        clipPath="url(#glass-clip)"
-      />
-    </Svg>
-  );
-}
-
-/* ============ Main Screen ============ */
+import { apiClient } from '../api/client';
 
 export function HomeScreen({ navigation }: any) {
-  const { colors, isDark } = useTheme();
-  const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
-  const { subscription, loadSubscription, userProfile } = useAuthStore();
-  const { myRequest, fetchMyRequestStatus } = useGymStore();
+  const { isDark, setTheme } = useTheme();
+  const { userProfile, loadSubscription, user, subscription } = useAuthStore();
+  const { fetchMyRequestStatus, directory, fetchDirectory, myRequest } = useGymStore();
 
-  const todayIso = todayLocalDateString();
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'GOOD MORNING';
-    if (hour < 17) return 'GOOD AFTERNOON';
-    return 'GOOD EVENING';
-  }, []);
-
-  // Today's metrics — loaded from the real Logbook (/progress/month), the same
-  // data ProgressScreen writes to. Null means "not logged yet"; the UI never
-  // shows made-up values.
-  const [todayWater, setTodayWater] = useState<number | null>(null);
-  const [todayProtein, setTodayProtein] = useState<number | null>(null);
-  const [todayWeight, setTodayWeight] = useState<number | null>(null);
-  const [todaySteps, setTodaySteps] = useState<number | null>(null);
-  const [weightHistory, setWeightHistory] = useState<number[]>([]);
-
-  // Real attendance history, used to derive this week's check-in dots and streak.
-  const [attendanceDates, setAttendanceDates] = useState<string[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-  const [logModalOpen, setLogModalOpen] = useState(false);
-  const [savingLog, setSavingLog] = useState(false);
+  const [proteinVal, setProteinVal] = useState(0);
+  const [stepsVal, setStepsVal] = useState(0);
+  const [waterVal, setWaterVal] = useState(0);
+  const [burnedVal, setBurnedVal] = useState(0);
+  const [streakVal, setStreakVal] = useState(0);
 
-  // Quick log temp states
-  const [tempWeight, setTempWeight] = useState('');
-  const [tempWater, setTempWater] = useState(0);
-  const [tempProtein, setTempProtein] = useState(0);
-  const [tempSteps, setTempSteps] = useState(0);
+  const isRegisteredToGym = !!userProfile?.gym_id || myRequest?.status === 'approved' || subscription?.status === 'active';
+  const planName = subscription?.plan?.name || (myRequest?.gyms as any)?.name || 'Active Gym Membership';
+  const planPrice = subscription?.plan?.price ? `₹${subscription.plan.price}` : 'Active';
+  const endDateStr = subscription?.end_date || subscription?.endDate;
+  const remainingDays = endDateStr
+    ? Math.max(0, Math.ceil((new Date(endDateStr).getTime() - Date.now()) / (1000 * 3600 * 24)))
+    : null;
 
-  const fetchTodayMetrics = useCallback(async () => {
-    try {
-      const now = new Date();
-      const res = await apiClient.get('/progress/month', {
-        params: { year: String(now.getFullYear()), month: String(now.getMonth() + 1) },
-      });
-      if (res.data?.success) {
-        const summary = res.data.data;
-        // Postgres NUMERIC columns arrive as strings — always coerce.
-        const w = summary.weightLogs?.find((l: any) => l.log_date === todayIso)?.weight;
-        const wa = summary.waterLogs?.find((l: any) => l.log_date === todayIso)?.amount_ml;
-        const p = summary.proteinLogs?.find((l: any) => l.log_date === todayIso)?.amount_g;
-        const s = summary.stepsLogs?.find((l: any) => l.log_date === todayIso)?.steps;
-        setTodayWeight(w != null ? Number(w) : null);
-        setTodayWater(wa != null ? Number(wa) : null);
-        setTodayProtein(p != null ? Number(p) : null);
-        setTodaySteps(s != null ? Number(s) : null);
-
-        const series = (summary.weightLogs || [])
-          .slice()
-          .sort((a: any, b: any) => String(a.log_date).localeCompare(String(b.log_date)))
-          .map((l: any) => Number(l.weight))
-          .filter((n: number) => Number.isFinite(n));
-        setWeightHistory(series.slice(-7));
-      }
-    } catch (err) {
-      console.warn('Failed to load today\'s logbook metrics:', err);
-    }
-  }, [todayIso]);
-
-  const fetchAttendance = useCallback(async () => {
-    try {
-      const res = await apiClient.get('/attendance/me');
-      if (res.data?.success) {
-        const items = res.data.data.items || res.data.data || [];
-        setAttendanceDates(
-          items.map((i: any) => String(i.attendance_date || i.created_at).slice(0, 10))
-        );
-      }
-    } catch (err) {
-      console.warn('Failed to load attendance for dashboard:', err);
-    }
-  }, []);
-
-  const fetchUnreadCount = useCallback(async () => {
-    try {
-      const res = await apiClient.get('/notifications/unread-count');
-      if (res.data?.success) {
-        setUnreadCount(Number(res.data.data?.count) || 0);
-      }
-    } catch {
-      // Non-critical badge — leave the previous value.
-    }
-  }, []);
+  const handleToggleTheme = () => {
+    setTheme(isDark ? 'light' : 'dark');
+  };
 
   const refreshDashboard = useCallback(() => {
     loadSubscription();
     fetchMyRequestStatus();
-    fetchTodayMetrics();
-    fetchAttendance();
-    fetchUnreadCount();
-  }, [loadSubscription, fetchMyRequestStatus, fetchTodayMetrics, fetchAttendance, fetchUnreadCount]);
+    fetchDirectory();
 
-  // Refetch whenever the Home tab regains focus so a fresh check-in, payment
-  // or logbook entry made elsewhere is reflected immediately.
+    apiClient.get('/attendance/me')
+      .then((res) => {
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          setStreakVal(res.data.data.length);
+        }
+      })
+      .catch(() => setStreakVal(0));
+  }, [loadSubscription, fetchMyRequestStatus, fetchDirectory]);
+
   useFocusEffect(
     useCallback(() => {
       refreshDashboard();
@@ -238,987 +76,527 @@ export function HomeScreen({ navigation }: any) {
 
   const onPullRefresh = useCallback(async () => {
     setRefreshing(true);
-    try {
-      refreshDashboard();
-    } finally {
-      // The individual fetches manage their own state; just end the spinner.
-      setTimeout(() => setRefreshing(false), 600);
-    }
+    refreshDashboard();
+    setTimeout(() => setRefreshing(false), 600);
   }, [refreshDashboard]);
 
-  const weekCheckIns = attendanceDates;
+  const userName = userProfile?.full_name || (user?.email ? user.email.split('@')[0] : 'Member');
 
-  // Consecutive-day streak counted backward from today (or yesterday, so a
-  // day not yet checked into doesn't immediately zero the streak).
-  const streak = useMemo(() => {
-    const dateSet = new Set(attendanceDates);
-    let count = 0;
-    let cursor = new Date();
-    if (!dateSet.has(toLocalDateString(cursor))) {
-      cursor.setDate(cursor.getDate() - 1);
+  const proteinPct = Math.min(100, Math.round((proteinVal / 180) * 100));
+  const stepsPct = Math.min(100, Math.round((stepsVal / 10000) * 100));
+  const streakPct = Math.min(100, Math.round((streakVal / 7) * 100));
+
+  const nearbyGymsList = useMemo(() => {
+    if (directory && directory.length > 0) {
+      return directory.map((g) => ({
+        id: g.id,
+        name: g.name,
+        rating: 4.8,
+        distance: '0.8 km',
+        monthlyPrice: 999,
+        imageUrl: g.logoUrl || undefined,
+        isOpen: g.status === 'active',
+      }));
     }
-    while (dateSet.has(toLocalDateString(cursor))) {
-      count += 1;
-      cursor.setDate(cursor.getDate() - 1);
-    }
-    return count;
-  }, [attendanceDates]);
-
-  // Real gym-link state — never assume a user is linked/subscribed without checking.
-  const gymStatus: 'linked' | 'pending' | 'rejected' | 'none' = userProfile?.gym_id
-    ? 'linked'
-    : myRequest?.status === 'pending'
-    ? 'pending'
-    : myRequest?.status === 'rejected'
-    ? 'rejected'
-    : 'none';
-
-  const gymBadgeLabel =
-    gymStatus === 'linked'
-      ? myRequest?.gyms?.name || 'My Gym'
-      : gymStatus === 'pending'
-      ? 'Pending'
-      : gymStatus === 'rejected'
-      ? 'Declined'
-      : 'No Gym';
-
-  // Subscription calculation — subscription is always a single resolved SubscriptionDto (or null)
-  const isSubscribed = !!(subscription && subscription.status === 'active');
-  // DTO uses `plan` (camelCase nested), legacy path falls back to `plans`
-  const resolvedPlan = subscription?.plan ?? subscription?.plans ?? null;
-  const planName = resolvedPlan?.name || 'Membership Plan';
-
-  const daysLeft = useMemo(() => {
-    // DTO field is endDate; also accept end_date and current_period_end
-    const end =
-      subscription?.endDate ??
-      subscription?.end_date ??
-      (subscription?.current_period_end as string | undefined);
-    if (end) {
-      const diff = new Date(end).getTime() - Date.now();
-      return Math.max(0, Math.ceil(diff / 86400000));
-    }
-    return null; // unknown end date — show "Active Access" instead of a made-up count
-  }, [subscription]);
-
-  // Calendar dates for the week
-  const weekDates = useMemo(() => {
-    const arr: { date: string; label: string; day: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      arr.push({
-        date: toLocalDateString(d),
-        label: ['S', 'M', 'T', 'W', 'T', 'F', 'S'][d.getDay()],
-        day: d.getDate(),
-      });
-    }
-    return arr;
-  }, []);
-
-  const weekCheckInCount = useMemo(
-    () => weekDates.filter((d) => weekCheckIns.includes(d.date)).length,
-    [weekDates, weekCheckIns]
-  );
-
-  const openLogSheet = () => {
-    setTempWeight(todayWeight != null ? todayWeight.toFixed(1) : '');
-    setTempWater(todayWater ?? 0);
-    setTempProtein(todayProtein ?? 0);
-    setTempSteps(todaySteps ?? 0);
-    setLogModalOpen(true);
-  };
-
-  const handleSaveLog = async () => {
-    const trimmedWeight = tempWeight.trim();
-    const wtNum = trimmedWeight ? parseFloat(trimmedWeight) : null;
-    if (trimmedWeight && (!Number.isFinite(wtNum) || wtNum! < 1 || wtNum! > 500)) {
-      Alert.alert('Invalid Weight', 'Weight must be a number between 1 and 500 kg.');
-      return;
-    }
-
-    try {
-      setSavingLog(true);
-      const requests = [
-        apiClient.post('/progress/water', { amountMl: tempWater, logDate: todayIso }),
-        apiClient.post('/progress/protein', { amountG: tempProtein, logDate: todayIso }),
-        apiClient.post('/progress/steps', { steps: tempSteps, logDate: todayIso }),
-      ];
-      // Weight is optional — only send it when the user actually entered one.
-      if (wtNum != null) {
-        requests.push(apiClient.post('/progress/weight', { weight: wtNum, logDate: todayIso }));
-      }
-      await Promise.all(requests);
-      setLogModalOpen(false);
-      // Re-sync from the server so the cards reflect exactly what was stored.
-      fetchTodayMetrics();
-    } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.message || 'Failed to save your log.');
-      // Partial saves are possible — refresh so the UI matches the server.
-      fetchTodayMetrics();
-    } finally {
-      setSavingLog(false);
-    }
-  };
+    return [];
+  }, [directory]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Top Banner Area */}
-      <View style={styles.topBanner}>
-        <View style={styles.topRow}>
-          <View style={styles.avatarRow}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {userProfile?.full_name ? userProfile.full_name.charAt(0).toUpperCase() : 'A'}
-              </Text>
-            </View>
-            <View style={styles.headerTitles}>
-              <Text style={styles.greetText}>{greeting}</Text>
-              <Text style={styles.nameText}>
-                {userProfile?.full_name ? userProfile.full_name.split(' ')[0] : 'Athlete'}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.headerActions}>
-            <View style={styles.gymBadge}>
-              <Text style={styles.gymBadgeText} numberOfLines={1}>{gymBadgeLabel}</Text>
-            </View>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Notifications')}
-              activeOpacity={0.7}
-              style={styles.bellButton}
-              accessibilityRole="button"
-              accessibilityLabel={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
-            >
-              <Bell size={16} color={colors.foreground} />
-              {unreadCount > 0 && <View style={styles.bellDot} />}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-
+    <View style={[styles.container, { backgroundColor: isDark ? colors.bg : '#F5F5F0' }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onPullRefresh} tintColor={colors.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onPullRefresh}
+            tintColor={colors.accent}
+          />
         }
       >
-        {gymStatus !== 'linked' ? (
-          /* Not yet linked to a gym — real state, no fabricated plan data. */
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={styles.onboardCard}
-            onPress={() => navigation.navigate('GymDirectory')}
-          >
-            <View
-              style={[
-                styles.onboardIconBadge,
-                { backgroundColor: gymStatus === 'rejected' ? colors.destructiveSoft : gymStatus === 'pending' ? colors.infoSoft : colors.primarySoft },
-              ]}
-            >
-              {gymStatus === 'pending' ? (
-                <Clock size={22} color={colors.info} />
-              ) : gymStatus === 'rejected' ? (
-                <XCircle size={22} color={colors.destructive} />
-              ) : (
-                <Building2 size={22} color={colors.primary} />
-              )}
-            </View>
-            <View style={styles.onboardTextGroup}>
-              <Text style={styles.onboardTitle}>
-                {gymStatus === 'pending'
-                  ? 'Request pending'
-                  : gymStatus === 'rejected'
-                  ? 'Request declined'
-                  : 'No gym linked yet'}
-              </Text>
-              <Text style={styles.onboardDesc}>
-                {gymStatus === 'pending'
-                  ? `Waiting for ${myRequest?.gyms?.name || 'the gym'} to approve your request.`
-                  : gymStatus === 'rejected'
-                  ? `${myRequest?.gyms?.name || 'The gym'} declined your request — tap to browse others.`
-                  : 'Browse gyms and request to join one to unlock plans & check-ins.'}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ) : !isSubscribed ? (
-          /* Linked, but no active plan yet — prompt to purchase instead of showing fake plan data. */
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={styles.onboardCard}
-            onPress={() => navigation.navigate('PlansTab')}
-          >
-            <View style={[styles.onboardIconBadge, { backgroundColor: colors.primarySoft }]}>
-              <CreditCard size={22} color={colors.primary} />
-            </View>
-            <View style={styles.onboardTextGroup}>
-              <Text style={styles.onboardTitle}>Choose your plan</Text>
-              <Text style={styles.onboardDesc}>
-                You're linked to {gymBadgeLabel} — pick a membership plan to unlock your digital check-in pass.
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ) : (
-          /* Active Plan / Streak row */
-          <View style={styles.heroGrid}>
-            {/* Plan Info Card */}
-            <View style={[styles.glassCard, styles.planCard]}>
-              <View style={styles.planDetails}>
-                <View style={styles.badgeContainer}>
-                  <Text style={styles.planBadge}>{planName.toUpperCase()} PLAN</Text>
-                </View>
-                <Text style={styles.planPrice}>
-                  ₹{resolvedPlan?.price ? Number(resolvedPlan.price).toLocaleString() : '—'}
-                  <Text style={styles.planPricePeriod}>/mo</Text>
-                </Text>
-                <Text style={styles.planDates}>
-                  {daysLeft != null && daysLeft > 0 ? `${daysLeft} days remaining` : 'Active Access'}
-                </Text>
+        <ImageBackground
+          source={{
+            uri: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=1000&q=80',
+          }}
+          style={styles.heroBackground}
+          resizeMode="cover"
+        >
+          <View style={styles.heroOverlay} />
+          <SafeAreaView style={styles.heroSafeArea}>
+            <View style={styles.heroHeaderRow}>
+              <View>
+                <Text style={styles.greetingText}>Good morning 👋</Text>
+                <Text style={styles.userNameText}>{userName}</Text>
               </View>
+
+              <View style={styles.topActionsCluster}>
+                <TouchableOpacity
+                  onPress={handleToggleTheme}
+                  style={styles.iconCircleBtn}
+                  activeOpacity={0.8}
+                >
+                  {isDark ? (
+                    <Sun size={18} color={colors.white} />
+                  ) : (
+                    <Moon size={18} color={colors.black} />
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('Notifications')}
+                  style={styles.iconCircleBtn}
+                  activeOpacity={0.8}
+                >
+                  <Bell size={18} color={colors.white} />
+                  <View style={styles.notificationDot} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('ProfileTab')}
+                  style={styles.avatarBorderRing}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.avatarInner}>
+                    <Text style={styles.avatarLetter}>
+                      {userName.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.todayBadgePill}>
+              <Text style={styles.todayBadgeText}>TODAY</Text>
+            </View>
+          </SafeAreaView>
+        </ImageBackground>
+
+        <View style={styles.bodyPadding}>
+          <View
+            style={[
+              styles.dailyActivityCard,
+              { backgroundColor: isDark ? colors.bgElevated : colors.white },
+            ]}
+          >
+            <View style={styles.cardHeaderRow}>
+              <Text style={[styles.cardHeaderTitle, { color: isDark ? colors.white : colors.black }]}>
+                Daily Activity
+              </Text>
+              <Text style={styles.streakAmberText}>🔥 {streakVal}-day streak</Text>
+            </View>
+
+            <View style={styles.ringsRow}>
               <ProgressRing
-                size={72}
-                stroke={7}
-                progress={
-                  daysLeft != null
-                    ? Math.max(0, Math.min(1, 1 - daysLeft / (resolvedPlan?.durationDays ?? resolvedPlan?.duration_days ?? 30)))
-                    : 0
-                }
-                label={daysLeft != null ? `${daysLeft}` : '—'}
-                sublabel="Days left"
+                percentage={proteinPct}
+                color={colors.accent}
+                size={84}
+                strokeWidth={7}
+                centerText={`${proteinPct}%`}
+                subLabel={`${proteinVal}g protein`}
+              />
+              <ProgressRing
+                percentage={stepsPct}
+                color="#06B6D4"
+                size={84}
+                strokeWidth={7}
+                centerText={`${stepsPct}%`}
+                subLabel={`${stepsVal.toLocaleString()} steps`}
+              />
+              <ProgressRing
+                percentage={streakPct}
+                color="#F59E0B"
+                size={84}
+                strokeWidth={7}
+                centerText={`${streakPct}%`}
+                subLabel={`${streakVal} streak`}
               />
             </View>
-
-            {/* Streak Card */}
-            <View style={[styles.glassCard, styles.streakCard]}>
-              <Flame size={20} color="#fbbf24" style={{ marginBottom: 4 }} />
-              <Text style={styles.streakCount}>{streak}</Text>
-              <Text style={styles.streakLabel}>Day streak</Text>
-            </View>
-          </View>
-        )}
-
-        {/* Metrics Row (Weight, Water, Protein, Steps) */}
-        <View style={styles.metricsGrid}>
-          {/* Weight Card */}
-          <View style={[styles.glassCard, styles.metricCard]}>
-            <View style={styles.metricHeader}>
-              <View style={[styles.metricIconBadge, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
-                <ArrowUpRight size={13} color="#10b981" />
-              </View>
-              <Text style={styles.metricTitle}>Weight</Text>
-            </View>
-            <Text style={styles.metricValue}>
-              {todayWeight != null ? todayWeight.toFixed(1) : '—'}
-              <Text style={styles.metricUnit}>kg</Text>
-            </Text>
-            <View style={styles.sparklineContainer}>
-              {weightHistory.length >= 2 ? (
-                <Sparkline data={weightHistory} color="#10b981" />
-              ) : (
-                <Text style={styles.metricEmptyHint}>No trend yet</Text>
-              )}
-            </View>
           </View>
 
-          {/* Water Card */}
-          <View style={[styles.glassCard, styles.metricCard]}>
-            <View style={styles.metricHeader}>
-              <View style={[styles.metricIconBadge, { backgroundColor: 'rgba(13, 148, 248, 0.15)' }]}>
-                <Droplet size={13} color="#0d94f8" />
-              </View>
-              <Text style={styles.metricTitle}>Water</Text>
-            </View>
-            <Text style={styles.metricValue}>
-              {todayWater != null ? (todayWater / 1000).toFixed(1) : '—'}
-              <Text style={styles.metricUnit}>L</Text>
-            </Text>
-            <View style={styles.waterContainer}>
-              <WaterGlass value={(todayWater ?? 0) / 3000} />
-            </View>
+          <View style={styles.miniCardsRow}>
+            <StatMiniCard
+              icon={<Heart size={16} color={colors.danger} fill={colors.danger} />}
+              iconBgColor={colors.dangerBg}
+              value="-- bpm"
+              label="Heart"
+            />
+            <View style={{ width: 10 }} />
+            <StatMiniCard
+              icon={<Droplet size={16} color={colors.accent} fill={colors.accent} />}
+              iconBgColor={colors.accentDim}
+              value={`${waterVal.toFixed(1)} L`}
+              label="Water"
+            />
+            <View style={{ width: 10 }} />
+            <StatMiniCard
+              icon={<Flame size={16} color="#F97316" fill="#F97316" />}
+              iconBgColor="rgba(249, 115, 22, 0.12)"
+              value={`${burnedVal}`}
+              label="Burned"
+            />
           </View>
 
-          {/* Protein Card */}
-          <View style={[styles.glassCard, styles.metricCard]}>
-            <View style={styles.metricHeader}>
-              <View style={[styles.metricIconBadge, { backgroundColor: 'rgba(248, 113, 113, 0.15)' }]}>
-                <Beef size={13} color="#f87171" />
-              </View>
-              <Text style={styles.metricTitle}>Protein</Text>
-            </View>
-            <Text style={styles.metricValue}>
-              {todayProtein != null ? todayProtein : '—'}
-              <Text style={styles.metricUnit}>g</Text>
-            </Text>
-            <View style={styles.proteinRingContainer}>
-              <ProgressRing size={44} stroke={4} progress={Math.min(1, (todayProtein ?? 0) / 150)} color="#f87171" />
-            </View>
-          </View>
-
-          {/* Steps Card */}
-          <View style={[styles.glassCard, styles.metricCard]}>
-            <View style={styles.metricHeader}>
-              <View style={[styles.metricIconBadge, { backgroundColor: 'rgba(251, 191, 36, 0.15)' }]}>
-                <Footprints size={13} color="#fbbf24" />
-              </View>
-              <Text style={styles.metricTitle}>Steps</Text>
-            </View>
-            <Text style={styles.metricValue} numberOfLines={1} adjustsFontSizeToFit>
-              {todaySteps != null ? todaySteps.toLocaleString() : '—'}
-            </Text>
-            <View style={styles.proteinRingContainer}>
-              <ProgressRing size={44} stroke={4} progress={Math.min(1, (todaySteps ?? 0) / 10000)} color="#fbbf24" />
-            </View>
-          </View>
-        </View>
-
-        {/* This Week check-ins calendar layout */}
-        <View style={styles.weekSection}>
-          <View style={styles.weekHeader}>
-            <Text style={styles.sectionTitle}>This Week</Text>
-            <Text style={styles.weekCount}>{weekCheckInCount} check-ins</Text>
-          </View>
-          <View style={styles.weekScroll}>
-            {weekDates.map((d) => {
-              const checked = weekCheckIns.includes(d.date);
-              const isToday = d.date === todayIso;
-              return (
-                <View
-                  key={d.date}
-                  style={[styles.weekDayCard, isToday && styles.weekTodayCard]}
-                >
-                  <Text style={styles.weekDayLabel}>{d.label}</Text>
-                  <Text style={styles.weekDayNum}>{d.day}</Text>
-                  <View style={[styles.weekDayIndicator, checked ? styles.checkedDot : styles.emptyDot]} />
+          {isRegisteredToGym ? (
+            <View style={styles.apexPromoCard}>
+              <View style={styles.promoTopRow}>
+                <View>
+                  <View style={styles.apexProTag}>
+                    <Zap size={12} color={colors.accent} fill={colors.accent} />
+                    <Text style={styles.apexProTagText}>MY GYM MEMBERSHIP</Text>
+                  </View>
+                  <Text style={styles.promoTitle}>{planName}</Text>
                 </View>
-              );
-            })}
-          </View>
-        </View>
+                <View style={styles.priceColumn}>
+                  <Text style={styles.priceBig}>{planPrice}</Text>
+                  {subscription?.plan?.price ? <Text style={styles.priceSub}>/month</Text> : null}
+                </View>
+              </View>
 
-        {/* Quick Log Action Box */}
-        <View style={styles.logTodayWrapper}>
-          <View style={styles.logTodayLeft}>
-            <Text style={styles.logTodayTitle}>Quick Log</Text>
-            <Text style={styles.logTodayDesc}>Water · protein · weight · photo</Text>
+              {remainingDays !== null ? (
+                <Text style={styles.promoSubtext}>
+                  Valid Membership · {remainingDays} {remainingDays === 1 ? 'day' : 'days'} remaining
+                </Text>
+              ) : (
+                <Text style={styles.promoSubtext}>
+                  Active Gym Registration
+                </Text>
+              )}
+
+              <View style={styles.promoTagsRow}>
+                <View style={styles.outlinedTagPill}>
+                  <Text style={styles.outlinedTagText}>Active Member</Text>
+                </View>
+                <View style={styles.outlinedTagPill}>
+                  <Text style={styles.outlinedTagText}>QR Access Enabled</Text>
+                </View>
+              </View>
+            </View>
+          ) : null}
+
+          {/* 5. Nearby Gyms Section */}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitleText, { color: isDark ? colors.white : colors.black }]}>
+              📍 Nearby Gyms
+            </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('ExploreTab')}>
+              <Text style={styles.seeAllLink}>See all {'>'}</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            onPress={openLogSheet}
-            activeOpacity={0.8}
-            style={styles.logButton}
-          >
-            <Text style={styles.logButtonText}>+ Log Today</Text>
-          </TouchableOpacity>
+
+          <FlatList
+            data={nearbyGymsList}
+            renderItem={({ item }) => (
+              <GymCard
+                gym={item}
+                variant="horizontal"
+                onPress={() => navigation.navigate('GymInfo', { gym: item })}
+              />
+            )}
+            keyExtractor={(item) => item.id}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizontalGymList}
+          />
+
+          {/* 6. Today's Workout Card */}
+          <Text style={[styles.sectionTitleText, { color: isDark ? colors.white : colors.black, marginTop: 24, marginBottom: 12 }]}>
+            Today's Workout
+          </Text>
+
+          <View style={styles.workoutCard}>
+            <View style={styles.workoutLeft}>
+              <View style={styles.pushDayTag}>
+                <Text style={styles.pushDayTagText}>PUSH DAY</Text>
+              </View>
+              <Text style={styles.workoutTitle}>Chest + Triceps</Text>
+              <Text style={styles.workoutMeta}>
+                8 exercises · 55 min · 420 kcal
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={styles.playButtonCircle}
+            >
+              <Play size={22} color={colors.black} fill={colors.black} style={{ marginLeft: 2 }} />
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
-
-      {/* Quick Log Bottom Sheet Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={logModalOpen}
-        onRequestClose={() => setLogModalOpen(false)}
-      >
-        <View style={styles.sheetOverlay}>
-          <TouchableOpacity
-            style={styles.dismissOverlay}
-            activeOpacity={1}
-            onPress={() => setLogModalOpen(false)}
-          />
-          <View style={styles.sheetBody}>
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Log today</Text>
-              <TouchableOpacity onPress={() => setLogModalOpen(false)}>
-                <Text style={styles.sheetClose}>Close</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.sheetContent}>
-              {/* Weight Slider */}
-              <View style={styles.sheetItem}>
-                <View style={styles.sheetInputLabelRow}>
-                  <Text style={styles.sheetInputTitle}>Weight (kg)</Text>
-                  <TextInput
-                    value={tempWeight}
-                    onChangeText={setTempWeight}
-                    keyboardType="decimal-pad"
-                    placeholder="—"
-                    placeholderTextColor={colors.mutedForeground}
-                    style={styles.weightTextInput}
-                  />
-                </View>
-                {weightHistory.length >= 2 && (
-                  <View style={{ height: 26, marginVertical: 8, alignItems: 'center' }}>
-                    <Sparkline data={weightHistory} color="#10b981" width={260} height={26} />
-                  </View>
-                )}
-              </View>
-
-              {/* Water Adjustment Box */}
-              <View style={styles.sheetControlBox}>
-                <View>
-                  <Text style={styles.sheetControlTitle}>Water</Text>
-                  <Text style={styles.sheetControlValue}>{(tempWater / 1000).toFixed(2)} L</Text>
-                </View>
-                <View style={styles.adjusterRow}>
-                  <TouchableOpacity
-                    onPress={() => setTempWater(Math.max(0, tempWater - 250))}
-                    activeOpacity={0.7}
-                    style={styles.adjustButton}
-                  >
-                    <Minus size={16} color={colors.foreground} />
-                  </TouchableOpacity>
-                  <WaterGlass value={tempWater / 3000} />
-                  <TouchableOpacity
-                    onPress={() => setTempWater(tempWater + 250)}
-                    activeOpacity={0.7}
-                    style={[styles.adjustButton, { backgroundColor: '#0d94f8' }]}
-                  >
-                    <Plus size={16} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Protein Adjustment Box */}
-              <View style={styles.sheetControlBox}>
-                <View>
-                  <Text style={styles.sheetControlTitle}>Protein</Text>
-                  <Text style={styles.sheetControlValue}>{tempProtein} g</Text>
-                </View>
-                <View style={styles.adjusterRow}>
-                  <TouchableOpacity
-                    onPress={() => setTempProtein(Math.max(0, tempProtein - 5))}
-                    activeOpacity={0.7}
-                    style={styles.adjustButton}
-                  >
-                    <Minus size={16} color={colors.foreground} />
-                  </TouchableOpacity>
-                  <ProgressRing size={32} stroke={3.5} progress={Math.min(1, tempProtein / 150)} color="#f87171" />
-                  <TouchableOpacity
-                    onPress={() => setTempProtein(tempProtein + 5)}
-                    activeOpacity={0.7}
-                    style={[styles.adjustButton, { backgroundColor: '#f87171' }]}
-                  >
-                    <Plus size={16} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Steps Adjustment Box */}
-              <View style={styles.sheetControlBox}>
-                <View>
-                  <Text style={styles.sheetControlTitle}>Steps</Text>
-                  <Text style={styles.sheetControlValue}>{tempSteps.toLocaleString()}</Text>
-                </View>
-                <View style={styles.adjusterRow}>
-                  <TouchableOpacity
-                    onPress={() => setTempSteps(Math.max(0, tempSteps - 500))}
-                    activeOpacity={0.7}
-                    style={styles.adjustButton}
-                  >
-                    <Minus size={16} color={colors.foreground} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setTempSteps(tempSteps + 500)}
-                    activeOpacity={0.7}
-                    style={[styles.adjustButton, { backgroundColor: '#fbbf24' }]}
-                  >
-                    <Plus size={16} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Submit Save */}
-              <TouchableOpacity
-                onPress={handleSaveLog}
-                activeOpacity={0.85}
-                disabled={savingLog}
-                style={styles.saveLogButton}
-              >
-                {savingLog ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.saveLogButtonText}>Save log</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
-const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
-  topBanner: {
-    backgroundColor: colors.surface,
+  scrollContent: {
+    paddingBottom: 110,
+  },
+  heroBackground: {
+    width: '100%',
+    height: 220,
+  },
+  heroOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(10, 10, 10, 0.55)',
+  },
+  heroSafeArea: {
+    flex: 1,
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 48 : 20, // push down below status bar/notch on Android
-    paddingBottom: 24,
-    borderBottomLeftRadius: 36,
-    borderBottomRightRadius: 36,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  topRow: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingBottom: 16,
   },
-  avatarRow: {
+  heroHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
+    paddingTop: 8,
   },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.primarySoft,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.primary,
+  greetingText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '500',
   },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.foreground,
-  },
-  headerTitles: {
-    justifyContent: 'center',
-  },
-  greetText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.mutedForeground,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  nameText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.foreground,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  userNameText: {
+    color: colors.white,
+    fontSize: 22,
+    fontWeight: '900',
     marginTop: 2,
   },
-  gymBadge: {
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.05)',
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 99,
-  },
-  gymBadgeText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: colors.foreground,
-    textTransform: 'uppercase',
-  },
-  headerActions: {
+  topActionsCluster: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
-  gymName: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.mutedForeground,
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 99,
-  },
-  bellButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
-    justifyContent: 'center',
+  iconCircleBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.pill,
+    backgroundColor: 'rgba(26, 26, 26, 0.7)',
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
   },
-  bellDot: {
+  notificationDot: {
     position: 'absolute',
-    top: 6,
-    right: 6,
+    top: 8,
+    right: 8,
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#f87171',
-    borderWidth: 1,
-    borderColor: colors.surface,
+    backgroundColor: colors.danger,
   },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 120, // increased padding to ensure zero overlap with floating tabs
+  avatarBorderRing: {
+    width: 42,
+    height: 42,
+    borderRadius: radii.pill,
+    borderWidth: 2,
+    borderColor: colors.accent,
+    padding: 2,
+    marginLeft: 8,
   },
-  heroGrid: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 12,
-  },
-  onboardCard: {
-    flexDirection: 'row',
+  avatarInner: {
+    flex: 1,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
     alignItems: 'center',
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 12,
-  },
-  onboardIconBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
     justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
   },
-  onboardTextGroup: { flex: 1 },
-  onboardTitle: { fontSize: 15, fontWeight: '800', color: colors.foreground },
-  onboardDesc: { fontSize: 12, color: colors.mutedForeground, marginTop: 3, lineHeight: 17 },
-  glassCard: {
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 24,
-    padding: 16,
+  avatarLetter: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '800',
   },
-  planCard: {
-    flex: 2,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  planDetails: {
-    justifyContent: 'center',
-    gap: 4,
-  },
-  badgeContainer: {
+  todayBadgePill: {
     alignSelf: 'flex-start',
+    backgroundColor: colors.accentDim,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: radii.pill,
   },
-  planBadge: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: colors.primary,
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 99,
-  },
-  planPrice: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.foreground,
-  },
-  planPricePeriod: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.mutedForeground,
-  },
-  planDates: {
+  todayBadgeText: {
+    color: colors.accent,
     fontSize: 10,
-    color: colors.mutedForeground,
-    fontWeight: '600',
+    fontWeight: '900',
+    letterSpacing: 1,
   },
-  streakCard: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  bodyPadding: {
+    paddingHorizontal: 20,
+    marginTop: -20,
   },
-  streakCount: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: colors.foreground,
-  },
-  streakLabel: {
-    fontSize: 10,
-    color: colors.mutedForeground,
-    fontWeight: '600',
-  },
-  metricsGrid: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 20,
-  },
-  metricCard: {
-    flex: 1,
-    paddingHorizontal: 10,
-  },
-  metricHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
-  },
-  metricIconBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  metricTitle: {
-    fontSize: 10,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    color: colors.mutedForeground,
-  },
-  metricValue: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: colors.foreground,
-  },
-  metricUnit: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.mutedForeground,
-  },
-  sparklineContainer: {
-    marginTop: 10,
-    alignItems: 'center',
-  },
-  metricEmptyHint: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: colors.mutedForeground,
-    paddingVertical: 6,
-  },
-  waterContainer: {
-    marginTop: 6,
-    alignItems: 'center',
-  },
-  proteinRingContainer: {
-    marginTop: 4,
-    alignItems: 'center',
-  },
-  weekSection: {
-    marginBottom: 20,
-  },
-  weekHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.foreground,
-  },
-  weekCount: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.mutedForeground,
-  },
-  weekScroll: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  weekDayCard: {
-    width: (Dimensions.get('window').width - 40) / 7.6,
-    aspectRatio: 0.72,
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+  dailyActivityCard: {
+    borderRadius: radii.lg,
+    padding: 18,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 4,
-  },
-  weekTodayCard: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primarySoft,
-  },
-  weekDayLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.mutedForeground,
-  },
-  weekDayNum: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.foreground,
-  },
-  weekDayIndicator: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    marginTop: 2,
-  },
-  checkedDot: {
-    backgroundColor: colors.success,
-  },
-  emptyDot: {
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
-  },
-  logTodayWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.02)',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 24,
-    padding: 16,
-  },
-  logTodayLeft: {
-    gap: 2,
-  },
-  logTodayTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.foreground,
-  },
-  logTodayDesc: {
-    fontSize: 11,
-    color: colors.mutedForeground,
-    fontWeight: '500',
-  },
-  logButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 9999,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    shadowColor: colors.primary,
+    borderColor: colors.surfaceBorder,
+    marginBottom: 16,
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
     elevation: 4,
   },
-  logButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  sheetOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'flex-end',
-  },
-  dismissOverlay: {
-    flex: 1,
-  },
-  sheetBody: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-  },
-  sheetHeader: {
+  cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderColor: colors.border,
+    marginBottom: 16,
   },
-  sheetTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.foreground,
-  },
-  sheetClose: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.mutedForeground,
-  },
-  sheetContent: {
-    marginTop: 20,
-    gap: 16,
-  },
-  sheetItem: {
-    gap: 8,
-  },
-  sheetInputLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    height: 52,
-  },
-  sheetInputTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.mutedForeground,
-  },
-  weightTextInput: {
+  cardHeaderTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: colors.foreground,
-    textAlign: 'right',
-    width: 100,
-    padding: 0,
   },
-  sheetControlBox: {
+  streakAmberText: {
+    color: '#F59E0B',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  ringsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  miniCardsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  apexPromoCard: {
+    backgroundColor: colors.accentGradientCardStart,
+    borderRadius: radii.lg,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(182, 255, 0, 0.25)',
+    marginBottom: 24,
+  },
+  promoTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  apexProTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 18,
-    padding: 14,
+    marginBottom: 4,
   },
-  sheetControlTitle: {
+  apexProTagText: {
+    color: colors.accent,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginLeft: 4,
+  },
+  promoTitle: {
+    color: colors.white,
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  priceColumn: {
+    alignItems: 'flex-end',
+  },
+  priceBig: {
+    color: colors.white,
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  priceSub: {
+    color: colors.textSecondary,
+    fontSize: 11,
+  },
+  promoSubtext: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    marginTop: 8,
+    marginBottom: 14,
+  },
+  promoTagsRow: {
+    flexDirection: 'row',
+  },
+  outlinedTagPill: {
+    borderWidth: 1,
+    borderColor: colors.accent,
+    backgroundColor: colors.accentDim,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: radii.pill,
+    marginRight: 8,
+  },
+  outlinedTagText: {
+    color: colors.accent,
     fontSize: 11,
     fontWeight: '700',
-    color: colors.mutedForeground,
-    textTransform: 'uppercase',
   },
-  sheetControlValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.foreground,
-    marginTop: 2,
-  },
-  adjusterRow: {
+  sectionHeaderRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 12,
+    marginBottom: 12,
   },
-  adjustButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
-    justifyContent: 'center',
+  sectionTitleText: {
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  seeAllLink: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  horizontalGymList: {
+    paddingRight: 10,
+  },
+  workoutCard: {
+    backgroundColor: colors.accentGradientCardStart,
+    borderRadius: radii.lg,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(182, 255, 0, 0.25)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  saveLogButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 9999,
+  workoutLeft: {
+    flex: 1,
+  },
+  pushDayTag: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.accentDim,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: radii.pill,
+    marginBottom: 6,
+  },
+  pushDayTagText: {
+    color: colors.accent,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  workoutTitle: {
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  workoutMeta: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    marginTop: 4,
+  },
+  playButtonCircle: {
+    width: 52,
     height: 52,
-    justifyContent: 'center',
+    borderRadius: 26,
+    backgroundColor: colors.accent,
     alignItems: 'center',
-    marginTop: 10,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  saveLogButtonText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    justifyContent: 'center',
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 6,
+    marginLeft: 14,
   },
 });
+

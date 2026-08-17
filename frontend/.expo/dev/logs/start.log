@@ -1,0 +1,7 @@
+{"_e":"root:init","_t":1786123266538,"format":"v0-jsonl","version":"57.0.13"}
+{"_e":"env:mode","_t":1786123266562,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1786123266611,"mode":"development","files":["../..\\..\\.env"],"env":{"API_BASE_URL":"https://gym-app-xtru.onrender.com/api/v1","SUPABASE_ANON_KEY":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvZHRoaGx0ZXBqb2VwZWFvYW5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMTA3MzQsImV4cCI6MjA5OTU4NjczNH0.7jMsMnaA4p7iUtqtBg1UZWCrjN3hX5Y_Of16JYge8U8","SUPABASE_URL":"https://jodthhltepjoepeaoano.supabase.co"}}
+{"_e":"devserver:start","_t":1786123275725,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1786123278233,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1786123281538,"plugins":[]}
+{"_e":"metro:instantiate","_t":1786123295280,"atlas":false,"workers":8,"host":"::","port":8081}

@@ -1,118 +1,69 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   TouchableOpacity,
-  TextInput,
-  ActivityIndicator,
   Alert,
   ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { launchImageLibrary } from 'react-native-image-picker';
+import { colors, radii } from '../theme/tokens';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGymStore } from '../store/useGymStore';
 import { apiClient } from '../api/client';
 import { useTheme } from '../context/ThemeContext';
 import { uploadPersonalImage } from '../utils/upload';
-import { toLocalDateString } from '../utils/date';
 import {
   User as UserIcon,
-  Phone,
-  Save,
-  LogOut,
-  ChevronRight,
-  Bell,
-  Dumbbell,
-  Receipt,
   Settings,
+  Sun,
+  Moon,
+  Dumbbell,
+  MapPin,
+  Trophy,
+  CreditCard,
+  ShieldCheck,
+  HelpCircle,
+  LogOut,
+  Target,
+  ChevronRight,
   Camera,
 } from 'lucide-react-native';
 
-const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
 export function ProfileScreen({ navigation }: any) {
-  const { userProfile, signOut, loadUserProfile, subscription } = useAuthStore();
-  const { myRequest, fetchMyRequestStatus } = useGymStore();
-  const { colors, isDark } = useTheme();
+  const { userProfile, signOut, loadUserProfile, user } = useAuthStore();
+  const { fetchMyRequestStatus, savedGymIds, fetchSavedGyms } = useGymStore();
+  const { isDark, setTheme } = useTheme();
 
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [attendanceDates, setAttendanceDates] = useState<string[]>([]);
-
-  // Toggle editing fields
-  const [isEditing, setIsEditing] = useState(false);
-
-  useEffect(() => {
-    if (userProfile) {
-      setFullName(userProfile.full_name || '');
-      setPhone(userProfile.phone || '');
-    }
-  }, [userProfile]);
+  const [workoutsCount, setWorkoutsCount] = useState(0);
+  const [activeDaysCount, setActiveDaysCount] = useState(0);
 
   useEffect(() => {
     fetchMyRequestStatus();
-    apiClient
-      .get('/attendance/me')
+    fetchSavedGyms();
+
+    // Fetch real total workouts count
+    apiClient.get('/workouts/history')
       .then((res) => {
-        if (res.data?.success) {
-          const items = res.data.data.items || res.data.data || [];
-          setAttendanceDates(items.map((i: any) => String(i.attendance_date || i.created_at).slice(0, 10)));
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          setWorkoutsCount(res.data.data.length);
         }
       })
-      .catch((err) => console.warn('Failed to load attendance for profile stats:', err));
-  }, [fetchMyRequestStatus]);
+      .catch(() => setWorkoutsCount(0));
 
-  const streak = useMemo(() => {
-    const dateSet = new Set(attendanceDates);
-    let count = 0;
-    let cursor = new Date();
-    if (!dateSet.has(toLocalDateString(cursor))) cursor.setDate(cursor.getDate() - 1);
-    while (dateSet.has(toLocalDateString(cursor))) {
-      count += 1;
-      cursor.setDate(cursor.getDate() - 1);
-    }
-    return count;
-  }, [attendanceDates]);
-
-  const memberSince = useMemo(() => {
-    if (!userProfile?.created_at) return '—';
-    const d = new Date(userProfile.created_at);
-    return `${MONTH_ABBR[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
-  }, [userProfile?.created_at]);
-
-  const gymName = userProfile?.gym_id ? myRequest?.gyms?.name || 'My Gym' : null;
-
-  const handleSaveProfile = async () => {
-    if (!fullName.trim()) {
-      Alert.alert('Required', 'Please fill in your full name.');
-      return;
-    }
-
-    try {
-      setSaving(true);
-      const res = await apiClient.patch('/auth/me', {
-        fullName: fullName.trim(),
-        phone: phone.trim() || null,
-      });
-
-      if (res.data?.success) {
-        Alert.alert('Profile Saved', 'Your profile details have been updated.');
-        await loadUserProfile();
-        setIsEditing(false);
-      }
-    } catch (err: any) {
-      Alert.alert('Update Failed', err.response?.data?.message || 'Failed to update profile info.');
-    } finally {
-      setSaving(false);
-    }
-  };
+    // Fetch real attendance active days count
+    apiClient.get('/attendance/me')
+      .then((res) => {
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          setActiveDaysCount(res.data.data.length);
+        }
+      })
+      .catch(() => setActiveDaysCount(0));
+  }, [fetchMyRequestStatus, fetchSavedGyms]);
 
   const handlePickAvatar = async () => {
     const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.8, maxWidth: 1200, maxHeight: 1200 });
@@ -138,223 +89,249 @@ export function ProfileScreen({ navigation }: any) {
     }
   };
 
-  const menuItems = [
-    { icon: Bell, label: 'Notifications', meta: '', id: 'Notifications' },
-    { icon: Dumbbell, label: 'Linked gym', meta: gymName || 'Not linked', id: gymName ? 'GymInfo' : 'GymDirectory' },
-    { icon: Receipt, label: 'Subscription history', meta: '', id: 'SubscriptionHistory' },
-    { icon: Settings, label: 'Settings', meta: '', id: 'Settings' },
-  ];
-
-  const isSubscribed = subscription?.status === 'active';
-  // DTO uses `plan`; legacy responses used `plans`.
-  const planName = subscription?.plan?.name ?? subscription?.plans?.name;
-
-  const handleCancelEdit = () => {
-    // Discard unsaved edits so the header doesn't keep showing them.
-    setFullName(userProfile?.full_name || '');
-    setPhone(userProfile?.phone || '');
-    setIsEditing(false);
-  };
-
-  const handleLogout = () => {
-    Alert.alert('Log out', 'Are you sure you want to log out?', [
+  const handleSignOut = () => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out of Aura Apex?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Log out', style: 'destructive', onPress: () => signOut() },
+      { text: 'Sign Out', style: 'destructive', onPress: () => signOut() },
     ]);
   };
 
+  const nameDisplay = userProfile?.full_name || (user?.email ? user.email.split('@')[0] : 'Member');
+  const emailDisplay = user?.email || userProfile?.email || '';
+  const avatarUrl = userProfile?.avatar_url;
+  const goalSubtext = (userProfile as any)?.fitness_goal || (userProfile as any)?.fitness_level ? `${(userProfile as any)?.fitness_level || 'Active'} · ${(userProfile as any)?.fitness_goal || 'Custom Goal'}` : 'Set your fitness target';
+  const goalPercent = userProfile ? '100%' : '0%';
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-      >
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          {/* Profile Header Block */}
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={handlePickAvatar}
-                disabled={uploadingAvatar}
-                style={[styles.avatarCircle, { backgroundColor: colors.primarySoft, borderColor: colors.primary }]}
-              >
-                {uploadingAvatar ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : userProfile?.avatar_url ? (
-                  <Image source={{ uri: userProfile.avatar_url }} style={styles.avatarImage} />
-                ) : (
-                  <Text style={[styles.avatarText, { color: colors.foreground }]}>
-                    {(fullName || 'U').charAt(0).toUpperCase()}
-                  </Text>
-                )}
-                <View style={[styles.avatarCameraBadge, { backgroundColor: colors.primary, borderColor: colors.surface }]}>
-                  <Camera size={11} color="#FFFFFF" />
-                </View>
-              </TouchableOpacity>
-              <View style={styles.userMeta}>
-                <Text style={[styles.userName, { color: colors.foreground }]}>{fullName || 'Athlete'}</Text>
-                <View style={styles.badgeRow}>
-                  {isSubscribed ? (
-                    <>
-                      <View style={[styles.badgeIndigo, { backgroundColor: colors.primarySoft }]}>
-                        <Text style={[styles.badgeIndigoText, { color: colors.primary }]}>{planName || 'Member'}</Text>
-                      </View>
-                      <View style={styles.badgeMint}>
-                        <Text style={styles.badgeMintText}>Active</Text>
-                      </View>
-                    </>
-                  ) : (
-                    <View style={[styles.badgeIndigo, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' }]}>
-                      <Text style={[styles.badgeIndigoText, { color: colors.mutedForeground }]}>No active plan</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-            </View>
-
-            {/* Settings Icon on top right */}
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('Settings')}
-              style={[styles.headerGearBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            >
-              <Settings size={18} color={colors.foreground} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Statistics Grid */}
-          <View style={styles.statsGrid}>
-            <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.statsValue, { color: colors.foreground }]}>{attendanceDates.length}</Text>
-              <Text style={[styles.statsLabel, { color: colors.mutedForeground }]}>Check-ins</Text>
-            </View>
-            <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.statsValue, { color: colors.foreground }]}>{streak}</Text>
-              <Text style={[styles.statsLabel, { color: colors.mutedForeground }]}>Streak</Text>
-            </View>
-            <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.statsValue, { color: colors.foreground }]}>{memberSince}</Text>
-              <Text style={[styles.statsLabel, { color: colors.mutedForeground }]}>Member since</Text>
-            </View>
-          </View>
-
-          {/* Menu Items Glass Box */}
-          <View style={[styles.glassCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            {menuItems.map((item, idx) => {
-              const IconComp = item.icon;
-              return (
-                <View key={idx}>
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    style={styles.menuRow}
-                    onPress={() => {
-                      if (item.id) {
-                        navigation.navigate(item.id);
-                      }
-                    }}
-                  >
-                    <View style={styles.menuRowLeft}>
-                      <View style={[styles.menuIconWrapper, { backgroundColor: colors.primarySoft }]}>
-                        <IconComp size={16} color={colors.primary} />
-                      </View>
-                      <Text style={[styles.menuLabel, { color: colors.foreground }]}>{item.label}</Text>
-                    </View>
-                    <View style={styles.menuRowRight}>
-                      {item.meta !== '' && <Text style={[styles.menuMeta, { color: colors.mutedForeground }]}>{item.meta}</Text>}
-                      <ChevronRight size={14} color={colors.mutedForeground} />
-                    </View>
-                  </TouchableOpacity>
-                  {idx < menuItems.length - 1 && <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />}
-                </View>
-              );
-            })}
-          </View>
-
-          {/* Account Edit Block */}
-          {isEditing ? (
-            <View style={[styles.glassCard, styles.editCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Edit Account Info</Text>
-
-              <View style={styles.inputLabelRow}>
-                <UserIcon size={14} color={colors.mutedForeground} style={{ marginRight: 6 }} />
-                <Text style={[styles.inputLabel, { color: colors.mutedForeground }]}>Full Name</Text>
-              </View>
-              <TextInput
-                style={[
-                  styles.textInput,
-                  { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surfaceDark },
-                ]}
-                placeholder="Full Name"
-                placeholderTextColor={colors.mutedForeground}
-                value={fullName}
-                onChangeText={setFullName}
-              />
-
-              <View style={styles.inputLabelRow}>
-                <Phone size={14} color={colors.mutedForeground} style={{ marginRight: 6 }} />
-                <Text style={[styles.inputLabel, { color: colors.mutedForeground }]}>Phone Number</Text>
-              </View>
-              <TextInput
-                style={[
-                  styles.textInput,
-                  { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surfaceDark },
-                ]}
-                placeholder="Phone Number"
-                placeholderTextColor={colors.mutedForeground}
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-              />
-
-              <View style={styles.editActionRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.editBtn,
-                    { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' },
-                  ]}
-                  onPress={handleCancelEdit}
-                >
-                  <Text style={[styles.saveText, { color: colors.foreground }]}>Cancel</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.editBtn, { backgroundColor: colors.primary }]}
-                  onPress={handleSaveProfile}
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <>
-                      <Save size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
-                      <Text style={[styles.saveText, { color: '#FFFFFF' }]}>Save</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setIsEditing(true)}
-              style={[styles.triggerEditBtn, { borderColor: colors.border }]}
-            >
-              <Text style={[styles.triggerEditText, { color: colors.foreground }]}>Edit Profile Details</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Destructive Log out */}
+    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? colors.bg : '#F5F5F0' }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Top Bar Header */}
+        <View style={styles.topBar}>
           <TouchableOpacity
-            style={styles.logoutBtn}
-            onPress={handleLogout}
+            onPress={() => setTheme(isDark ? 'light' : 'dark')}
+            style={styles.circleBtn}
             activeOpacity={0.8}
           >
-            <LogOut size={16} color="#f87171" style={{ marginRight: 8 }} />
-            <Text style={styles.logoutText}>Log out</Text>
+            {isDark ? (
+              <Sun size={18} color={colors.white} />
+            ) : (
+              <Moon size={18} color={colors.black} />
+            )}
           </TouchableOpacity>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Settings')}
+            style={styles.circleBtn}
+            activeOpacity={0.8}
+          >
+            <Settings size={18} color={isDark ? colors.white : colors.black} />
+          </TouchableOpacity>
+        </View>
+
+        {/* User Hero Section */}
+        <View style={styles.heroSection}>
+          <TouchableOpacity onPress={handlePickAvatar} style={styles.avatarGlowContainer}>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <View style={styles.avatarFallback}>
+                <UserIcon size={36} color={colors.accent} />
+              </View>
+            )}
+            <View style={styles.cameraBadge}>
+              <Camera size={12} color={colors.black} />
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.userInfo}>
+            <Text style={[styles.userName, { color: isDark ? colors.white : colors.black }]}>
+              {nameDisplay}
+            </Text>
+            {emailDisplay ? <Text style={styles.userEmail}>{emailDisplay}</Text> : null}
+
+            {/* Badges Row */}
+            <View style={styles.badgeRow}>
+              <View style={styles.proBadge}>
+                <Text style={styles.proBadgeText}>Apex Pro</Text>
+              </View>
+              <View style={styles.streakBadge}>
+                <Text style={[styles.streakBadgeText, { color: isDark ? colors.white : colors.black }]}>
+                  🔥 {activeDaysCount}-day
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Stats Summary Card (3 columns - Starts from 0) */}
+        <View style={[styles.statsCard, { backgroundColor: isDark ? colors.bgElevated : colors.white }]}>
+          <View style={styles.statCol}>
+            <Text style={[styles.statNumber, { color: isDark ? colors.white : colors.black }]}>
+              {workoutsCount}
+            </Text>
+            <Text style={styles.statLabel}>Workouts</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statCol}>
+            <Text style={[styles.statNumber, { color: isDark ? colors.white : colors.black }]}>
+              {savedGymIds.length}
+            </Text>
+            <Text style={styles.statLabel}>Gyms</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statCol}>
+            <Text style={[styles.statNumber, { color: isDark ? colors.white : colors.black }]}>
+              {activeDaysCount}
+            </Text>
+            <Text style={styles.statLabel}>Active Days</Text>
+          </View>
+        </View>
+
+        {/* Fitness Goal Card */}
+        <View style={[styles.goalCard, { backgroundColor: isDark ? colors.bgElevated : colors.white }]}>
+          <View style={styles.goalHeader}>
+            <View style={styles.goalLeft}>
+              <View style={styles.targetIconCircle}>
+                <Target size={20} color={colors.accent} />
+              </View>
+              <View>
+                <Text style={[styles.goalTitle, { color: isDark ? colors.white : colors.black }]}>
+                  Fitness Goal
+                </Text>
+                <Text style={styles.goalSub}>{goalSubtext}</Text>
+              </View>
+            </View>
+            <Text style={styles.goalPercent}>{goalPercent}</Text>
+          </View>
+          <View style={styles.goalTrack}>
+            <View style={[styles.goalFill, { width: goalPercent as any }]} />
+          </View>
+        </View>
+
+        {/* Dark Mode Toggle Card */}
+        <TouchableOpacity
+          onPress={() => setTheme(isDark ? 'light' : 'dark')}
+          activeOpacity={0.8}
+          style={[styles.darkModeCard, { backgroundColor: isDark ? colors.bgElevated : colors.white }]}
+        >
+          <View style={styles.darkModeLeft}>
+            <View style={styles.darkModeIconCircle}>
+              {isDark ? <Moon size={20} color={colors.accent} /> : <Sun size={20} color={colors.accent} />}
+            </View>
+            <View>
+              <Text style={[styles.darkModeTitle, { color: isDark ? colors.white : colors.black }]}>
+                {isDark ? 'Dark Mode' : 'Light Mode'}
+              </Text>
+              <Text style={styles.darkModeSub}>Tap to switch to {isDark ? 'light' : 'dark'}</Text>
+            </View>
+          </View>
+          <View style={styles.darkModeToggleCircle}>
+            {isDark ? <Moon size={16} color={colors.accent} /> : <Sun size={16} color={colors.accent} />}
+          </View>
+        </TouchableOpacity>
+
+        {/* Menu Cards */}
+        <View style={styles.menuGroup}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('ProgressTab')}
+            style={[styles.menuCard, { backgroundColor: isDark ? colors.bgElevated : colors.white }]}
+          >
+            <View style={styles.menuLeft}>
+              <View style={styles.menuIconBox}>
+                <Dumbbell size={18} color={colors.accent} />
+              </View>
+              <View>
+                <Text style={[styles.menuTitle, { color: isDark ? colors.white : colors.black }]}>My Workouts</Text>
+                <Text style={styles.menuSub}>24 this month</Text>
+              </View>
+            </View>
+            <ChevronRight size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('GymDirectory')}
+            style={[styles.menuCard, { backgroundColor: isDark ? colors.bgElevated : colors.white }]}
+          >
+            <View style={styles.menuLeft}>
+              <View style={styles.menuIconBox}>
+                <MapPin size={18} color={colors.accent} />
+              </View>
+              <View>
+                <Text style={[styles.menuTitle, { color: isDark ? colors.white : colors.black }]}>Saved Gyms</Text>
+                <Text style={styles.menuSub}>5 saved</Text>
+              </View>
+            </View>
+            <ChevronRight size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('ProgressTab')}
+            style={[styles.menuCard, { backgroundColor: isDark ? colors.bgElevated : colors.white }]}
+          >
+            <View style={styles.menuLeft}>
+              <View style={styles.menuIconBox}>
+                <Trophy size={18} color={colors.accent} />
+              </View>
+              <View>
+                <Text style={[styles.menuTitle, { color: isDark ? colors.white : colors.black }]}>Achievements</Text>
+                <Text style={styles.menuSub}>8 of 15</Text>
+              </View>
+            </View>
+            <ChevronRight size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('SubscriptionHistory')}
+            style={[styles.menuCard, { backgroundColor: isDark ? colors.bgElevated : colors.white }]}
+          >
+            <View style={styles.menuLeft}>
+              <View style={styles.menuIconBox}>
+                <CreditCard size={18} color={colors.accent} />
+              </View>
+              <View>
+                <Text style={[styles.menuTitle, { color: isDark ? colors.white : colors.black }]}>Membership</Text>
+                <Text style={styles.menuSub}>Monthly · Active</Text>
+              </View>
+            </View>
+            <ChevronRight size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('PrivacySettings')}
+            style={[styles.menuCard, { backgroundColor: isDark ? colors.bgElevated : colors.white }]}
+          >
+            <View style={styles.menuLeft}>
+              <View style={styles.menuIconBox}>
+                <ShieldCheck size={18} color={colors.accent} />
+              </View>
+              <Text style={[styles.menuTitle, { color: isDark ? colors.white : colors.black }]}>Privacy & Security</Text>
+            </View>
+            <ChevronRight size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('HelpSettings')}
+            style={[styles.menuCard, { backgroundColor: isDark ? colors.bgElevated : colors.white }]}
+          >
+            <View style={styles.menuLeft}>
+              <View style={styles.menuIconBox}>
+                <HelpCircle size={18} color={colors.accent} />
+              </View>
+              <Text style={[styles.menuTitle, { color: isDark ? colors.white : colors.black }]}>Help & Support</Text>
+            </View>
+            <ChevronRight size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Sign Out Button */}
+        <TouchableOpacity
+          onPress={handleSignOut}
+          activeOpacity={0.8}
+          style={styles.signOutBtn}
+        >
+          <LogOut size={18} color={colors.danger} />
+          <Text style={styles.signOutText}>Sign Out</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -363,230 +340,284 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  scroll: {
+  scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 48 : 24, // clear top notch/status bar on Android
-    paddingBottom: 120, // increased padding to avoid tabbar overlaps
+    paddingTop: 12,
+    paddingBottom: 110,
   },
-  header: {
+  topBar: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 20,
+    justifyContent: 'flex-end',
+    marginBottom: 16,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  avatarCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 2,
+  circleBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: 10,
+  },
+  heroSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  avatarGlowContainer: {
     position: 'relative',
-    overflow: 'visible',
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 2.5,
+    borderColor: colors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 6,
+    marginRight: 16,
   },
   avatarImage: {
-    width: '100%',
-    height: '100%',
+    width: 68,
+    height: 68,
     borderRadius: 34,
   },
-  avatarCameraBadge: {
+  avatarFallback: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cameraBadge: {
     position: 'absolute',
-    bottom: -2,
-    right: -2,
+    bottom: 0,
+    right: 0,
     width: 22,
     height: 22,
     borderRadius: 11,
-    borderWidth: 2,
+    backgroundColor: colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarText: {
-    fontSize: 28,
-    fontWeight: '800',
-  },
-  userMeta: {
-    justifyContent: 'center',
-    gap: 6,
+  userInfo: {
+    flex: 1,
   },
   userName: {
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: '900',
+    marginBottom: 2,
+  },
+  userEmail: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 8,
   },
   badgeRow: {
     flexDirection: 'row',
-    gap: 6,
   },
-  badgeIndigo: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+  proBadge: {
+    backgroundColor: colors.accent,
+    borderRadius: radii.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginRight: 8,
   },
-  badgeIndigoText: {
-    fontSize: 10,
+  proBadgeText: {
+    fontSize: 12,
     fontWeight: '800',
+    color: colors.black,
   },
-  badgeMint: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  badgeMintText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#10b981',
-  },
-  headerGearBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
+  streakBadge: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderColor: colors.surfaceBorder,
   },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 20,
+  streakBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   statsCard: {
-    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderRadius: radii.lg,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
     borderWidth: 1,
-    borderRadius: 18,
-    paddingVertical: 14,
+    borderColor: colors.surfaceBorder,
+    marginBottom: 16,
+  },
+  statCol: {
+    flex: 1,
     alignItems: 'center',
   },
-  statsValue: {
-    fontSize: 20,
+  statNumber: {
+    fontSize: 24,
+    fontWeight: '900',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  statDivider: {
+    width: 1,
+    height: 36,
+    backgroundColor: colors.surfaceBorder,
+  },
+  goalCard: {
+    borderRadius: radii.lg,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    marginBottom: 16,
+  },
+  goalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  goalLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  targetIconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: colors.accentDim,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  goalTitle: {
+    fontSize: 16,
     fontWeight: '800',
   },
-  statsLabel: {
-    fontSize: 11,
-    fontWeight: '600',
+  goalSub: {
+    fontSize: 12,
+    color: colors.textSecondary,
     marginTop: 2,
   },
-  glassCard: {
-    borderWidth: 1,
-    borderRadius: 24,
-    padding: 8,
-    marginBottom: 16,
+  goalPercent: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: colors.accent,
   },
-  menuRow: {
+  goalTrack: {
+    height: 8,
+    backgroundColor: colors.surfaceBorder,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  goalFill: {
+    height: '100%',
+    backgroundColor: colors.accent,
+    borderRadius: 4,
+  },
+  darkModeCard: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-  },
-  menuRowLeft: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  menuIconWrapper: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  menuLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  menuRowRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  menuMeta: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  menuDivider: {
-    height: 1,
-    marginHorizontal: 12,
-  },
-  triggerEditBtn: {
-    height: 48,
-    borderRadius: 18,
+    borderRadius: radii.lg,
+    padding: 16,
     borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderColor: colors.surfaceBorder,
     marginBottom: 16,
   },
-  triggerEditText: {
-    fontSize: 13,
-    fontWeight: '700',
+  darkModeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  editCard: {
-    padding: 16,
+  darkModeIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.accentDim,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
-  sectionTitle: {
+  darkModeTitle: {
     fontSize: 15,
     fontWeight: '800',
-    marginBottom: 12,
   },
-  inputLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
+  darkModeSub: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
-  inputLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  textInput: {
-    borderWidth: 1,
-    borderRadius: 14,
-    height: 44,
-    paddingHorizontal: 12,
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  editActionRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
-  },
-  editBtn: {
-    flex: 1,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
-  },
-  saveText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  logoutBtn: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(248, 113, 113, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(248, 113, 113, 0.25)',
+  darkModeToggleCircle: {
+    width: 36,
+    height: 36,
     borderRadius: 18,
-    height: 52,
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
   },
-  logoutText: {
-    color: '#f87171',
+  menuGroup: {
+    marginBottom: 16,
+  },
+  menuCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderRadius: radii.lg,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    marginBottom: 10,
+  },
+  menuLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.accentDim,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  menuTitle: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
+  },
+  menuSub: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  signOutBtn: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.dangerBg,
+    borderRadius: radii.xl,
+    height: 54,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  signOutText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.danger,
+    marginLeft: 10,
   },
 });
+

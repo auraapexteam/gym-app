@@ -106,7 +106,7 @@ android {
         }
     }
 
-    // Windows-only: redirect C++ staging and build outputs to short paths to
+    // Windows-only: redirect C++ staging outputs to short paths to
     // bypass the 260-character path limit. On Linux/macOS the defaults apply.
     if (System.getProperty('os.name').toLowerCase().contains('windows')) {
         externalNativeBuild {
@@ -114,7 +114,6 @@ android {
                 buildStagingDirectory = file("C:/tmp/cxx/${project.name}")
             }
         }
-        buildDir = "C:/tmp/build/${project.name}"
     }
 }
 

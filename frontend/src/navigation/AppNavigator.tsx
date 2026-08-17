@@ -7,12 +7,15 @@ import { useAuthStore } from '../store/useAuthStore';
 import { COLORS } from '../theme/tokens';
 
 // Screens & Navigators
+import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { SignupScreen } from '../screens/SignupScreen';
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
+import { ProfileSetupScreen } from '../screens/ProfileSetupScreen';
 import { OwnerDashboardScreen } from '../screens/OwnerDashboardScreen';
 import { CustomerTabNavigator } from './CustomerTabNavigator';
 import { QRCheckInScreen } from '../screens/QRCheckInScreen';
+import { QRScannerScreen } from '../screens/QRScannerScreen';
 import { BeginnerGuideScreen } from '../screens/BeginnerGuideScreen';
 import { GymInfoScreen } from '../screens/GymInfoScreen';
 import { GymDirectoryScreen } from '../screens/GymDirectoryScreen';
@@ -62,10 +65,6 @@ export function AppNavigator() {
     };
   }, [setSession]);
 
-  // Hold on the splash loader until the persisted session (and, when logged
-  // in, the profile that decides role-based routing) has been restored.
-  // Without this the Login screen flashes for signed-in users on cold start,
-  // and owners can briefly see the customer stack before their role loads.
   if (initializing || (accessToken && !userProfile)) {
     return (
       <View style={styles.loaderContainer}>
@@ -74,13 +73,12 @@ export function AppNavigator() {
     );
   }
 
-  // Every non-customer role (owner, staff, trainer, super_admin) manages the
-  // gym from the web portal — the mobile customer stack is customers-only.
   const isStaffOrOwner = !!userProfile?.role && userProfile.role !== 'customer';
+  const needsProfileSetup = !isStaffOrOwner && userProfile && !userProfile.onboarding_completed;
 
   return (
     <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: true }}>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
           {accessToken ? (
             isStaffOrOwner ? (
               <Stack.Screen
@@ -88,8 +86,32 @@ export function AppNavigator() {
                 component={OwnerDashboardScreen}
                 options={{ headerShown: false }}
               />
+            ) : needsProfileSetup ? (
+              // New user profile onboarding stack (runs once)
+              <>
+                <Stack.Screen
+                  name="ProfileSetup"
+                  component={ProfileSetupScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="MainTabs"
+                  component={CustomerTabNavigator}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="QRScanner"
+                  component={QRScannerScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="QRCheckIn"
+                  component={QRCheckInScreen}
+                  options={{ title: 'QR Check-in', headerShown: true }}
+                />
+              </>
             ) : (
-              // Customer stack
+              // Customer main app stack
               <>
                 <Stack.Screen
                   name="MainTabs"
@@ -97,95 +119,111 @@ export function AppNavigator() {
                   options={{ headerShown: false }}
                 />
                 <Stack.Screen
+                  name="ProfileSetup"
+                  component={ProfileSetupScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="QRScanner"
+                  component={QRScannerScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
                   name="QRCheckIn"
                   component={QRCheckInScreen}
-                  options={{ title: 'QR Check-in' }}
+                  options={{ title: 'QR Check-in', headerShown: true }}
                 />
                 <Stack.Screen
                   name="BeginnerGuide"
                   component={BeginnerGuideScreen}
-                  options={{ title: 'Beginner Guide' }}
+                  options={{ title: 'Beginner Guide', headerShown: true }}
                 />
                 <Stack.Screen
                   name="GymInfo"
                   component={GymInfoScreen}
-                  options={{ title: 'Gym Information' }}
+                  options={{ title: 'Gym Information', headerShown: true }}
                 />
                 <Stack.Screen
                   name="GymDirectory"
                   component={GymDirectoryScreen}
-                  options={{ title: 'Find a Gym' }}
+                  options={{ title: 'Find a Gym', headerShown: true }}
                 />
                 <Stack.Screen
                   name="SubscriptionHistory"
                   component={SubscriptionHistoryScreen}
-                  options={{ title: 'Subscription History' }}
+                  options={{ title: 'Subscription History', headerShown: true }}
                 />
                 <Stack.Screen
                   name="AttendanceHistory"
                   component={AttendanceHistoryScreen}
-                  options={{ title: 'Attendance History' }}
+                  options={{ title: 'Attendance History', headerShown: true }}
                 />
                 <Stack.Screen
                   name="Notifications"
                   component={NotificationsScreen}
-                  options={{ title: 'Notifications' }}
+                  options={{ title: 'Notifications', headerShown: true }}
                 />
                 <Stack.Screen
                   name="Settings"
                   component={SettingsScreen}
-                  options={{ title: 'Settings' }}
+                  options={{ title: 'Settings', headerShown: true }}
                 />
                 <Stack.Screen
                   name="ThemeSettings"
                   component={ThemeSettingsScreen}
-                  options={{ title: 'Appearance' }}
+                  options={{ title: 'Appearance', headerShown: true }}
                 />
                 <Stack.Screen
                   name="NotificationSettings"
                   component={NotificationSettingsScreen}
-                  options={{ title: 'Notifications' }}
+                  options={{ title: 'Notifications', headerShown: true }}
                 />
                 <Stack.Screen
                   name="LanguageSettings"
                   component={LanguageSettingsScreen}
-                  options={{ title: 'Language' }}
+                  options={{ title: 'Language', headerShown: true }}
                 />
                 <Stack.Screen
                   name="SecuritySettings"
                   component={SecuritySettingsScreen}
-                  options={{ title: 'Security' }}
+                  options={{ title: 'Security', headerShown: true }}
                 />
                 <Stack.Screen
                   name="PrivacySettings"
                   component={PrivacySettingsScreen}
-                  options={{ title: 'Privacy' }}
+                  options={{ title: 'Privacy', headerShown: true }}
                 />
                 <Stack.Screen
                   name="AppSettings"
                   component={AppSettingsScreen}
-                  options={{ title: 'Storage & Cache' }}
+                  options={{ title: 'Storage & Cache', headerShown: true }}
                 />
                 <Stack.Screen
                   name="HelpSettings"
                   component={HelpSettingsScreen}
-                  options={{ title: 'Help & Support' }}
+                  options={{ title: 'Help & Support', headerShown: true }}
                 />
                 <Stack.Screen
                   name="AboutSettings"
                   component={AboutSettingsScreen}
-                  options={{ title: 'About Aura Apex' }}
+                  options={{ title: 'About Aura Apex', headerShown: true }}
                 />
               </>
             )
           ) : (
             <>
+              <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
               <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-              <Stack.Screen name="Signup" component={SignupScreen} options={{ title: 'Create Account' }} />
+              <Stack.Screen name="Signup" component={SignupScreen} options={{ title: 'Create Account', headerShown: true }} />
               <Stack.Screen
                 name="ForgotPassword"
                 component={ForgotPasswordScreen}
-                options={{ title: 'Reset Password' }}
+                options={{ title: 'Reset Password', headerShown: true }}
+              />
+              <Stack.Screen
+                name="ProfileSetup"
+                component={ProfileSetupScreen}
+                options={{ headerShown: false }}
               />
             </>
           )}
