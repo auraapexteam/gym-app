@@ -14,6 +14,19 @@ export interface UserProfile {
   gym_id: string | null;
   status: string | null;
   created_at: string | null;
+  onboarding_completed?: boolean | null;
+  date_of_birth?: string | null;
+  gender?: string | null;
+  weight_kg?: number | null;
+  height_cm?: number | null;
+  fitness_level?: string | null;
+  fitness_goal?: string | null;
+  training_frequency?: string | null;
+  location_address?: string | null;
+  gym_preference?: string | null;
+  has_health_condition?: boolean | null;
+  health_conditions?: string[] | null;
+  dietary_preference?: string | null;
 }
 
 export interface SubscriptionPlan {

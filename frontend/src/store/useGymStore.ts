@@ -27,10 +27,15 @@ interface GymState {
   directory: PublicGym[];
   directoryLoading: boolean;
   directoryError: string | null;
+  savedGyms: PublicGym[];
+  savedGymIds: string[];
+  savedLoading: boolean;
   myRequest: MyJoinRequest | null;
   requestStatusLoading: boolean;
   submitting: boolean;
   fetchDirectory: (search?: string) => Promise<void>;
+  fetchSavedGyms: () => Promise<void>;
+  toggleBookmarkGym: (gymId: string) => Promise<{ success: boolean; isBookmarked?: boolean; message?: string }>;
   fetchMyRequestStatus: () => Promise<void>;
   submitJoinRequest: (gymId: string) => Promise<{ success: boolean; message?: string }>;
   reset: () => void;
@@ -44,6 +49,9 @@ export const useGymStore = create<GymState>((set, get) => ({
   directory: [],
   directoryLoading: false,
   directoryError: null,
+  savedGyms: [],
+  savedGymIds: [],
+  savedLoading: false,
   myRequest: null,
   requestStatusLoading: false,
   submitting: false,
@@ -57,7 +65,15 @@ export const useGymStore = create<GymState>((set, get) => ({
       });
       if (requestId !== directoryRequestId) return; // stale response
       if (res.data?.success) {
-        set({ directory: res.data.data || [] });
+        const raw = res.data.data;
+        const list = Array.isArray(raw)
+          ? raw
+          : Array.isArray(raw?.items)
+          ? raw.items
+          : Array.isArray(res.data)
+          ? res.data
+          : [];
+        set({ directory: list });
       }
     } catch (err: any) {
       if (requestId !== directoryRequestId) return;
@@ -66,6 +82,45 @@ export const useGymStore = create<GymState>((set, get) => ({
       if (requestId === directoryRequestId) {
         set({ directoryLoading: false });
       }
+    }
+  },
+
+  fetchSavedGyms: async () => {
+    try {
+      set({ savedLoading: true });
+      const res = await apiClient.get('/gyms/saved');
+      if (res.data?.success) {
+        const gyms = res.data.data || [];
+        set({
+          savedGyms: gyms,
+          savedGymIds: gyms.map((g: any) => g.id),
+        });
+      }
+    } catch (err: any) {
+      console.warn('Failed to load saved gyms:', err);
+    } finally {
+      set({ savedLoading: false });
+    }
+  },
+
+  toggleBookmarkGym: async (gymId: string) => {
+    try {
+      const res = await apiClient.post(`/gyms/${gymId}/bookmark`);
+      if (res.data?.success) {
+        const isBookmarked = res.data.data?.isBookmarked ?? res.data.isBookmarked;
+        set((state) => {
+          const exists = state.savedGymIds.includes(gymId);
+          const nextIds = exists
+            ? state.savedGymIds.filter((id) => id !== gymId)
+            : [...state.savedGymIds, gymId];
+          return { savedGymIds: nextIds };
+        });
+        get().fetchSavedGyms();
+        return { success: true, isBookmarked };
+      }
+      return { success: false, message: res.data?.message };
+    } catch (err: any) {
+      return { success: false, message: err.response?.data?.message || err.message };
     }
   },
 
@@ -104,6 +159,9 @@ export const useGymStore = create<GymState>((set, get) => ({
       directory: [],
       directoryLoading: false,
       directoryError: null,
+      savedGyms: [],
+      savedGymIds: [],
+      savedLoading: false,
       myRequest: null,
       requestStatusLoading: false,
       submitting: false,

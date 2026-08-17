@@ -12,12 +12,33 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
+import { ChevronLeft, User, Mail, Lock } from 'lucide-react-native';
 import { supabase } from '../api/supabase';
 import { useTheme } from '../context/ThemeContext';
-import { Sparkles, Check, X } from 'lucide-react-native';
 
-const SPECIAL_CHAR_REGEX = /[!@#$%^&*(),.?":{}|<>_\-+=~`[\]\\;'/]/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const GoogleIcon = () => (
+  <Svg width={20} height={20} viewBox="0 0 24 24">
+    <Path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+    <Path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+    <Path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+    <Path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+  </Svg>
+);
+
+const FacebookIcon = () => (
+  <Svg width={20} height={20} viewBox="0 0 24 24">
+    <Path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+  </Svg>
+);
+
+const AppleIcon = () => (
+  <Svg width={20} height={20} viewBox="0 0 24 24">
+    <Path fill="#FFFFFF" d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.32c.67-.82 1.12-1.96.99-3.1-.96.04-2.13.64-2.82 1.44-.61.71-1.14 1.87-.99 2.99 1.07.08 2.15-.51 2.82-1.33z"/>
+  </Svg>
+);
 
 export function SignupScreen({ navigation }: any) {
   const { colors, isDark } = useTheme();
@@ -25,31 +46,21 @@ export function SignupScreen({ navigation }: any) {
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const [nameFocus, setNameFocus] = useState(false);
-  const [emailFocus, setEmailFocus] = useState(false);
-  const [passwordFocus, setPasswordFocus] = useState(false);
-
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
-
-  const passwordChecks = useMemo(
-    () => ({
-      length: password.length >= 8,
-      uppercase: /[A-Z]/.test(password),
-      digit: /[0-9]/.test(password),
-      special: SPECIAL_CHAR_REGEX.test(password),
-    }),
-    [password]
-  );
-  const isPasswordValid = Object.values(passwordChecks).every(Boolean);
 
   const handleSignup = async () => {
     setEmailError('');
     setPasswordError('');
 
+    if (!fullName.trim()) {
+      Alert.alert('Required', 'Please enter your full name.');
+      return;
+    }
     if (!email.trim()) {
       setEmailError('Email is required.');
       return;
@@ -62,10 +73,6 @@ export function SignupScreen({ navigation }: any) {
       setPasswordError('Password is required.');
       return;
     }
-    if (!isPasswordValid) {
-      setPasswordError('Password does not meet all requirements below.');
-      return;
-    }
 
     try {
       setLoading(true);
@@ -74,34 +81,19 @@ export function SignupScreen({ navigation }: any) {
         password,
         options: {
           data: {
-            full_name: fullName.trim() || undefined,
+            full_name: fullName.trim(),
+            phone: phone.trim() || undefined,
           },
         },
       });
 
       if (error) {
-        const msg = error.message.toLowerCase();
-        if (msg.includes('email')) {
-          setEmailError(error.message);
-        } else if (msg.includes('password')) {
-          setPasswordError(error.message);
-        } else {
-          Alert.alert('Sign Up Failed', error.message);
-        }
+        Alert.alert('Sign Up Failed', error.message);
       } else if (!data.session) {
-        // Email confirmation required — the auth stack is still mounted, so
-        // returning to Login is valid. (With auto-confirm, a session comes
-        // back, the auth listener switches stacks, and no navigation is
-        // needed — navigating to 'Login' would target a removed route.)
         Alert.alert(
-          'Account Created',
-          'Account created successfully. Please verify your email if required, then sign in.',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.navigate('Login'),
-            },
-          ]
+          'Account Created 🎉',
+          'Account created successfully! Please verify your email if required, then sign in.',
+          [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
         );
       }
     } catch (err: any) {
@@ -118,56 +110,48 @@ export function SignupScreen({ navigation }: any) {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
         >
-          {/* Back Link */}
-          <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Back to sign in</Text>
-          </TouchableOpacity>
-
-          {/* Sparkle Logo */}
-          <View style={styles.logoCircle}>
-            <Sparkles size={28} color="#FFFFFF" />
+          {/* Header */}
+          <View style={styles.topHeader}>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.backButton}>
+              <ChevronLeft size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+            <View style={styles.brandContainer}>
+              <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                <Path d="M4 12L8 4L12 20L16 8L20 12" stroke="#88ef0c" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+              </Svg>
+              <Text style={styles.brandText}>AURA APEX</Text>
+            </View>
           </View>
 
-          {/* Header */}
-          <Text style={styles.title}>Create account</Text>
-          <Text style={styles.subtitle}>Join Aura Apex in 30 seconds.</Text>
+          {/* Main Card */}
+          <View style={styles.card}>
+            <Text style={styles.title}>
+              <Text style={styles.titleGreen}>Create </Text>
+              Account
+            </Text>
+            <Text style={styles.subtitle}>Join India's fastest growing fitness ecosystem.</Text>
 
-          {/* Form */}
-          <View style={styles.formContainer}>
             {/* Full Name Input */}
-            <View style={[styles.inputLabelContainer, nameFocus && styles.inputFocus]}>
-              <Text style={[styles.floatingLabel, (nameFocus || fullName.length > 0) && styles.floatingLabelActive]}>
-                Full name
-              </Text>
+            <View style={styles.inputBox}>
+              <User size={18} color="#64748b" style={styles.inputIcon} />
               <TextInput
                 value={fullName}
                 onChangeText={setFullName}
-                onFocus={() => setNameFocus(true)}
-                onBlur={() => setNameFocus(false)}
+                placeholder="Full Name"
+                placeholderTextColor="#64748b"
                 autoCapitalize="words"
                 style={styles.textInput}
               />
             </View>
 
             {/* Email Input */}
-            <View
-              style={[
-                styles.inputLabelContainer,
-                emailFocus && styles.inputFocus,
-                !!emailError && styles.inputErrorBorder,
-              ]}
-            >
-              <Text style={[styles.floatingLabel, (emailFocus || email.length > 0) && styles.floatingLabelActive]}>
-                Email
-              </Text>
+            <View style={[styles.inputBox, { marginTop: 14 }]}>
+              <Mail size={18} color="#64748b" style={styles.inputIcon} />
               <TextInput
                 value={email}
-                onChangeText={(t) => {
-                  setEmail(t);
-                  if (emailError) setEmailError('');
-                }}
-                onFocus={() => setEmailFocus(true)}
-                onBlur={() => setEmailFocus(false)}
+                onChangeText={(t) => { setEmail(t); setEmailError(''); }}
+                placeholder="Email address"
+                placeholderTextColor="#64748b"
                 autoCapitalize="none"
                 keyboardType="email-address"
                 style={styles.textInput}
@@ -175,92 +159,80 @@ export function SignupScreen({ navigation }: any) {
             </View>
             {!!emailError && <Text style={styles.errorText}>{emailError}</Text>}
 
+            {/* Mobile Number Input */}
+            <View style={[styles.inputBox, { marginTop: 14 }]}>
+              <Text style={styles.countryCode}>IN +91</Text>
+              <View style={styles.inputDivider} />
+              <TextInput
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="Mobile number"
+                placeholderTextColor="#64748b"
+                keyboardType="phone-pad"
+                style={styles.textInput}
+              />
+            </View>
+
             {/* Password Input */}
-            <View
-              style={[
-                styles.inputLabelContainer,
-                passwordFocus && styles.inputFocus,
-                !!passwordError && styles.inputErrorBorder,
-              ]}
-            >
-              <Text style={[styles.floatingLabel, (passwordFocus || password.length > 0) && styles.floatingLabelActive]}>
-                Password
-              </Text>
+            <View style={[styles.inputBox, { marginTop: 14 }]}>
+              <Lock size={18} color="#64748b" style={styles.inputIcon} />
               <TextInput
                 value={password}
-                onChangeText={(t) => {
-                  setPassword(t);
-                  if (passwordError) setPasswordError('');
-                }}
-                onFocus={() => setPasswordFocus(true)}
-                onBlur={() => setPasswordFocus(false)}
-                autoCapitalize="none"
+                onChangeText={(t) => { setPassword(t); setPasswordError(''); }}
+                placeholder="Password"
+                placeholderTextColor="#64748b"
                 secureTextEntry
                 style={styles.textInput}
               />
             </View>
             {!!passwordError && <Text style={styles.errorText}>{passwordError}</Text>}
 
-            {/* Real-time password requirement checklist */}
-            {(passwordFocus || password.length > 0) && (
-              <View style={styles.checklistBox}>
-                {[
-                  { key: 'length', label: 'At least 8 characters' },
-                  { key: 'uppercase', label: 'One uppercase letter (A-Z)' },
-                  { key: 'digit', label: 'One number (0-9)' },
-                  { key: 'special', label: 'One special symbol (!@#$…)' },
-                ].map((req) => {
-                  const met = (passwordChecks as any)[req.key];
-                  return (
-                    <View key={req.key} style={styles.checklistRow}>
-                      <View
-                        style={[
-                          styles.checklistIcon,
-                          { backgroundColor: met ? colors.successSoft : colors.destructiveSoft },
-                        ]}
-                      >
-                        {met ? (
-                          <Check size={11} color={colors.success} strokeWidth={3} />
-                        ) : (
-                          <X size={11} color={colors.destructive} strokeWidth={3} />
-                        )}
-                      </View>
-                      <Text style={[styles.checklistText, met && { color: colors.foreground }]}>
-                        {req.label}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-
-            {/* Sign Up Button */}
+            {/* Create Account Button */}
             <TouchableOpacity
               onPress={handleSignup}
               activeOpacity={0.85}
               disabled={loading}
-              style={styles.primaryButton}
+              style={styles.submitButton}
             >
               {loading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color="#0b0f12" />
               ) : (
-                <Text style={styles.primaryButtonText}>Create account</Text>
+                <Text style={styles.submitButtonText}>Create Account</Text>
               )}
             </TouchableOpacity>
 
-          </View>
-
-          {/* Footer Account Link */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              Already have an account?{' '}
-              <Text
-                style={styles.footerLink}
-                onPress={() => navigation.navigate('Login')}
-              >
-                Sign In
+            {/* Already have an account */}
+            <View style={styles.accountLinkContainer}>
+              <Text style={styles.accountText}>
+                Already have an account?{' '}
+                <Text
+                  style={styles.accountGreenLink}
+                  onPress={() => navigation.navigate('Login')}
+                >
+                  Sign in
+                </Text>
               </Text>
-            </Text>
+            </View>
+
+            {/* Divider */}
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>Or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Social Buttons */}
+            <View style={styles.socialRow}>
+              <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
+                <GoogleIcon />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
+                <FacebookIcon />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
+                <AppleIcon />
+              </TouchableOpacity>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </ScrollView>
@@ -271,158 +243,159 @@ export function SignupScreen({ navigation }: any) {
 const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#0b0f12',
   },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingHorizontal: 16,
+    paddingBottom: 24,
   },
   keyboardView: {
     flex: 1,
-    justifyContent: 'center',
   },
-  backButton: {
-    alignSelf: 'flex-start',
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
-    borderRadius: 9999,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginBottom: 24,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  backButtonText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.mutedForeground,
-  },
-  logoCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
+  topHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 6,
+    marginTop: 12,
     marginBottom: 20,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: colors.foreground,
+  backButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
   },
-  subtitle: {
-    fontSize: 14,
-    color: colors.mutedForeground,
-    marginTop: 6,
-  },
-  formContainer: {
-    marginTop: 24,
-    gap: 16,
-  },
-  inputLabelContainer: {
-    position: 'relative',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
-    paddingHorizontal: 16,
-    paddingTop: 22,
-    paddingBottom: 8,
-    height: 58,
-  },
-  inputFocus: {
-    borderColor: colors.primary,
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.surface,
-  },
-  floatingLabel: {
-    position: 'absolute',
-    left: 16,
-    top: 18,
-    fontSize: 14,
-    color: colors.mutedForeground,
-  },
-  floatingLabelActive: {
-    top: 6,
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    color: colors.primary,
-  },
-  textInput: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.foreground,
-    padding: 0,
-    margin: 0,
-  },
-  errorText: {
-    fontSize: 12,
-    color: colors.destructive,
-    fontWeight: '600',
-    marginTop: -4,
-  },
-  inputErrorBorder: {
-    borderColor: colors.destructive,
-  },
-  checklistBox: {
-    gap: 8,
-    marginTop: -4,
-    marginBottom: 4,
-  },
-  checklistRow: {
+  brandContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  checklistIcon: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    justifyContent: 'center',
-    alignItems: 'center',
+  brandText: {
+    color: '#88ef0c',
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: 1,
   },
-  checklistText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.mutedForeground,
+  card: {
+    backgroundColor: '#161b20',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#242b33',
   },
-  primaryButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 9999,
-    height: 52,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    elevation: 8,
-    marginTop: 8,
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#ffffff',
+    lineHeight: 34,
+    marginBottom: 8,
   },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
+  titleGreen: {
+    color: '#88ef0c',
   },
-  footer: {
-    marginTop: 24,
-    alignItems: 'center',
-  },
-  footerText: {
+  subtitle: {
     fontSize: 14,
-    color: colors.mutedForeground,
+    color: '#94a3b8',
+    marginBottom: 24,
   },
-  footerLink: {
-    color: colors.primary,
+  inputBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1f262e',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#2d3540',
+    paddingHorizontal: 16,
+    height: 52,
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  countryCode: {
+    fontSize: 14,
     fontWeight: '700',
+    color: '#ffffff',
+    marginRight: 12,
+  },
+  inputDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: '#2d3540',
+    marginRight: 12,
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#ffffff',
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#f87171',
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  submitButton: {
+    backgroundColor: '#88ef0c',
+    borderRadius: 14,
+    height: 54,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 24,
+    shadowColor: '#88ef0c',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0b0f12',
+  },
+  accountLinkContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  accountText: {
+    fontSize: 14,
+    color: '#ffffff',
+  },
+  accountGreenLink: {
+    color: '#88ef0c',
+    fontWeight: '700',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#88ef0c',
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    fontSize: 13,
+    color: '#94a3b8',
+  },
+  socialRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  socialButton: {
+    flex: 1,
+    height: 52,
+    backgroundColor: '#1f262e',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#2d3540',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
