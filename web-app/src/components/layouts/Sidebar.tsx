@@ -55,8 +55,6 @@ const navConfig: NavGroup[] = [
     items: [
       { label: 'Members', icon: Users, href: '/members', roles: ['gym_owner', 'staff'] },
       { label: 'Check-ins', icon: UserCheck, href: '/checkins', roles: ['gym_owner', 'staff', 'trainer'] },
-      { label: 'Trainers', icon: Dumbbell, href: '/trainers', roles: ['gym_owner', 'staff'] },
-      { label: 'Staff', icon: UserCog, href: '/staff', roles: ['gym_owner'] },
     ],
   },
   {
