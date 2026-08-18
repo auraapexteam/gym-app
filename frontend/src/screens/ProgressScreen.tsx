@@ -47,6 +47,7 @@ export function ProgressScreen() {
 
   // Calendar month state
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [monthLogs, setMonthLogs] = useState<Record<string, { weight?: number; water?: number; protein?: number; steps?: number }>>({});
 
   const monthYearLabel = useMemo(() => {
     return currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -66,12 +67,12 @@ export function ProgressScreen() {
         day: d,
         dateStr,
         isToday: dateStr === todayStr,
-        hasLog: false,
+        hasLog: !!monthLogs[dateStr],
       });
       date.setDate(date.getDate() + 1);
     }
     return days;
-  }, [currentDate]);
+  }, [currentDate, monthLogs]);
 
   const [workoutHistory, setWorkoutHistory] = useState<any[]>([]);
   const [workoutName, setWorkoutName] = useState('');
@@ -90,6 +91,30 @@ export function ProgressScreen() {
         apiClient.get('/workouts/history'),
       ]);
 
+      if (progressRes.status === 'fulfilled' && progressRes.value.data?.success) {
+        const data = progressRes.value.data.data;
+        const logsMap: Record<string, { weight?: number; water?: number; protein?: number; steps?: number }> = {};
+
+        (data?.weightLogs || []).forEach((w: any) => {
+          const d = (w.log_date || w.logDate || '').slice(0, 10);
+          if (d) logsMap[d] = { ...logsMap[d], weight: Number(w.weight) };
+        });
+        (data?.waterLogs || []).forEach((w: any) => {
+          const d = (w.log_date || w.logDate || '').slice(0, 10);
+          if (d) logsMap[d] = { ...logsMap[d], water: Number(w.amount_ml || w.amountMl) };
+        });
+        (data?.proteinLogs || []).forEach((p: any) => {
+          const d = (p.log_date || p.logDate || '').slice(0, 10);
+          if (d) logsMap[d] = { ...logsMap[d], protein: Number(p.amount_g || p.amountG) };
+        });
+        (data?.stepsLogs || []).forEach((s: any) => {
+          const d = (s.log_date || s.logDate || '').slice(0, 10);
+          if (d) logsMap[d] = { ...logsMap[d], steps: Number(s.steps) };
+        });
+
+        setMonthLogs(logsMap);
+      }
+
       if (workoutRes.status === 'fulfilled' && workoutRes.value.data?.success) {
         setWorkoutHistory(workoutRes.value.data.data || []);
       }
@@ -99,6 +124,16 @@ export function ProgressScreen() {
       setLoading(false);
     }
   }, [currentDate]);
+
+  useEffect(() => {
+    const log = monthLogs[selectedDate];
+    if (log) {
+      if (log.weight !== undefined) setWeight(String(log.weight));
+      if (log.water !== undefined) setWater(log.water / 1000);
+      if (log.protein !== undefined) setProtein(log.protein);
+      if (log.steps !== undefined) setSteps(log.steps);
+    }
+  }, [selectedDate, monthLogs]);
 
   useFocusEffect(
     useCallback(() => {
@@ -149,7 +184,8 @@ export function ProgressScreen() {
       setExerciseDetails('');
       fetchLogs();
     } catch (err: any) {
-      Alert.alert('Save Successful! 🎉', 'Your daily metrics and workout routines have been updated.');
+      const msg = err.response?.data?.message || err.message || 'Could not update daily log.';
+      Alert.alert('Save Failed', msg);
     } finally {
       setLoading(false);
     }

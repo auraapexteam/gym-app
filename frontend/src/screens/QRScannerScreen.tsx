@@ -9,7 +9,10 @@ import {
   Easing,
   Alert,
   ActivityIndicator,
+  PermissionsAndroid,
+  Platform,
 } from 'react-native';
+import { Camera } from 'react-native-camera-kit';
 import { colors, radii } from '../theme/tokens';
 import { ChevronLeft } from 'lucide-react-native';
 import { apiClient } from '../api/client';
@@ -17,6 +20,32 @@ import { apiClient } from '../api/client';
 export function QRScannerScreen({ navigation }: any) {
   const scanLineAnim = useRef(new Animated.Value(0)).current;
   const [submitting, setSubmitting] = useState(false);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const submittingRef = useRef(false);
+
+  useEffect(() => {
+    const checkCameraPermission = async () => {
+      if (Platform.OS === 'android') {
+        try {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.CAMERA,
+            {
+              title: 'Camera Permission',
+              message: 'Aura Apex Gym needs camera access to scan check-in QR codes.',
+              buttonPositive: 'OK',
+              buttonNegative: 'Cancel',
+            }
+          );
+          setHasPermission(granted === PermissionsAndroid.RESULTS.GRANTED);
+        } catch {
+          setHasPermission(false);
+        }
+      } else {
+        setHasPermission(true);
+      }
+    };
+    checkCameraPermission();
+  }, []);
 
   useEffect(() => {
     const animation = Animated.loop(
@@ -44,23 +73,30 @@ export function QRScannerScreen({ navigation }: any) {
     outputRange: [0, 200],
   });
 
-  const handleSimulatedScan = async () => {
-    if (submitting) return;
+  const handleBarcodeRead = async (scannedCode?: string) => {
+    if (!scannedCode || submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
+
     try {
       const res = await apiClient.post('/attendance/check-in', {
-        token: 'reception-qr-token-demo',
+        token: scannedCode.trim(),
       });
+
       if (res.data?.success) {
-        Alert.alert('Check-in Successful! 🎉', 'Welcome to Aura Apex partner gym.');
-        navigation.goBack();
+        Alert.alert('Check-in Successful! 🎉', 'Welcome to Aura Apex gym. Enjoy your workout!', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
       } else {
-        Alert.alert('Check-in Logged', 'Check-in processed successfully.');
-        navigation.goBack();
+        Alert.alert('Check-in Notice', res.data?.message || 'Check-in processed.', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
       }
     } catch (err: any) {
-      Alert.alert('Check-in Logged', 'Check-in processed successfully.');
-      navigation.goBack();
+      const msg = err.response?.data?.message || err.message || 'Check-in failed. Please verify your QR code or membership.';
+      Alert.alert('Check-in Failed', msg, [
+        { text: 'OK', onPress: () => { submittingRef.current = false; setSubmitting(false); } },
+      ]);
     } finally {
       setSubmitting(false);
     }
@@ -86,11 +122,16 @@ export function QRScannerScreen({ navigation }: any) {
 
         {/* Scanner Viewport */}
         <View style={styles.scannerCenter}>
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={handleSimulatedScan}
-            style={styles.scanFrame}
-          >
+          {hasPermission && (
+            <Camera
+              style={StyleSheet.absoluteFill}
+              scanBarcode={true}
+              onReadCode={(event: any) => handleBarcodeRead(event?.nativeEvent?.codeStringValue)}
+              showFrame={false}
+            />
+          )}
+
+          <View style={styles.scanFrame}>
             {/* 4 Corner Brackets */}
             <View style={[styles.bracket, styles.topLeft]} />
             <View style={[styles.bracket, styles.topRight]} />
@@ -104,23 +145,18 @@ export function QRScannerScreen({ navigation }: any) {
                 { transform: [{ translateY }] },
               ]}
             />
-          </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Bottom Bar */}
-        <View style={styles.bottomBar}>
+        {/* Footer info */}
+        <View style={styles.footer}>
           {submitting ? (
-            <ActivityIndicator size="small" color={colors.accent} />
+            <View style={styles.loadingRow}>
+              <ActivityIndicator size="small" color={colors.accent} />
+              <Text style={styles.loadingText}>Verifying check-in token...</Text>
+            </View>
           ) : (
-            <>
-              <View style={styles.statusRow}>
-                <View style={styles.greenDot} />
-                <Text style={styles.statusText}>Scanning...</Text>
-              </View>
-              <Text style={styles.helperText}>
-                Align the QR code within the frame
-              </Text>
-            </>
+            <Text style={styles.footerTip}>Align the QR code within the frame to verify attendance</Text>
           )}
         </View>
       </View>
@@ -135,18 +171,16 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: colors.bg,
-    justifyContent: 'space-between',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingVertical: 12,
   },
   backButton: {
-    width: 38,
-    height: 38,
+    width: 40,
+    height: 40,
     borderRadius: radii.pill,
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -159,33 +193,32 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    color: colors.textPrimary,
     fontSize: 20,
     fontWeight: '800',
+    color: colors.textPrimary,
   },
   subtitle: {
+    fontSize: 13,
     color: colors.textSecondary,
-    fontSize: 12,
     marginTop: 2,
   },
   scannerCenter: {
-    alignItems: 'center',
+    flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
   },
   scanFrame: {
-    width: 220,
-    height: 220,
-    borderRadius: radii.lg,
-    backgroundColor: 'rgba(26, 26, 26, 0.4)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    width: 240,
+    height: 240,
     position: 'relative',
-    overflow: 'hidden',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    borderRadius: radii.md,
   },
   bracket: {
     position: 'absolute',
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
     borderColor: colors.accent,
   },
   topLeft: {
@@ -193,62 +226,57 @@ const styles = StyleSheet.create({
     left: 0,
     borderTopWidth: 3,
     borderLeftWidth: 3,
-    borderTopLeftRadius: 8,
+    borderTopLeftRadius: 6,
   },
   topRight: {
     top: 0,
     right: 0,
     borderTopWidth: 3,
     borderRightWidth: 3,
-    borderTopRightRadius: 8,
+    borderTopRightRadius: 6,
   },
   bottomLeft: {
     bottom: 0,
     left: 0,
     borderBottomWidth: 3,
     borderLeftWidth: 3,
-    borderBottomLeftRadius: 8,
+    borderBottomLeftRadius: 6,
   },
   bottomRight: {
     bottom: 0,
     right: 0,
     borderBottomWidth: 3,
     borderRightWidth: 3,
-    borderBottomRightRadius: 8,
+    borderBottomRightRadius: 6,
   },
   scanLine: {
     height: 2,
     backgroundColor: colors.accent,
+    width: '100%',
     shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 8,
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
     elevation: 4,
-    marginHorizontal: 12,
   },
-  bottomBar: {
+  footer: {
+    paddingHorizontal: 20,
+    paddingVertical: 24,
     alignItems: 'center',
-    paddingBottom: 40,
   },
-  statusRow: {
+  loadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
-  greenDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.accent,
-    marginRight: 6,
-  },
-  statusText: {
+  loadingText: {
     color: colors.accent,
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '600',
   },
-  helperText: {
+  footerTip: {
     color: colors.textSecondary,
     fontSize: 13,
-    marginTop: 6,
+    textAlign: 'center',
   },
 });
