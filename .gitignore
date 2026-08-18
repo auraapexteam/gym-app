@@ -79,4 +79,7 @@ UI_SYSTEM.md
 
 # Binaries / Packages
 *.apk
+*.bundle
+.expo/
+
 

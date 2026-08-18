@@ -1,19 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   TouchableOpacity,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   TextInput,
   ImageBackground,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import { ChevronLeft, Mail, Phone, Shield } from 'lucide-react-native';
+import { ChevronLeft, Mail, Phone, Shield, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { colors, radii } from '../theme/tokens';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { SegmentedTabs } from '../components/SegmentedTabs';
@@ -45,9 +43,12 @@ const AppleIcon = () => (
 );
 
 export function LoginScreen({ navigation }: any) {
+  const { setSession, loadUserProfile } = useAuthStore();
   const [step, setStep] = useState<'input' | 'verify'>('input');
-  const [authMode, setAuthMode] = useState<string>('phone');
+  const [authMode, setAuthMode] = useState<string>('email');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState('');
   const [otpValue, setOtpValue] = useState('');
   const [loading, setLoading] = useState(false);
@@ -63,71 +64,97 @@ export function LoginScreen({ navigation }: any) {
     return () => clearInterval(interval);
   }, [step, resendTimer]);
 
-  const isInputFilled = authMode === 'phone' ? phone.trim().length >= 10 : email.trim().length > 0;
+  const isEmailFormValid = email.trim().length > 0 && password.length >= 6;
+  const isPhoneFormValid = phone.trim().length >= 10;
   const isOtpComplete = otpValue.trim().length === 6;
 
-  const handleSendOtp = async () => {
-    if (authMode === 'email' && !EMAIL_REGEX.test(email.trim())) {
+  const navigateAfterAuth = async () => {
+    await loadUserProfile();
+    const profile = useAuthStore.getState().userProfile;
+    if (profile && !profile.onboarding_completed) {
+      navigation.replace('ProfileSetup');
+    } else {
+      navigation.replace('MainTabs');
+    }
+  };
+
+  const handleEmailSignIn = async () => {
+    if (!EMAIL_REGEX.test(email.trim())) {
       Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      return;
+    }
+    if (!password) {
+      Alert.alert('Password Required', 'Please enter your password.');
       return;
     }
 
     try {
       setLoading(true);
-      if (authMode === 'phone') {
-        const res = await apiClient.post('/auth/phone-otp', { phone: phone.trim() });
-        if (res.data?.message) {
-          console.log('OTP Sent:', res.data.message);
-        }
+      const res = await apiClient.post('/auth/login', {
+        email: email.trim(),
+        password,
+      });
+
+      if (res.data?.success && res.data.data?.session) {
+        await setSession(res.data.data.session);
+        await navigateAfterAuth();
+      } else {
+        throw new Error(res.data?.message || 'Login failed');
       }
-      setOtpValue('');
-      setResendTimer(25);
-      setStep('verify');
     } catch (err: any) {
-      console.warn('OTP send fallback:', err?.message);
-      setOtpValue('');
-      setResendTimer(25);
-      setStep('verify');
+      const msg = err.response?.data?.message || err.message || 'Invalid email or password';
+      Alert.alert('Sign In Failed', msg);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerify = async () => {
+  const handleSendPhoneOtp = async () => {
+    const cleanPhone = phone.trim();
+    if (cleanPhone.length < 10) {
+      Alert.alert('Invalid Phone', 'Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
     try {
       setLoading(true);
-      const { setSession } = useAuthStore.getState();
-
-      let sessionData = {
-        access_token: 'demo-token',
-        user: {
-          id: 'user-' + Date.now(),
-          email: email.trim() || undefined,
-          user_metadata: {
-            full_name: email ? email.split('@')[0] : phone ? `User ${phone.slice(-4)}` : 'Member',
-            phone: authMode === 'phone' ? phone.trim() : undefined,
-          },
-        },
-      };
-
-      if (authMode === 'phone') {
-        try {
-          const res = await apiClient.post('/auth/verify-otp', {
-            phone: phone.trim(),
-            code: otpValue,
-          });
-          if (res.data?.success && res.data.data?.session) {
-            sessionData = res.data.data.session;
-          }
-        } catch (apiErr: any) {
-          console.log('Using verified fallback session');
-        }
+      const fullPhone = cleanPhone.startsWith('+') ? cleanPhone : `+91${cleanPhone}`;
+      const res = await apiClient.post('/auth/phone-otp', { phone: fullPhone });
+      if (res.data?.message) {
+        console.log('OTP Sent:', res.data.message);
       }
-
-      await setSession(sessionData as any);
-      navigation.replace('ProfileSetup');
+      setOtpValue('');
+      setResendTimer(25);
+      setStep('verify');
     } catch (err: any) {
-      Alert.alert('Verification Failed', err.message || 'OTP verification failed.');
+      const msg = err.response?.data?.message || err.message || 'Failed to send OTP code.';
+      Alert.alert('OTP Failed', msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyPhoneOtp = async () => {
+    if (!isOtpComplete) return;
+    const cleanPhone = phone.trim();
+    const fullPhone = cleanPhone.startsWith('+') ? cleanPhone : `+91${cleanPhone}`;
+
+    try {
+      setLoading(true);
+      const res = await apiClient.post('/auth/verify-otp', {
+        phone: fullPhone,
+        code: otpValue.trim(),
+      });
+
+      if (res.data?.success && res.data.data?.session) {
+        await setSession(res.data.data.session);
+        await navigateAfterAuth();
+      } else {
+        throw new Error(res.data?.message || 'Verification failed');
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Invalid or expired OTP code.';
+      Alert.alert('Verification Failed', msg);
     } finally {
       setLoading(false);
     }
@@ -185,8 +212,8 @@ export function LoginScreen({ navigation }: any) {
               {/* Segmented Control */}
               <SegmentedTabs
                 options={[
-                  { key: 'phone', label: 'Phone', icon: <Phone size={16} color={authMode === 'phone' ? colors.black : colors.textSecondary} /> },
                   { key: 'email', label: 'Email', icon: <Mail size={16} color={authMode === 'email' ? colors.black : colors.textSecondary} /> },
+                  { key: 'phone', label: 'Phone', icon: <Phone size={16} color={authMode === 'phone' ? colors.black : colors.textSecondary} /> },
                 ]}
                 activeKey={authMode}
                 onChange={(key) => setAuthMode(key)}
@@ -194,42 +221,87 @@ export function LoginScreen({ navigation }: any) {
               />
 
               {/* Input Box */}
-              {authMode === 'phone' ? (
-                <View style={styles.inputFieldBox}>
-                  <Text style={styles.flagCode}>🇮🇳 +91</Text>
-                  <View style={styles.inputDivider} />
-                  <TextInput
-                    value={phone}
-                    onChangeText={setPhone}
-                    placeholder="Mobile number"
-                    placeholderTextColor={colors.textMuted}
-                    keyboardType="phone-pad"
-                    maxLength={10}
-                    style={styles.textInput}
-                  />
-                </View>
-              ) : (
-                <View style={styles.inputFieldBox}>
-                  <Mail size={18} color={colors.textMuted} style={styles.inputIcon} />
-                  <TextInput
-                    value={email}
-                    onChangeText={setEmail}
-                    placeholder="Email address"
-                    placeholderTextColor={colors.textMuted}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    style={styles.textInput}
-                  />
-                </View>
-              )}
+              {authMode === 'email' ? (
+                <>
+                  <View style={styles.inputFieldBox}>
+                    <Mail size={18} color={colors.textMuted} style={styles.inputIcon} />
+                    <TextInput
+                      value={email}
+                      onChangeText={setEmail}
+                      placeholder="Email address"
+                      placeholderTextColor={colors.textMuted}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                      style={styles.textInput}
+                    />
+                  </View>
 
-              {/* Send OTP Primary Button */}
-              <PrimaryButton
-                title="Send OTP"
-                onPress={handleSendOtp}
-                disabled={!isInputFilled}
-                style={styles.ctaMargin}
-              />
+                  <View style={styles.inputFieldBox}>
+                    <Lock size={18} color={colors.textMuted} style={styles.inputIcon} />
+                    <TextInput
+                      value={password}
+                      onChangeText={setPassword}
+                      placeholder="Password"
+                      placeholderTextColor={colors.textMuted}
+                      secureTextEntry={!showPassword}
+                      autoCapitalize="none"
+                      style={styles.textInput}
+                    />
+                    <TouchableOpacity
+                      onPress={() => setShowPassword(!showPassword)}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      {showPassword ? (
+                        <EyeOff size={18} color={colors.textMuted} />
+                      ) : (
+                        <Eye size={18} color={colors.textMuted} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('ForgotPassword')}
+                    style={styles.forgotPasswordRow}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                  </TouchableOpacity>
+
+                  {/* Sign In Primary Button */}
+                  <PrimaryButton
+                    title="Sign In"
+                    onPress={handleEmailSignIn}
+                    disabled={!isEmailFormValid}
+                    loading={loading}
+                    style={styles.ctaMargin}
+                  />
+                </>
+              ) : (
+                <>
+                  <View style={styles.inputFieldBox}>
+                    <Text style={styles.flagCode}>🇮🇳 +91</Text>
+                    <View style={styles.inputDivider} />
+                    <TextInput
+                      value={phone}
+                      onChangeText={setPhone}
+                      placeholder="Mobile number"
+                      placeholderTextColor={colors.textMuted}
+                      keyboardType="phone-pad"
+                      maxLength={10}
+                      style={styles.textInput}
+                    />
+                  </View>
+
+                  {/* Send OTP Primary Button */}
+                  <PrimaryButton
+                    title="Send OTP"
+                    onPress={handleSendPhoneOtp}
+                    disabled={!isPhoneFormValid}
+                    loading={loading}
+                    style={styles.ctaMargin}
+                  />
+                </>
+              )}
 
               {/* New here? Create account link */}
               <View style={styles.accountLinkContainer}>
@@ -276,7 +348,7 @@ export function LoginScreen({ navigation }: any) {
                 <Text style={styles.whiteText}>Verify OTP</Text>
               </Text>
               <Text style={styles.subtext}>
-                6-digit code sent to {authMode === 'phone' ? `+91 ${phone}` : email}
+                6-digit code sent to +91 {phone}
               </Text>
 
               {/* 6 Digit OTP Input */}
@@ -290,10 +362,7 @@ export function LoginScreen({ navigation }: any) {
               <View style={styles.resendRow}>
                 <TouchableOpacity
                   disabled={resendTimer > 0}
-                  onPress={() => {
-                    setResendTimer(25);
-                    setOtpValue('');
-                  }}
+                  onPress={handleSendPhoneOtp}
                 >
                   <Text style={[styles.resendText, resendTimer > 0 && styles.resendTextDisabled]}>
                     {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend OTP'}
@@ -304,7 +373,7 @@ export function LoginScreen({ navigation }: any) {
               {/* Verify & Continue Button */}
               <PrimaryButton
                 title="Verify & Continue"
-                onPress={handleVerify}
+                onPress={handleVerifyPhoneOtp}
                 disabled={!isOtpComplete}
                 loading={loading}
                 style={styles.ctaMargin}
@@ -424,6 +493,16 @@ const styles = StyleSheet.create({
   ctaMargin: {
     marginTop: 4,
     marginBottom: 16,
+  },
+  forgotPasswordRow: {
+    alignSelf: 'flex-end',
+    marginBottom: 16,
+    marginTop: -8,
+  },
+  forgotPasswordText: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: '700',
   },
   accountLinkContainer: {
     alignItems: 'center',

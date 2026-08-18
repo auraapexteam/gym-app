@@ -6,10 +6,8 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
-  Modal,
-  Alert,
 } from 'react-native';
-import { QrCode, Dumbbell, Zap, Sun, Moon, Check, ChevronLeft } from 'lucide-react-native';
+import { QrCode, Dumbbell, Zap, Sun, Moon, Check } from 'lucide-react-native';
 import { colors, radii } from '../theme/tokens';
 import { useTheme } from '../context/ThemeContext';
 import { useAuthStore } from '../store/useAuthStore';
@@ -17,66 +15,14 @@ import { SegmentedTabs } from '../components/SegmentedTabs';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { apiClient } from '../api/client';
 
-const HISTORY_ITEMS = [
-  {
-    id: 'h-1',
-    dayLabel: 'Today',
-    dateStr: '30 Jul',
-    timeRange: 'Check-in 06:28 AM · Out 07:31 AM',
-    duration: '63 min',
-    isToday: true,
-  },
-  {
-    id: 'h-2',
-    dayLabel: 'Yesterday',
-    dateStr: '29 Jul',
-    timeRange: 'Check-in 06:45 AM · Out 07:52 AM',
-    duration: '67 min',
-    isToday: false,
-  },
-  {
-    id: 'h-3',
-    dayLabel: 'Monday',
-    dateStr: '28 Jul',
-    timeRange: 'Check-in 07:00 AM · Out 08:05 AM',
-    duration: '65 min',
-    isToday: false,
-  },
-  {
-    id: 'h-4',
-    dayLabel: 'Saturday',
-    dateStr: '26 Jul',
-    timeRange: 'Check-in 08:15 AM · Out 09:10 AM',
-    duration: '55 min',
-    isToday: false,
-  },
-  {
-    id: 'h-5',
-    dayLabel: 'Friday',
-    dateStr: '25 Jul',
-    timeRange: 'Check-in 06:30 AM · Out 07:28 AM',
-    duration: '58 min',
-    isToday: false,
-  },
-  {
-    id: 'h-6',
-    dayLabel: 'Thursday',
-    dateStr: '24 Jul',
-    timeRange: 'Check-in 07:10 AM · Out 08:20 AM',
-    duration: '70 min',
-    isToday: false,
-  },
-];
-
 export function BookScreen({ navigation }: any) {
   const { isDark, setTheme } = useTheme();
-  const { userProfile, user } = useAuthStore();
+  const { userProfile, user, subscription } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'scan' | 'history'>('scan');
-  const [scannerOpen, setScannerOpen] = useState(false);
   const [scannedCount, setScannedCount] = useState(0);
   const [historyItems, setHistoryItems] = useState<any[]>([]);
 
-  React.useEffect(() => {
+  const fetchAttendance = React.useCallback(() => {
     apiClient.get('/attendance/me')
       .then((res) => {
         if (res.data?.success && Array.isArray(res.data.data)) {
@@ -98,28 +44,20 @@ export function BookScreen({ navigation }: any) {
       });
   }, []);
 
-  const handleOpenScanner = () => {
-    if (navigation) {
-      navigation.navigate('QRScanner');
-    } else {
-      setScannerOpen(true);
-    }
-  };
+  React.useEffect(() => {
+    fetchAttendance();
+  }, [fetchAttendance]);
 
-  const handleBarcodeScanned = async () => {
-    setScannerOpen(false);
-    try {
-      await apiClient.post('/attendance/check-in', { token: 'reception-qr-token-demo' });
-      setScannedCount((prev) => prev + 1);
-      Alert.alert('Check-in Successful! 🎉', 'Verified at gym reception. Enjoy your workout!');
-    } catch (err: any) {
-      setScannedCount((prev) => prev + 1);
-      const msg = err?.response?.data?.message || 'Welcome to Aura Apex! Enjoy your workout!';
-      Alert.alert('Check-in Verified! 🎉', msg);
-    }
+  const handleOpenScanner = () => {
+    navigation.navigate('QRCheckIn');
   };
 
   const userName = userProfile?.full_name || (user?.email ? user.email.split('@')[0] : 'Member');
+  const planName = subscription?.plan?.name || (userProfile?.gym_id ? 'Active Membership' : 'Standard Pass');
+  const endDateStr = subscription?.endDate || subscription?.end_date;
+  const validTill = endDateStr
+    ? new Date(endDateStr).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+    : 'Active';
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: isDark ? colors.bg : '#F5F5F0' }]}>
@@ -162,7 +100,7 @@ export function BookScreen({ navigation }: any) {
                 <View>
                   <Text style={styles.passTag}>APEX PRO · ACTIVE</Text>
                   <Text style={styles.userName}>{userName}</Text>
-                  <Text style={styles.memberSince}>Member since Jan 2025</Text>
+                  <Text style={styles.memberSince}>Aura Apex Member</Text>
                 </View>
                 <View style={styles.boltBadge}>
                   <Zap size={22} color={colors.black} fill={colors.black} />
@@ -174,15 +112,15 @@ export function BookScreen({ navigation }: any) {
               <View style={styles.passStatsRow}>
                 <View style={styles.passStatCol}>
                   <Text style={styles.passStatLabel}>Valid Till</Text>
-                  <Text style={styles.passStatVal}>14 Aug 2025</Text>
+                  <Text style={styles.passStatVal}>{validTill}</Text>
                 </View>
                 <View style={styles.passStatCol}>
                   <Text style={styles.passStatLabel}>Check-ins</Text>
-                  <Text style={styles.passStatVal}>{scannedCount} / 30</Text>
+                  <Text style={styles.passStatVal}>{scannedCount}</Text>
                 </View>
                 <View style={styles.passStatCol}>
                   <Text style={styles.passStatLabel}>Plan</Text>
-                  <Text style={styles.passStatVal}>Monthly</Text>
+                  <Text style={styles.passStatVal} numberOfLines={1}>{planName}</Text>
                 </View>
               </View>
             </View>
@@ -222,7 +160,7 @@ export function BookScreen({ navigation }: any) {
                   <Text style={[styles.stepName, { color: isDark ? colors.white : colors.black }]}>
                     Arrive at the gym
                   </Text>
-                  <Text style={styles.stepDesc}>Show up at any Aura Apex partner gym</Text>
+                  <Text style={styles.stepDesc}>Show up at your registered Aura Apex gym</Text>
                 </View>
               </View>
 
@@ -309,42 +247,6 @@ export function BookScreen({ navigation }: any) {
           </>
         )}
       </ScrollView>
-
-      {/* Camera Fallback Modal */}
-      <Modal visible={scannerOpen} animationType="slide">
-        <View style={styles.cameraContainer}>
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.black }]} />
-          
-          <SafeAreaView style={styles.cameraHeader}>
-            <TouchableOpacity onPress={() => setScannerOpen(false)} style={styles.cameraCloseBtn}>
-              <ChevronLeft size={24} color={colors.white} />
-            </TouchableOpacity>
-            <View>
-              <Text style={styles.cameraTitle}>Scan QR Code</Text>
-              <Text style={styles.cameraSub}>Point camera at gym entry QR</Text>
-            </View>
-          </SafeAreaView>
-
-          <View style={styles.overlayContainer}>
-            <View style={styles.overlayTop} />
-            <View style={styles.overlayMiddleRow}>
-              <View style={styles.overlaySide} />
-              <View style={styles.scannerFrame}>
-                <View style={[styles.cornerMarker, styles.topLeftCorner]} />
-                <View style={[styles.cornerMarker, styles.topRightCorner]} />
-                <View style={[styles.cornerMarker, styles.bottomLeftCorner]} />
-                <View style={[styles.cornerMarker, styles.bottomRightCorner]} />
-                <View style={styles.scanLine} />
-              </View>
-              <View style={styles.overlaySide} />
-            </View>
-            <View style={styles.overlayBottom}>
-              <Text style={styles.scanningText}>🟢 Scanning...</Text>
-              <Text style={styles.alignText}>Align the QR code within the frame</Text>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
