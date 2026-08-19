@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { ChevronLeft, User, Mail, Lock } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../api/supabase';
 import { useTheme } from '../context/ThemeContext';
 
@@ -88,13 +89,25 @@ export function SignupScreen({ navigation }: any) {
       });
 
       if (error) {
-        Alert.alert('Sign Up Failed', error.message);
+        const lowerMsg = (error.message || '').toLowerCase();
+        if (lowerMsg.includes('already registered') || lowerMsg.includes('already exists') || lowerMsg.includes('user_already_exists')) {
+          Alert.alert(
+            'Account Already Exists',
+            'An account with this email already exists. Redirecting you to Sign In...',
+            [{ text: 'Sign In', onPress: () => navigation.replace('Login', { prefillEmail: email.trim() }) }]
+          );
+        } else {
+          Alert.alert('Sign Up Failed', error.message);
+        }
       } else if (!data.session) {
+        await AsyncStorage.setItem('has_seen_onboarding', 'true');
         Alert.alert(
           'Account Created 🎉',
           'Account created successfully! Please verify your email if required, then sign in.',
-          [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
+          [{ text: 'OK', onPress: () => navigation.replace('Login', { prefillEmail: email.trim() }) }]
         );
+      } else {
+        await AsyncStorage.setItem('has_seen_onboarding', 'true');
       }
     } catch (err: any) {
       Alert.alert('Error', err.message || 'An unexpected error occurred.');

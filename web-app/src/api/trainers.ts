@@ -2,7 +2,7 @@ import axiosInstance from './axios';
 import type { Trainer, ApiResponse, PaginatedResponse, PaginationParams } from '@/types';
 
 export const trainersApi = {
-  getAll: (params?: PaginationParams) =>
+  getAll: (params?: PaginationParams & { gymId?: string }) =>
     axiosInstance.get<PaginatedResponse<Trainer>>('/trainers', { params }),
 
   getById: (id: string) =>

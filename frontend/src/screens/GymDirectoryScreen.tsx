@@ -156,7 +156,7 @@ export function GymDirectoryScreen({ navigation }: any) {
             <TouchableOpacity
               activeOpacity={0.85}
               style={[styles.primaryBtn, { backgroundColor: colors.primary, marginTop: 12 }]}
-              onPress={() => navigation.navigate('MainTabs', { screen: 'PlansTab', params: { gymId: myRequest.gym_id } })}
+              onPress={() => navigation.navigate('GymInfo', { gymId: myRequest.gym_id })}
             >
               <Building2 size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
               <Text style={styles.primaryBtnText}>View Plans & Join Instantly</Text>
@@ -241,7 +241,7 @@ export function GymDirectoryScreen({ navigation }: any) {
                   <TouchableOpacity
                     activeOpacity={0.85}
                     style={styles.viewPlansBtn}
-                    onPress={() => navigation.navigate('MainTabs', { screen: 'PlansTab', params: { gymId: item.id } })}
+                    onPress={() => navigation.navigate('GymInfo', { gymId: item.id, gym: item })}
                   >
                     <Building2 size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
                     <Text style={styles.viewPlansBtnText}>View Plans & Join</Text>

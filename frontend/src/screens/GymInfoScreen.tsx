@@ -1,212 +1,713 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View, ActivityIndicator, ScrollView, SafeAreaView, Image } from 'react-native';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Dimensions,
+  Platform,
+  Modal,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  ChevronLeft,
+  Star,
+  MapPin,
+  Clock,
+  ShieldCheck,
+  Check,
+  CreditCard,
+  X,
+  Building2,
+  Sparkles,
+} from 'lucide-react-native';
+import RazorpayCheckout from 'react-native-razorpay';
 import { useTheme } from '../context/ThemeContext';
-import { Phone, Mail, CheckCircle2 } from 'lucide-react-native';
-import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/useAuthStore';
+import { useGymStore, PublicGym } from '../store/useGymStore';
+import { apiClient } from '../api/client';
 
-const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const { width } = Dimensions.get('window');
 
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const GYM_HERO_FALLBACKS = [
+  'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=1200&q=80',
+];
 
-const formatTime = (t?: string) => {
-  if (!t) return '--';
-  const [h, m] = t.split(':').map(Number);
-  const period = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
-};
+const DEFAULT_TAGS = ['Pool', 'Sauna', 'CrossFit', 'Parking', 'Lockers', 'PT Sessions'];
 
-export function GymInfoScreen() {
+export interface GymPlan {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  durationDays: number;
+  billingInterval: 'day' | 'month' | 'quarter' | 'year';
+  isPopular?: boolean;
+  features: string[];
+}
+
+export function GymInfoScreen({ route, navigation }: any) {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
-  const { userProfile } = useAuthStore();
-  const [gym, setGym] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [logoError, setLogoError] = useState(false);
 
-  const fetchGymInfo = async () => {
-    if (!userProfile?.gym_id) {
-      // No linked gym — resolve to the empty state instead of spinning forever.
-      setLoading(false);
-      return;
+  const { user, userProfile, loadUserProfile, loadSubscription, subscription } = useAuthStore();
+  const { directory } = useGymStore();
+
+  const gymId = route?.params?.gymId;
+  const initialGymParam = route?.params?.gym;
+
+  const [gym, setGym] = useState<PublicGym | null>(initialGymParam || null);
+  const [gymLoading, setGymLoading] = useState(false);
+  const [plans, setPlans] = useState<GymPlan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+
+  // Payment modal state
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [payPhase, setPayPhase] = useState<'form' | 'loading' | 'success'>('form');
+  const payingRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  // Fetch Gym details and plans
+  useEffect(() => {
+    const targetId = gymId || (directory.length > 0 ? directory[0].id : null);
+    if (targetId) {
+      loadGymAndPlans(targetId);
     }
+  }, [gymId, directory]);
+
+  const loadGymAndPlans = async (id: string) => {
     try {
-      setLoading(true);
-      const res = await apiClient.get('/gyms/me');
-      if (res.data?.success) {
-        setGym(res.data.data);
+      setPlansLoading(true);
+
+      // 1. Fetch live Gym profile if not cached
+      const cached = directory.find((g) => g.id === id);
+      if (cached) {
+        setGym(cached);
+      } else {
+        setGymLoading(true);
+        try {
+          const gymRes = await apiClient.get(`/gyms/${id}`);
+          if (gymRes.data?.success && gymRes.data?.data) {
+            setGym(gymRes.data.data);
+          }
+        } catch (e) {
+          console.warn('Failed to load gym info:', e);
+        } finally {
+          setGymLoading(false);
+        }
       }
-    } catch (err: any) {
-      console.warn('Failed to load gym info:', err);
+
+      // 2. Fetch live Plans for this Gym
+      const plansRes = await apiClient.get(`/plans?gymId=${id}`);
+      if (plansRes.data?.success && Array.isArray(plansRes.data.data)) {
+        const rawList = plansRes.data.data;
+        const formatted: GymPlan[] = rawList.map((p: any) => {
+          const durationDays = Number(p.duration_days ?? p.durationDays) || 30;
+          let interval: 'day' | 'month' | 'quarter' | 'year' = 'month';
+          if (durationDays <= 3) interval = 'day';
+          else if (durationDays >= 75 && durationDays <= 120) interval = 'quarter';
+          else if (durationDays >= 365) interval = 'year';
+
+          const nameLower = (p.name || '').toLowerCase();
+          const isPopular = nameLower.includes('monthly') || durationDays === 30;
+
+          return {
+            id: p.id,
+            name: p.name || 'Membership Plan',
+            description: p.description || '',
+            price: Number(p.price) || 0,
+            durationDays,
+            billingInterval: interval,
+            isPopular,
+            features: Array.isArray(p.features) && p.features.length > 0
+              ? p.features
+              : [p.description || 'Full Gym & Equipment Access', 'Digital QR Check-In'],
+          };
+        });
+
+        setPlans(formatted);
+        // Default select popular or first plan
+        const defaultPlan = formatted.find((p) => p.isPopular) || formatted[0];
+        if (defaultPlan) setSelectedPlanId(defaultPlan.id);
+      } else {
+        setPlans([]);
+      }
+    } catch (err) {
+      console.warn('Failed to load plans:', err);
+      setPlans([]);
     } finally {
-      setLoading(false);
+      setPlansLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchGymInfo();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch only when the linked gym changes
-  }, [userProfile?.gym_id]);
+  const selectedPlan = useMemo(() => {
+    return plans.find((p) => p.id === selectedPlanId) || plans[0] || null;
+  }, [plans, selectedPlanId]);
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
+  // Razorpay Checkout Trigger
+  const handleInitiatePayment = async () => {
+    if (!selectedPlan) {
+      Alert.alert('Select a Plan', 'Please select a membership plan to continue.');
+      return;
+    }
+    if (payingRef.current) return;
+    payingRef.current = true;
 
-  if (!gym) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>No gym information available.</Text>
-      </View>
-    );
-  }
+    try {
+      setCheckoutOpen(true);
+      setPayPhase('loading');
 
-  const gymLogoUri = gym.logoUrl || gym.logo_url || gym.avatarUrl || gym.avatar_url || gym.photo_url || (Array.isArray(gym.photos) && gym.photos[0]);
-  const gymInitials = (gym.name || 'GYM').split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase();
+      // 1. Backend Order Creation
+      const orderRes = await apiClient.post('/payments/orders', {
+        planId: selectedPlan.id,
+      });
+
+      if (!orderRes.data?.success) {
+        throw new Error(orderRes.data?.message || 'Order creation failed');
+      }
+
+      const { orderId, amountInPaise, currency, razorpayKeyId } = orderRes.data.data;
+
+      // 2. Razorpay SDK Call
+      const options = {
+        description: `${selectedPlan.name} - ${gym?.name || 'Aura Gym'}`,
+        currency: currency || 'INR',
+        key: razorpayKeyId,
+        amount: amountInPaise,
+        order_id: orderId,
+        name: gym?.name || 'Aura Apex Gym',
+        prefill: {
+          email: user?.email || '',
+          contact: userProfile?.phone || '',
+          name: userProfile?.full_name || '',
+        },
+        theme: { color: '#84CC16' }, // Modern Lime accent matching mockup
+      };
+
+      const sdkResult = await RazorpayCheckout.open(options);
+
+      // 3. Backend Verification
+      const verifyRes = await apiClient.post('/payments/verify', {
+        orderId: sdkResult.razorpay_order_id,
+        paymentId: sdkResult.razorpay_payment_id,
+        signature: sdkResult.razorpay_signature,
+      });
+
+      if (!verifyRes.data?.success) {
+        throw new Error(verifyRes.data?.message || 'Payment verification failed');
+      }
+
+      setPayPhase('success');
+      await loadUserProfile();
+      await loadSubscription();
+
+      timerRef.current = setTimeout(() => {
+        setCheckoutOpen(false);
+        navigation.navigate('MainTabs', { screen: 'HomeTab' });
+      }, 1600);
+    } catch (err: any) {
+      setCheckoutOpen(false);
+      setPayPhase('form');
+      const msg = err.response?.data?.message || err.description || err.message || 'Payment was cancelled.';
+      Alert.alert('Payment Status', msg);
+    } finally {
+      payingRef.current = false;
+    }
+  };
+
+  const coverUrl =
+    (gym as any)?.coverUrl ||
+    (gym as any)?.cover_url ||
+    GYM_HERO_FALLBACKS[0];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          {gymLogoUri && !logoError ? (
-            <Image
-              source={{ uri: gymLogoUri }}
-              style={styles.gymLogoImage}
-              onError={() => setLogoError(true)}
-            />
-          ) : (
-            <View style={styles.headerIconBadge}>
-              <Text style={styles.gymInitialsText}>{gymInitials}</Text>
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* 1. Hero Header Section with Overlay */}
+        <View style={styles.heroWrapper}>
+          <Image source={{ uri: coverUrl }} style={styles.heroImage} resizeMode="cover" />
+          <View style={styles.heroOverlay} />
+
+          {/* Back Button */}
+          <SafeAreaView style={styles.heroHeaderSafeArea}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.backBtn}
+              onPress={() => navigation.goBack()}
+            >
+              <ChevronLeft size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+          </SafeAreaView>
+
+          {/* Gym Header Meta */}
+          <View style={styles.heroMetaBox}>
+            <Text style={styles.gymTitle}>{gym?.name || 'Cult.fit Koramangala'}</Text>
+            <View style={styles.metaBadgeRow}>
+              <View style={styles.ratingBadge}>
+                <Star size={13} color="#F59E0B" fill="#F59E0B" style={{ marginRight: 4 }} />
+                <Text style={styles.ratingText}>4.8</Text>
+              </View>
+              <View style={styles.distanceBadge}>
+                <MapPin size={12} color="#9CA3AF" style={{ marginRight: 3 }} />
+                <Text style={styles.distanceText}>0.4 km</Text>
+              </View>
+              <View style={styles.statusBadge}>
+                <Text style={styles.statusText}>Open Now</Text>
+              </View>
             </View>
-          )}
-          <View style={styles.titleRow}>
-            <Text style={styles.title}>{gym.name}</Text>
-            <CheckCircle2 size={18} color={colors.primary} style={{ marginLeft: 6, marginTop: 2 }} />
           </View>
-          <Text style={styles.subtitle}>{gym.address || 'Address not listed'}</Text>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Operating Timings</Text>
-          {WEEKDAYS.map((day, idx) => {
-            const isOff = (gym.weeklyOff || []).includes(day);
-            const t = gym.timings?.[day];
-            return (
-              <View key={day} style={[styles.timingRow, idx === WEEKDAYS.length - 1 && { marginBottom: 0 }]}>
-                <Text style={styles.timingDay}>{capitalize(day)}</Text>
-                <Text style={[styles.timingHours, isOff && styles.timingClosed]}>
-                  {isOff ? 'Closed' : t ? `${formatTime(t.open)} – ${formatTime(t.close)}` : 'Not set'}
+        {/* 2. Facility Tag Pills */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tagsScroll}
+        >
+          {DEFAULT_TAGS.map((tag, idx) => (
+            <View key={idx} style={styles.tagPill}>
+              <Text style={styles.tagPillText}>{tag}</Text>
+            </View>
+          ))}
+        </ScrollView>
+
+        {/* 3. Membership Plans Title */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Membership Plans</Text>
+        </View>
+
+        {/* 4. Plans List */}
+        {plansLoading ? (
+          <View style={styles.loaderBox}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loaderText}>Loading membership plans…</Text>
+          </View>
+        ) : plans.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Building2 size={32} color={colors.mutedForeground} />
+            <Text style={styles.emptyTitle}>No Active Plans</Text>
+            <Text style={styles.emptySub}>This gym has not published plans yet.</Text>
+          </View>
+        ) : (
+          <View style={styles.plansList}>
+            {plans.map((item) => {
+              const isSelected = selectedPlanId === item.id;
+              const durationLabel =
+                item.durationDays === 1
+                  ? '1 day'
+                  : item.durationDays === 30
+                  ? '30 days'
+                  : `${item.durationDays} days`;
+
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  activeOpacity={0.9}
+                  style={[
+                    styles.planCard,
+                    isSelected && styles.planCardSelected,
+                    item.isPopular && styles.planCardPopularBorder,
+                  ]}
+                  onPress={() => setSelectedPlanId(item.id)}
+                >
+                  <View style={styles.planCardTop}>
+                    <View style={styles.planTitleCol}>
+                      {item.isPopular && (
+                        <View style={styles.popularBadge}>
+                          <Sparkles size={10} color="#000000" style={{ marginRight: 3 }} />
+                          <Text style={styles.popularBadgeText}>POPULAR</Text>
+                        </View>
+                      )}
+                      <Text style={styles.planName}>{item.name}</Text>
+                      <Text style={styles.planDuration}>{durationLabel}</Text>
+                    </View>
+
+                    <View style={styles.planRightCol}>
+                      <Text style={styles.planPrice}>₹{item.price.toLocaleString()}</Text>
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        style={[
+                          styles.pickBtn,
+                          isSelected && styles.pickBtnSelected,
+                        ]}
+                        onPress={() => setSelectedPlanId(item.id)}
+                      >
+                        <Text style={[styles.pickBtnText, isSelected && styles.pickBtnTextSelected]}>
+                          {isSelected ? 'Picked' : 'Pick'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+      </ScrollView>
+
+      {/* 5. Fixed Bottom Action Bar: Book Now Button */}
+      <SafeAreaView edges={['bottom']} style={styles.bottomSafeArea}>
+        <View style={styles.bottomBar}>
+          <TouchableOpacity
+            activeOpacity={0.88}
+            style={styles.bookNowBtn}
+            onPress={handleInitiatePayment}
+          >
+            <Text style={styles.bookNowBtnText}>
+              {selectedPlan ? `Book Now · ₹${selectedPlan.price.toLocaleString()}` : 'Book Now'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+
+      {/* 6. Checkout Progress Modal */}
+      <Modal animationType="slide" transparent visible={checkoutOpen}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBody}>
+            {payPhase === 'loading' && (
+              <View style={styles.modalState}>
+                <ActivityIndicator size="large" color="#84CC16" />
+                <Text style={styles.modalStateText}>Connecting to Razorpay Secure Gateway…</Text>
+              </View>
+            )}
+
+            {payPhase === 'success' && (
+              <View style={styles.modalState}>
+                <View style={styles.successBadgeCircle}>
+                  <Check size={36} color="#FFFFFF" strokeWidth={3} />
+                </View>
+                <Text style={styles.successTitleText}>Payment Successful!</Text>
+                <Text style={styles.successSubText}>
+                  Your membership with {gym?.name || 'the gym'} is now active.
                 </Text>
               </View>
-            );
-          })}
+            )}
+          </View>
         </View>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Contact Information</Text>
-          {!!gym.phone && (
-            <View style={styles.row}>
-              <View style={[styles.iconBadge, { backgroundColor: colors.successSoft }]}>
-                <Phone size={16} color={colors.success} />
-              </View>
-              <View style={styles.rowTextGroup}>
-                <Text style={styles.infoText}>Phone</Text>
-                <Text style={styles.infoSubtext}>{gym.phone}</Text>
-              </View>
-            </View>
-          )}
-          {!!gym.email && (
-            <View style={[styles.row, { marginTop: gym.phone ? 12 : 0 }]}>
-              <View style={[styles.iconBadge, { backgroundColor: colors.primarySoft }]}>
-                <Mail size={16} color={colors.primary} />
-              </View>
-              <View style={styles.rowTextGroup}>
-                <Text style={styles.infoText}>Email</Text>
-                <Text style={styles.infoSubtext}>{gym.email}</Text>
-              </View>
-            </View>
-          )}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      </Modal>
+    </View>
   );
 }
 
-const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  scroll: { padding: 20, paddingBottom: 40 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
-  header: { alignItems: 'center', marginBottom: 24, marginTop: 12 },
-  headerIconBadge: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: colors.primarySoft,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 14,
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
-  gymLogoImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    marginBottom: 14,
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
-  gymInitialsText: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: colors.primary,
-    letterSpacing: 1,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: { fontSize: 22, fontWeight: '800', color: colors.foreground, textAlign: 'center' },
-  subtitle: { fontSize: 13, color: colors.mutedForeground, marginTop: 4, textAlign: 'center' },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 24,
-    padding: 18,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: isDark ? 0 : 0.04,
-    shadowRadius: 8,
-    elevation: isDark ? 0 : 1,
-  },
-  sectionTitle: { fontSize: 11, fontWeight: '800', color: colors.mutedForeground, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 14 },
-  timingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  timingDay: { fontSize: 13, fontWeight: '700', color: colors.foreground },
-  timingHours: { fontSize: 13, fontWeight: '600', color: colors.mutedForeground },
-  timingClosed: { color: colors.destructive },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  iconBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  rowTextGroup: { justifyContent: 'center' },
-  infoText: { fontSize: 14, fontWeight: '700', color: colors.foreground },
-  infoSubtext: { fontSize: 12, color: colors.mutedForeground, marginTop: 1, fontWeight: '500' },
-  errorText: { color: colors.mutedForeground, fontSize: 15 },
-});
+const getStyles = (colors: any, isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: '#0D0E11', // Dark luxury backdrop matching Cult.fit aesthetic
+    },
+    scrollContent: {
+      paddingBottom: 180,
+    },
+
+    // Hero Section
+    heroWrapper: {
+      height: 260,
+      width: '100%',
+      position: 'relative',
+    },
+    heroImage: {
+      width: '100%',
+      height: '100%',
+    },
+    heroOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.55)',
+    },
+    heroHeaderSafeArea: {
+      position: 'absolute',
+      top: Platform.OS === 'android' ? 12 : 0,
+      left: 16,
+      zIndex: 10,
+    },
+    backBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: 'rgba(255,255,255,0.18)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    heroMetaBox: {
+      position: 'absolute',
+      bottom: 20,
+      left: 20,
+      right: 20,
+    },
+    gymTitle: {
+      fontSize: 26,
+      fontWeight: '800',
+      color: '#FFFFFF',
+      letterSpacing: -0.5,
+    },
+    metaBadgeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 8,
+      gap: 12,
+    },
+    ratingBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    ratingText: {
+      color: '#FFFFFF',
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    distanceBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    distanceText: {
+      color: '#9CA3AF',
+      fontSize: 13,
+      fontWeight: '500',
+    },
+    statusBadge: {
+      backgroundColor: 'rgba(16, 185, 129, 0.15)',
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    statusText: {
+      color: '#10B981',
+      fontSize: 12,
+      fontWeight: '700',
+    },
+
+    // Facility Tag Pills
+    tagsScroll: {
+      paddingHorizontal: 20,
+      paddingVertical: 18,
+      gap: 8,
+    },
+    tagPill: {
+      backgroundColor: 'rgba(132, 204, 22, 0.12)', // Neon green pill tint
+      borderWidth: 1,
+      borderColor: 'rgba(132, 204, 22, 0.35)',
+      borderRadius: 20,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+    },
+    tagPillText: {
+      color: '#A3E635',
+      fontSize: 13,
+      fontWeight: '700',
+    },
+
+    // Section Header
+    sectionHeader: {
+      paddingHorizontal: 20,
+      marginBottom: 14,
+    },
+    sectionTitle: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: '#FFFFFF',
+    },
+
+    // Plans List
+    plansList: {
+      paddingHorizontal: 20,
+      gap: 14,
+    },
+    planCard: {
+      backgroundColor: '#16181D',
+      borderRadius: 18,
+      padding: 18,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.08)',
+    },
+    planCardSelected: {
+      borderColor: '#84CC16',
+      backgroundColor: '#1C2114',
+    },
+    planCardPopularBorder: {
+      borderColor: '#84CC16',
+    },
+    planCardTop: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    planTitleCol: {
+      flex: 1,
+    },
+    popularBadge: {
+      alignSelf: 'flex-start',
+      backgroundColor: '#84CC16',
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 6,
+    },
+    popularBadgeText: {
+      color: '#000000',
+      fontSize: 10,
+      fontWeight: '900',
+      letterSpacing: 0.5,
+    },
+    planName: {
+      fontSize: 17,
+      fontWeight: '800',
+      color: '#FFFFFF',
+    },
+    planDuration: {
+      fontSize: 12.5,
+      color: '#9CA3AF',
+      marginTop: 2,
+    },
+    planRightCol: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+    },
+    planPrice: {
+      fontSize: 22,
+      fontWeight: '900',
+      color: '#FFFFFF',
+    },
+    pickBtn: {
+      backgroundColor: 'rgba(255,255,255,0.1)',
+      borderRadius: 20,
+      paddingHorizontal: 18,
+      paddingVertical: 8,
+    },
+    pickBtnSelected: {
+      backgroundColor: '#84CC16',
+    },
+    pickBtnText: {
+      color: '#FFFFFF',
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    pickBtnTextSelected: {
+      color: '#000000',
+      fontWeight: '900',
+    },
+
+    // Empty & Loader
+    loaderBox: {
+      height: 180,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    loaderText: {
+      color: '#9CA3AF',
+      fontSize: 13,
+      marginTop: 10,
+    },
+    emptyCard: {
+      marginHorizontal: 20,
+      padding: 30,
+      borderRadius: 18,
+      backgroundColor: '#16181D',
+      alignItems: 'center',
+    },
+    emptyTitle: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '700',
+      marginTop: 10,
+    },
+    emptySub: {
+      color: '#9CA3AF',
+      fontSize: 13,
+      marginTop: 4,
+    },
+
+    // Fixed Bottom Action Bar
+    bottomSafeArea: {
+      position: 'absolute',
+      bottom: Platform.OS === 'ios' ? 92 : 82,
+      left: 0,
+      right: 0,
+      backgroundColor: 'transparent',
+    },
+    bottomBar: {
+      paddingHorizontal: 20,
+      paddingVertical: 6,
+    },
+    bookNowBtn: {
+      backgroundColor: '#84CC16', // Neon vibrant green matching mockup
+      borderRadius: 16,
+      height: 52,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#84CC16',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.35,
+      shadowRadius: 10,
+      elevation: 6,
+    },
+    bookNowBtnText: {
+      color: '#000000',
+      fontSize: 16,
+      fontWeight: '900',
+    },
+
+    // Modal
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.8)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    modalBody: {
+      backgroundColor: '#16181D',
+      borderRadius: 24,
+      padding: 30,
+      width: width - 40,
+      alignItems: 'center',
+    },
+    modalState: {
+      alignItems: 'center',
+    },
+    modalStateText: {
+      color: '#FFFFFF',
+      fontSize: 15,
+      fontWeight: '600',
+      marginTop: 16,
+      textAlign: 'center',
+    },
+    successBadgeCircle: {
+      width: 70,
+      height: 70,
+      borderRadius: 35,
+      backgroundColor: '#84CC16',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+    successTitleText: {
+      color: '#FFFFFF',
+      fontSize: 20,
+      fontWeight: '800',
+    },
+    successSubText: {
+      color: '#9CA3AF',
+      fontSize: 13,
+      marginTop: 6,
+      textAlign: 'center',
+    },
+  });

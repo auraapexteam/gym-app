@@ -18,6 +18,8 @@ import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/tokens';
 import { Home, Compass, QrCode, BarChart2, User } from 'lucide-react-native';
 
+import { GymInfoScreen } from '../screens/GymInfoScreen';
+
 const Tab = createBottomTabNavigator();
 const { width } = Dimensions.get('window');
 
@@ -48,24 +50,23 @@ const TabButton = React.memo(({ isFocused, label, IconComponent, onPress }: any)
   const animatedIconStyle = useAnimatedStyle(() => {
     return {
       transform: [
-        { scale: interpolate(focusedProgress.value, [0, 1], [1.0, 1.15], Extrapolation.CLAMP) },
-        { translateY: interpolate(focusedProgress.value, [0, 1], [0, -2], Extrapolation.CLAMP) },
+        { scale: interpolate(focusedProgress.value, [0, 1], [1.0, 1.1], Extrapolation.CLAMP) },
       ],
       color: interpolateColor(
         focusedProgress.value,
         [0, 1],
-        [isDark ? colors.textMuted : '#6B7280', colors.accent]
+        [isDark ? '#9CA3AF' : '#6B7280', colors.accent]
       ),
     };
   });
 
   const animatedLabelStyle = useAnimatedStyle(() => {
     return {
-      opacity: interpolate(focusedProgress.value, [0.3, 1], [0.6, 1], Extrapolation.CLAMP),
+      opacity: interpolate(focusedProgress.value, [0.3, 1], [0.65, 1], Extrapolation.CLAMP),
       color: interpolateColor(
         focusedProgress.value,
         [0, 1],
-        [isDark ? colors.textMuted : '#6B7280', colors.accent]
+        [isDark ? '#9CA3AF' : '#6B7280', colors.accent]
       ),
     };
   });
@@ -75,6 +76,7 @@ const TabButton = React.memo(({ isFocused, label, IconComponent, onPress }: any)
       transform: [{ scale: buttonScale.value }],
       alignItems: 'center',
       justifyContent: 'center',
+      width: '100%',
     };
   });
 
@@ -89,14 +91,14 @@ const TabButton = React.memo(({ isFocused, label, IconComponent, onPress }: any)
       accessibilityState={{ selected: isFocused }}
     >
       <Animated.View style={animatedButtonStyle}>
-        {isFocused ? (
-          <View style={styles.activeGlowPill} />
-        ) : null}
-        <AnimatedIcon
-          size={20}
-          style={animatedIconStyle}
-          strokeWidth={isFocused ? 2.5 : 2.0}
-        />
+        <View style={styles.iconContainer}>
+          {isFocused ? <View style={styles.activeGlowPill} /> : null}
+          <AnimatedIcon
+            size={22}
+            style={animatedIconStyle}
+            strokeWidth={isFocused ? 2.4 : 1.8}
+          />
+        </View>
         <Animated.Text style={[styles.tabLabel, animatedLabelStyle]}>
           {label}
         </Animated.Text>
@@ -120,6 +122,8 @@ function CustomTabBar({ state, navigation }: any) {
         ]}
       >
         {state.routes.map((route: any, index: number) => {
+          if (route.name === 'GymInfo') return null;
+
           const isFocused = state.index === index;
           let label = 'Home';
           let icon = Home;
@@ -169,6 +173,7 @@ export function CustomerTabNavigator() {
       <Tab.Screen name="BookTab" component={BookScreen} options={{ title: 'Book' }} />
       <Tab.Screen name="ProgressTab" component={ProgressScreen} options={{ title: 'Progress' }} />
       <Tab.Screen name="ProfileTab" component={ProfileScreen} options={{ title: 'Profile' }} />
+      <Tab.Screen name="GymInfo" component={GymInfoScreen} options={{ title: 'Gym Information' }} />
     </Tab.Navigator>
   );
 }
@@ -181,7 +186,7 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     backgroundColor: 'transparent',
-    paddingBottom: Platform.OS === 'ios' ? 24 : 14,
+    paddingBottom: Platform.OS === 'ios' ? 22 : 12,
     paddingHorizontal: 12,
   },
   glassShell: {
@@ -189,33 +194,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
     borderWidth: 1,
-    borderRadius: 32,
-    paddingHorizontal: 8,
-    height: 66,
+    borderRadius: 36,
+    paddingHorizontal: 6,
+    height: 68,
     width: width - 24,
     shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 8,
   },
   tabButton: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    height: 66,
+    height: 68,
   },
-  tabLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 3,
+  iconContainer: {
+    width: 46,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
   },
   activeGlowPill: {
-    position: 'absolute',
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: colors.accentDim,
-    top: -4,
+    ...StyleSheet.absoluteFill,
+    borderRadius: 16,
+    backgroundColor: 'rgba(132, 204, 22, 0.18)',
+  },
+  tabLabel: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    marginTop: 2,
+    textAlign: 'center',
   },
 });

@@ -133,7 +133,7 @@ function CustomerDashboardView() {
   const [scannedQrCode, setScannedQrCode] = useState('');
 
   const isApproved = joinStatus?.status === 'approved';
-  const approvedGym = isApproved ? gyms.find((g) => g.id === joinStatus?.gymId) : null;
+  const approvedGym = isApproved ? (gyms || []).find((g: any) => g.id === joinStatus?.gymId) : null;
 
   const activeSub = (mySubscriptions || []).find((s: any) => s.status === 'active');
   const subEndDate = activeSub?.end_date || activeSub?.endDate;

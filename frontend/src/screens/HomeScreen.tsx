@@ -164,14 +164,14 @@ export function HomeScreen({ navigation }: any) {
                 </TouchableOpacity>
               </View>
             </View>
-
-            <View style={styles.todayBadgePill}>
-              <Text style={styles.todayBadgeText}>TODAY</Text>
-            </View>
           </SafeAreaView>
         </ImageBackground>
 
         <View style={styles.bodyPadding}>
+          <View style={styles.todayBadgePill}>
+            <Text style={styles.todayBadgeText}>TODAY</Text>
+          </View>
+
           <View
             style={[
               styles.dailyActivityCard,
@@ -414,8 +414,10 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     backgroundColor: colors.accentDim,
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: radii.pill,
+    marginBottom: 10,
+    marginTop: 4,
   },
   todayBadgeText: {
     color: colors.accent,
@@ -425,7 +427,7 @@ const styles = StyleSheet.create({
   },
   bodyPadding: {
     paddingHorizontal: 20,
-    marginTop: -20,
+    marginTop: -16,
   },
   dailyActivityCard: {
     borderRadius: radii.lg,

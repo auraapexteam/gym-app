@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View, StyleSheet, Platform, PermissionsAndroid } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { supabase } from '../api/supabase';
@@ -32,12 +33,20 @@ import { AppSettingsScreen } from '../screens/AppSettingsScreen';
 import { HelpSettingsScreen } from '../screens/HelpSettingsScreen';
 import { AboutSettingsScreen } from '../screens/AboutSettingsScreen';
 
+import { AppSplashScreen } from '../components/AppSplashScreen';
+
 const Stack = createNativeStackNavigator();
 
 export function AppNavigator() {
   const { accessToken, userProfile, setSession, initializing } = useAuthStore();
+  const [hasSeenOnboarding, setHasSeenOnboarding] = useState<boolean | null>(null);
 
   useEffect(() => {
+    // Check if onboarding was already completed on this device
+    AsyncStorage.getItem('has_seen_onboarding')
+      .then((val) => setHasSeenOnboarding(val === 'true'))
+      .catch(() => setHasSeenOnboarding(false));
+
     // Request notification permission on Android 13+ (API 33+) on app launch
     const requestNotificationPermission = async () => {
       if (Platform.OS === 'android' && Platform.Version >= 33) {
@@ -65,12 +74,8 @@ export function AppNavigator() {
     };
   }, [setSession]);
 
-  if (initializing || (accessToken && !userProfile)) {
-    return (
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    );
+  if (initializing || hasSeenOnboarding === null || (accessToken && !userProfile)) {
+    return <AppSplashScreen />;
   }
 
   const isStaffOrOwner = !!userProfile?.role && userProfile.role !== 'customer';
@@ -78,7 +83,10 @@ export function AppNavigator() {
 
   return (
     <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Navigator
+          initialRouteName={hasSeenOnboarding ? 'Login' : 'Onboarding'}
+          screenOptions={{ headerShown: false }}
+        >
           {accessToken ? (
             isStaffOrOwner ? (
               <Stack.Screen

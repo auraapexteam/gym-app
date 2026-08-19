@@ -17,7 +17,7 @@ import { apiClient } from '../api/client';
 
 export function BookScreen({ navigation }: any) {
   const { isDark, setTheme } = useTheme();
-  const { userProfile, user, subscription } = useAuthStore();
+  const { userProfile, user, subscription, loadSubscription, loadUserProfile } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'scan' | 'history'>('scan');
   const [scannedCount, setScannedCount] = useState(0);
   const [historyItems, setHistoryItems] = useState<any[]>([]);
@@ -46,15 +46,26 @@ export function BookScreen({ navigation }: any) {
 
   React.useEffect(() => {
     fetchAttendance();
-  }, [fetchAttendance]);
+    loadSubscription();
+    loadUserProfile();
+  }, [fetchAttendance, loadSubscription, loadUserProfile]);
 
   const handleOpenScanner = () => {
     navigation.navigate('QRCheckIn');
   };
 
+  const activeSub = React.useMemo(() => {
+    if (!subscription) return null;
+    if (Array.isArray(subscription)) {
+      return subscription.find((s: any) => s.status === 'active') || null;
+    }
+    return (subscription as any).status === 'active' ? subscription : null;
+  }, [subscription]);
+
+  const isAssociatedWithGym = !!userProfile?.gym_id && !!activeSub;
   const userName = userProfile?.full_name || (user?.email ? user.email.split('@')[0] : 'Member');
-  const planName = subscription?.plan?.name || (userProfile?.gym_id ? 'Active Membership' : 'Standard Pass');
-  const endDateStr = subscription?.endDate || subscription?.end_date;
+  const planName = (activeSub as any)?.plan?.name || (activeSub as any)?.plans?.name || 'Active Plan';
+  const endDateStr = (activeSub as any)?.endDate || (activeSub as any)?.end_date;
   const validTill = endDateStr
     ? new Date(endDateStr).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
     : 'Active';
@@ -94,36 +105,61 @@ export function BookScreen({ navigation }: any) {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {activeTab === 'scan' ? (
           <>
-            {/* Active Pass Card (Apex Pro) */}
-            <View style={styles.passCard}>
-              <View style={styles.passCardHeader}>
-                <View>
-                  <Text style={styles.passTag}>APEX PRO · ACTIVE</Text>
-                  <Text style={styles.userName}>{userName}</Text>
-                  <Text style={styles.memberSince}>Aura Apex Member</Text>
+            {/* Active Pass Card (Only rendered when user has active sub & linked gym) */}
+            {isAssociatedWithGym ? (
+              <View style={styles.passCard}>
+                <View style={styles.passCardHeader}>
+                  <View>
+                    <Text style={styles.passTag}>PARTNER GYM · ACTIVE</Text>
+                    <Text style={styles.userName}>{userName}</Text>
+                    <Text style={styles.memberSince}>Aura Apex Member</Text>
+                  </View>
+                  <View style={styles.boltBadge}>
+                    <Zap size={22} color={colors.black} fill={colors.black} />
+                  </View>
                 </View>
-                <View style={styles.boltBadge}>
-                  <Zap size={22} color={colors.black} fill={colors.black} />
+
+                <View style={styles.passDivider} />
+
+                <View style={styles.passStatsRow}>
+                  <View style={styles.passStatCol}>
+                    <Text style={styles.passStatLabel}>Valid Till</Text>
+                    <Text style={styles.passStatVal}>{validTill}</Text>
+                  </View>
+                  <View style={styles.passStatCol}>
+                    <Text style={styles.passStatLabel}>Check-ins</Text>
+                    <Text style={styles.passStatVal}>{scannedCount}</Text>
+                  </View>
+                  <View style={styles.passStatCol}>
+                    <Text style={styles.passStatLabel}>Plan</Text>
+                    <Text style={styles.passStatVal} numberOfLines={1}>{planName}</Text>
+                  </View>
                 </View>
               </View>
+            ) : (
+              <View style={styles.unlinkedPassCard}>
+                <View style={styles.passCardHeader}>
+                  <View style={{ flex: 1, paddingRight: 10 }}>
+                    <Text style={styles.unlinkedTag}>NO ACTIVE GYM MEMBERSHIP</Text>
+                    <Text style={styles.userName}>{userName}</Text>
+                    <Text style={styles.unlinkedSub}>
+                      Not linked to an active gym package. Select a partner gym to activate check-in access.
+                    </Text>
+                  </View>
+                  <View style={styles.unlinkedIconBadge}>
+                    <Dumbbell size={22} color="#9CA3AF" />
+                  </View>
+                </View>
 
-              <View style={styles.passDivider} />
-
-              <View style={styles.passStatsRow}>
-                <View style={styles.passStatCol}>
-                  <Text style={styles.passStatLabel}>Valid Till</Text>
-                  <Text style={styles.passStatVal}>{validTill}</Text>
-                </View>
-                <View style={styles.passStatCol}>
-                  <Text style={styles.passStatLabel}>Check-ins</Text>
-                  <Text style={styles.passStatVal}>{scannedCount}</Text>
-                </View>
-                <View style={styles.passStatCol}>
-                  <Text style={styles.passStatLabel}>Plan</Text>
-                  <Text style={styles.passStatVal} numberOfLines={1}>{planName}</Text>
-                </View>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  style={styles.browseGymBtn}
+                  onPress={() => navigation.navigate('ExploreTab')}
+                >
+                  <Text style={styles.browseGymBtnText}>Browse Partner Gyms</Text>
+                </TouchableOpacity>
               </View>
-            </View>
+            )}
 
             {/* Scan Gym QR Code Card */}
             <View style={[styles.qrCard, { backgroundColor: isDark ? colors.bgElevated : colors.white }]}>
@@ -291,6 +327,48 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(182, 255, 0, 0.25)',
     marginBottom: 16,
+  },
+  unlinkedPassCard: {
+    backgroundColor: '#1C1E24',
+    borderRadius: radii.lg,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    marginBottom: 16,
+  },
+  unlinkedTag: {
+    fontSize: 10.5,
+    fontWeight: '900',
+    color: '#9CA3AF',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  unlinkedSub: {
+    fontSize: 12.5,
+    color: '#9CA3AF',
+    marginTop: 4,
+    lineHeight: 17,
+  },
+  unlinkedIconBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.md,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  browseGymBtn: {
+    marginTop: 16,
+    backgroundColor: colors.accent,
+    borderRadius: radii.pill,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  browseGymBtnText: {
+    color: colors.black,
+    fontSize: 13,
+    fontWeight: '900',
   },
   passCardHeader: {
     flexDirection: 'row',

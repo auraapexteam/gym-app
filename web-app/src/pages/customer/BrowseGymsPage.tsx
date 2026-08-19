@@ -30,16 +30,16 @@ export default function BrowseGymsPage() {
   const { data: mySubscriptions = [] } = useMySubscriptions();
   const applyMutation = useApplyJoinGym();
 
-  const filteredGyms = gyms.filter((g) =>
-    g.name.toLowerCase().includes(search.toLowerCase()) ||
+  const filteredGyms = (gyms || []).filter((g: any) =>
+    g.name?.toLowerCase().includes(search.toLowerCase()) ||
     (g.city && g.city.toLowerCase().includes(search.toLowerCase())) ||
     (g.address && g.address.toLowerCase().includes(search.toLowerCase()))
   );
 
   const isApprovedMember = !!user?.gymId || joinStatus?.status === 'approved';
   const isPendingMember = !isApprovedMember && joinStatus?.status === 'pending';
-  const approvedGym = isApprovedMember ? (gyms.find((g) => g.id === (user?.gymId || joinStatus?.gymId)) || { name: user?.gymName || joinStatus?.gymName || 'Active Gym' }) : null;
-  const pendingGym = isPendingMember ? gyms.find((g) => g.id === joinStatus?.gymId) : null;
+  const approvedGym = isApprovedMember ? ((gyms || []).find((g: any) => g.id === (user?.gymId || joinStatus?.gymId)) || { name: user?.gymName || joinStatus?.gymName || 'Active Gym' }) : null;
+  const pendingGym = isPendingMember ? (gyms || []).find((g: any) => g.id === joinStatus?.gymId) : null;
 
   const activeSubscription = mySubscriptions.find((s: any) => s.status === 'active');
   const hasActivePlan = !!activeSubscription;

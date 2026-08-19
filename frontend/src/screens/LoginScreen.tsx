@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { ChevronLeft, Mail, Phone, Shield, Lock, Eye, EyeOff } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, radii } from '../theme/tokens';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { SegmentedTabs } from '../components/SegmentedTabs';
@@ -42,12 +43,20 @@ const AppleIcon = () => (
   </Svg>
 );
 
-export function LoginScreen({ navigation }: any) {
+export function LoginScreen({ route, navigation }: any) {
   const { setSession, loadUserProfile } = useAuthStore();
   const [step, setStep] = useState<'input' | 'verify'>('input');
   const [authMode, setAuthMode] = useState<string>('email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  useEffect(() => {
+    const prefillEmail = route?.params?.prefillEmail;
+    if (prefillEmail) {
+      setEmail(prefillEmail);
+      setAuthMode('email');
+    }
+  }, [route?.params?.prefillEmail]);
   const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState('');
   const [otpValue, setOtpValue] = useState('');
@@ -69,9 +78,14 @@ export function LoginScreen({ navigation }: any) {
   const isOtpComplete = otpValue.trim().length === 6;
 
   const navigateAfterAuth = async () => {
+    try {
+      await AsyncStorage.setItem('has_seen_onboarding', 'true');
+    } catch {
+      // ignore
+    }
     await loadUserProfile();
     const profile = useAuthStore.getState().userProfile;
-    if (profile && !profile.onboarding_completed) {
+    if (profile && profile.onboarding_completed === false && !profile.gym_id) {
       navigation.replace('ProfileSetup');
     } else {
       navigation.replace('MainTabs');
@@ -96,7 +110,7 @@ export function LoginScreen({ navigation }: any) {
       });
 
       if (res.data?.success && res.data.data?.session) {
-        await setSession(res.data.data.session);
+        await setSession(res.data.data.session, res.data.data.profile);
         await navigateAfterAuth();
       } else {
         throw new Error(res.data?.message || 'Login failed');
@@ -147,7 +161,7 @@ export function LoginScreen({ navigation }: any) {
       });
 
       if (res.data?.success && res.data.data?.session) {
-        await setSession(res.data.data.session);
+        await setSession(res.data.data.session, res.data.data.profile);
         await navigateAfterAuth();
       } else {
         throw new Error(res.data?.message || 'Verification failed');

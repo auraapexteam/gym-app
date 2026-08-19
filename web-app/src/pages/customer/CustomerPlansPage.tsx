@@ -20,9 +20,9 @@ export default function CustomerPlansPage() {
   const { data: mySubscriptions = [] } = useMySubscriptions();
   const createSubscriptionMutation = useCreateManualSubscription();
 
-  const selectedGym = urlGymId ? gyms.find((g) => g.id === urlGymId) : null;
+  const selectedGym = urlGymId ? (gyms || []).find((g: any) => g.id === urlGymId) : null;
   const isApproved = joinStatus?.status === 'approved';
-  const approvedGym = isApproved ? gyms.find((g) => g.id === joinStatus?.gymId) : null;
+  const approvedGym = isApproved ? (gyms || []).find((g: any) => g.id === joinStatus?.gymId) : null;
   const activeGym = selectedGym || approvedGym;
   const targetGymId = urlGymId || approvedGym?.id || joinStatus?.gymId || user?.gymId;
 

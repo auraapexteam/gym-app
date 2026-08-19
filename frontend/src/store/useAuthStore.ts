@@ -57,7 +57,7 @@ interface AuthState {
   /** True until the first persisted-session restore completes. */
   initializing: boolean;
   loading: boolean;
-  setSession: (session: Session | null) => Promise<void>;
+  setSession: (session: any, profileData?: any) => Promise<void>;
   loadUserProfile: () => Promise<void>;
   loadSubscription: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -76,30 +76,50 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   initializing: true,
   loading: false,
 
-  setSession: (session) => {
+  setSession: (session: any, profileData?: any) => {
     sessionChain = sessionChain.then(async () => {
       if (session) {
-        const sameUser = get().user?.id === session.user?.id;
-        set({ user: session.user, accessToken: session.access_token ?? null });
+        const token = session.access_token ?? session.accessToken ?? null;
+        const userId = session.user?.id ?? profileData?.id ?? session.id ?? null;
 
-        // A pure token refresh for the same user doesn't need a full
-        // profile + subscription reload.
+        const userObj: any = session.user ?? (userId ? {
+          id: userId,
+          email: session.user?.email ?? profileData?.email ?? null,
+          user_metadata: { full_name: profileData?.fullName ?? profileData?.full_name ?? null }
+        } : null);
+
+        const sameUser = userId && get().user?.id === userId;
+        set({ user: userObj, accessToken: token });
+
         if (sameUser && get().userProfile) {
           set({ initializing: false });
           return;
         }
 
-        await get().loadUserProfile();
-
-        // If the profile fetch failed (offline, transient error), fall back to
-        // a minimal profile derived from the session so the navigator never
-        // hangs on the loader. A null role routes to the customer stack.
-        if (!get().userProfile) {
+        if (profileData) {
           set({
             userProfile: {
-              id: session.user.id,
-              email: session.user.email ?? null,
-              full_name: (session.user.user_metadata?.full_name as string) ?? null,
+              id: profileData.id,
+              email: profileData.email ?? null,
+              full_name: profileData.fullName ?? profileData.full_name ?? null,
+              phone: profileData.phone ?? null,
+              avatar_url: profileData.avatarUrl ?? profileData.avatar_url ?? null,
+              role: profileData.role ?? null,
+              gym_id: profileData.gymId ?? profileData.gym_id ?? null,
+              status: profileData.status ?? null,
+              created_at: profileData.createdAt ?? profileData.created_at ?? null,
+            },
+          });
+        } else {
+          await get().loadUserProfile();
+        }
+
+        if (!get().userProfile && userId) {
+          set({
+            userProfile: {
+              id: userId,
+              email: userObj?.email ?? null,
+              full_name: (userObj?.user_metadata?.full_name as string) ?? null,
               phone: null,
               avatar_url: null,
               role: null,

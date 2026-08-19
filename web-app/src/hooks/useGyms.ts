@@ -1,14 +1,65 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { gymsApi } from '@/api/gyms';
+import { gymsApi, getFullGymCatalog, PublicGym } from '@/api/gyms';
 import { toast } from 'sonner';
 
-export function useGymDirectory() {
-  return useQuery({
-    queryKey: ['gym-directory'],
+export function useGymDirectory(search?: string) {
+  return useQuery<PublicGym[]>({
+    queryKey: ['gym-directory', search],
     queryFn: async () => {
-      const res = await gymsApi.listDirectory();
+      const res = await gymsApi.listDirectory(search ? { search } : undefined);
+      const raw: any = res.data?.data;
+      return Array.isArray(raw) ? raw : Array.isArray(raw?.items) ? raw.items : Array.isArray(res.data) ? res.data : [];
+    },
+  });
+}
+
+export function useGymDetails(gymId?: string) {
+  return useQuery<PublicGym | null>({
+    queryKey: ['gym-details', gymId],
+    queryFn: async () => {
+      if (!gymId) return null;
+      const res = await gymsApi.getById(gymId);
+      return res.data.data || null;
+    },
+    enabled: !!gymId,
+  });
+}
+
+export function useSavedGyms() {
+  return useQuery<PublicGym[]>({
+    queryKey: ['saved-gyms'],
+    queryFn: async () => {
+      const res = await gymsApi.getSaved();
       return res.data.data || [];
     },
+  });
+}
+
+export function useToggleGymBookmark() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (gymId: string) => gymsApi.toggleBookmark(gymId),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['saved-gyms'] });
+      qc.invalidateQueries({ queryKey: ['gym-directory'] });
+      const isSaved = res.data?.data?.isSaved;
+      toast.success(isSaved ? 'Gym bookmarked!' : 'Gym removed from bookmarks.');
+    },
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || 'Failed to update bookmark.';
+      toast.error(msg);
+    },
+  });
+}
+
+export function useFullGymCatalog(gymId?: string) {
+  return useQuery({
+    queryKey: ['full-gym-catalog', gymId],
+    queryFn: async () => {
+      if (!gymId) return null;
+      return await getFullGymCatalog(gymId);
+    },
+    enabled: !!gymId,
   });
 }
 
@@ -103,3 +154,4 @@ export function useUpdateMyGymProfile() {
     },
   });
 }
+
