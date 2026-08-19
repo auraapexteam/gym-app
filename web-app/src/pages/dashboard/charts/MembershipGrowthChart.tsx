@@ -22,16 +22,16 @@ export function MembershipGrowthChart() {
   const { data, isLoading } = useMembershipGrowth();
 
   return (
-    <Card className="h-full">
+    <Card>
       <CardHeader className="p-6 pb-4">
         <CardTitle>Membership Growth</CardTitle>
         <p className="text-xs text-aura-muted mt-0.5">New members, churn and total count</p>
       </CardHeader>
-      <CardContent className="p-6 pt-2">
+      <CardContent className="p-4 pt-2">
         {isLoading ? (
-          <Skeleton className="h-56 w-full" />
+          <Skeleton className="h-40 w-full" />
         ) : (
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={160}>
             <ComposedChart data={data} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#2A2D35" vertical={false} />
               <XAxis dataKey="month" stroke="#9CA3AF" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />

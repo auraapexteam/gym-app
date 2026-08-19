@@ -19,7 +19,7 @@ export function PeakHoursChart() {
   const max = data ? Math.max(...data.map((d) => d.count)) : 0;
 
   return (
-    <Card className="h-full">
+    <Card>
       <CardHeader className="p-6 pb-4">
         <CardTitle>Foot traffic today</CardTitle>
         <p className="text-xs text-aura-muted mt-0.5">Visits by hour</p>

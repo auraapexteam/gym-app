@@ -143,14 +143,14 @@ export function Sidebar() {
     <>
       {isMobile && mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/60 z-20 backdrop-blur-sm transition-opacity duration-200"
+          className="fixed inset-0 bg-black/60 z-[9998] backdrop-blur-sm transition-opacity duration-200"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
       <motion.aside
         animate={animateSettings}
         transition={{ duration: 0.25, ease: 'easeInOut' }}
-        className="fixed left-0 top-0 h-screen bg-aura-card border-r border-aura-border flex flex-col z-30 overflow-hidden"
+        className="fixed left-0 top-0 h-screen bg-aura-card border-r border-aura-border flex flex-col z-[9999] overflow-hidden"
       >
         {/* Logo */}
         <div className="flex items-center justify-between p-4 border-b border-aura-border h-16 shrink-0">

@@ -132,14 +132,14 @@ export default function MembersPage({ defaultShowAdd = false }: MembersPageProps
       breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Members' }]}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
           <h1 className="text-xl font-bold text-aura-text">Gym Members Directory</h1>
           <p className="text-sm text-aura-muted mt-0.5">
             {data?.total ?? 0} total active members
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="secondary" size="md" onClick={handleExport}>
             <Download className="h-4 w-4" /> Export CSV
           </Button>
@@ -186,7 +186,7 @@ export default function MembersPage({ defaultShowAdd = false }: MembersPageProps
               <h3 className="text-base font-bold text-aura-text">Pending Customer Join Applications</h3>
               <p className="text-xs text-aura-muted">Approve customer applications to register them as official gym members</p>
             </div>
-            <Badge variant="warning">{pendingRequests.length} Pending</Badge>
+            <Badge variant="warning" className="whitespace-nowrap">{pendingRequests.length} Pending</Badge>
           </div>
 
           {pendingRequests.length === 0 ? (

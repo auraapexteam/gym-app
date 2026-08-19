@@ -14,13 +14,13 @@ const mockRenewals = [
 
 export function UpcomingRenewals() {
   return (
-    <Card className="h-full">
+    <Card>
       <CardHeader className="p-6 pb-4">
         <div className="flex items-center justify-between">
           <CardTitle>Upcoming Renewals</CardTitle>
           <Link
             to="/members"
-            className="text-xs text-aura-primary hover:underline flex items-center gap-1"
+            className="text-xs text-aura-primary hover:underline flex items-center gap-1 outline-none focus:outline-none"
           >
             View all <ArrowRight className="h-3 w-3" />
           </Link>

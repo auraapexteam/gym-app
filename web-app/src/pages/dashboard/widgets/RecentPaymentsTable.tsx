@@ -22,7 +22,7 @@ export function RecentPaymentsTable() {
           <CardTitle>Recent Payments</CardTitle>
           <Link
             to="/payments"
-            className="text-xs text-aura-primary hover:underline flex items-center gap-1"
+            className="text-xs text-aura-primary hover:underline flex items-center gap-1 outline-none focus:outline-none"
           >
             View all <ArrowRight className="h-3 w-3" />
           </Link>

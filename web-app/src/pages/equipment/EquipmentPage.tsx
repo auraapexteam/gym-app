@@ -163,8 +163,8 @@ export default function EquipmentPage() {
 
       {/* Equipment Table */}
       <Card>
-        <CardContent className="p-0">
-          <table className="w-full text-sm">
+        <CardContent className="p-0 overflow-x-auto">
+          <table className="w-full text-sm whitespace-nowrap">
             <thead>
               <tr className="border-b border-aura-border text-left">
                 {['Equipment Name', 'Category', 'Condition', 'Status', 'Actions'].map((h) => (

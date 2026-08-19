@@ -18,16 +18,16 @@ export function AttendanceChart() {
   const { data, isLoading } = useAttendanceChart();
 
   return (
-    <Card className="h-full">
+    <Card>
       <CardHeader className="p-6 pb-4">
         <CardTitle>Weekly Attendance</CardTitle>
         <p className="text-xs text-aura-muted mt-0.5">Daily check-ins this week</p>
       </CardHeader>
-      <CardContent className="p-6 pt-2">
+      <CardContent className="p-4 pt-2">
         {isLoading ? (
-          <Skeleton className="h-56 w-full" />
+          <Skeleton className="h-40 w-full" />
         ) : (
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={160}>
             <BarChart data={data} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#2A2D35" vertical={false} />
               <XAxis dataKey="day" stroke="#9CA3AF" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />

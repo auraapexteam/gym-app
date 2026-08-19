@@ -59,8 +59,8 @@ export default function AttendancePage() {
             <CardTitle>Weekly Attendance Trend</CardTitle>
             <p className="text-xs text-aura-muted">Live member check-ins by day from backend database</p>
           </CardHeader>
-          <CardContent className="p-6 pt-0">
-            <ResponsiveContainer width="100%" height={260}>
+          <CardContent className="p-4 pt-0">
+            <ResponsiveContainer width="100%" height={180}>
               <BarChart data={weeklyData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2A2D35" vertical={false} />
                 <XAxis dataKey="day" stroke="#9CA3AF" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -69,7 +69,7 @@ export default function AttendancePage() {
                   contentStyle={{ backgroundColor: '#1A1D24', borderColor: '#2A2D35', borderRadius: '8px', fontSize: '12px' }}
                   itemStyle={{ color: '#C6FF00' }}
                 />
-                <Bar dataKey="checkins" fill="#C6FF00" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="checkins" fill="#C6FF00" radius={[4, 4, 0, 0]} maxBarSize={48} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

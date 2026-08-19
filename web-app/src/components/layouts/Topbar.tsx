@@ -26,7 +26,7 @@ export function Topbar({ title, breadcrumbs }: TopbarProps) {
   const isCustomer = user?.role === 'customer';
 
   return (
-    <header className="min-h-16 sm:min-h-20 bg-aura-bg/95 backdrop-blur-xl border-b border-aura-border flex items-center justify-between gap-3 px-3 sm:px-6 sticky top-0 z-20">
+    <header className="min-h-16 sm:min-h-20 bg-aura-bg/95 backdrop-blur-xl border-b border-aura-border flex items-center justify-between gap-3 px-3 sm:px-6 sticky top-0 z-[9999]">
       {/* Left: Hamburger menu + breadcrumbs / title */}
       <div className="flex items-center gap-2.5 sm:gap-4 min-w-0">
         <button

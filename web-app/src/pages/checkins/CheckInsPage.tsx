@@ -109,12 +109,12 @@ export default function CheckInsPage() {
         }
       `}</style>
 
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-aura-text">Reception Check-in Station</h1>
           <p className="text-sm text-aura-muted mt-0.5">Live gym reception QR display and real-time attendance feed</p>
         </div>
-        <Button variant="primary" onClick={() => setShowPrintModal(true)} className="gap-2">
+        <Button variant="primary" onClick={() => setShowPrintModal(true)} className="gap-2 w-full sm:w-auto">
           <Printer className="h-4 w-4" /> Download / Print A4 Standee
         </Button>
       </div>
@@ -227,8 +227,8 @@ export default function CheckInsPage() {
                 />
               </div>
             </CardHeader>
-            <CardContent className="p-0">
-              <table className="w-full text-sm">
+            <CardContent className="p-0 overflow-x-auto">
+              <table className="w-full text-sm whitespace-nowrap">
                 <thead>
                   <tr className="border-t border-aura-border">
                     {['Member', 'Check In Time', 'Method', 'Status'].map((h) => (

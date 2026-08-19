@@ -31,7 +31,7 @@ export function RevenueChart() {
   const { data, isLoading } = useRevenueChart(period);
 
   return (
-    <Card className="h-full">
+    <Card>
       <CardHeader className="p-6 pb-4">
         <div className="flex items-center justify-between">
           <div>
@@ -55,11 +55,11 @@ export function RevenueChart() {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-6 pt-2">
+      <CardContent className="p-4 pt-2">
         {isLoading ? (
-          <Skeleton className="h-56 w-full" />
+          <Skeleton className="h-40 w-full" />
         ) : (
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={160}>
             <AreaChart data={data} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
               <defs>
                 <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
