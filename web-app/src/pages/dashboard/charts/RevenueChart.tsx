@@ -30,6 +30,15 @@ export function RevenueChart() {
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
   const { data, isLoading } = useRevenueChart(period);
 
+  const chartData = Array.isArray(data) ? data.map((d: any) => ({
+    ...d,
+    month: d.month || d.date || d.name || d.label || 'Month',
+    year: d.year || d.date || d.name || d.label || 'Year',
+    day: d.day || d.date || d.name || d.label || 'Day',
+    revenue: Number(d.revenue ?? d.amount ?? d.total ?? d.value ?? 0),
+    target: Number(d.target ?? d.goal ?? 0)
+  })) : [];
+
   return (
     <Card>
       <CardHeader className="p-6 pb-4">
@@ -60,7 +69,7 @@ export function RevenueChart() {
           <Skeleton className="h-40 w-full" />
         ) : (
           <ResponsiveContainer width="100%" height={160}>
-            <AreaChart data={data} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
+            <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -10, bottom: 5 }}>
               <defs>
                 <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#C6FF00" stopOpacity={0.15} />
@@ -80,8 +89,8 @@ export function RevenueChart() {
                 iconSize={8}
                 wrapperStyle={{ fontSize: 12, color: '#9CA3AF', paddingTop: 12 }}
               />
-              <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#C6FF00" strokeWidth={2} fill="url(#revenueGrad)" dot={false} activeDot={{ r: 5, fill: '#C6FF00' }} />
-              <Area type="monotone" dataKey="target" name="Target" stroke="#3B82F6" strokeWidth={2} strokeDasharray="4 4" fill="url(#targetGrad)" dot={false} activeDot={{ r: 5, fill: '#3B82F6' }} />
+              <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#C6FF00" strokeWidth={2} fill="url(#revenueGrad)" dot={false} activeDot={(props: any) => <circle cx={props.cx} cy={props.cy} r={5} fill="#C6FF00" stroke="none" />} />
+              <Area type="monotone" dataKey="target" name="Target" stroke="#3B82F6" strokeWidth={2} strokeDasharray="4 4" fill="url(#targetGrad)" dot={false} activeDot={(props: any) => <circle cx={props.cx} cy={props.cy} r={5} fill="#3B82F6" stroke="none" />} />
             </AreaChart>
           </ResponsiveContainer>
         )}

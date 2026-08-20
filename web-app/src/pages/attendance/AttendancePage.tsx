@@ -18,7 +18,10 @@ export default function AttendancePage() {
   const currentlyInside = attendanceData.filter((c: any) => !c.checkOutTime).length;
 
   const weeklyData = Array.isArray(chartData) && chartData.length > 0
-    ? chartData
+    ? chartData.map((d: any) => ({
+        day: d.day || d.date || d.name || 'Day',
+        checkins: Number(d.checkins ?? d.checkIns ?? d.count ?? d.value ?? 0),
+      }))
     : [
         { day: 'Mon', checkins: 0 },
         { day: 'Tue', checkins: 0 },

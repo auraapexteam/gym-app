@@ -54,12 +54,12 @@ export default function OrdersPage() {
       <Card>
         <CardHeader className="p-6 pb-0">
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex gap-1 bg-aura-bg border border-aura-border rounded-md p-1">
+            <div className="flex gap-1 bg-aura-bg border border-aura-border rounded-md p-1 overflow-x-auto max-w-full [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {TABS.map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                  className={`whitespace-nowrap flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded transition-colors ${
                     activeTab === tab ? 'bg-aura-primary text-aura-bg' : 'text-aura-muted hover:text-aura-text'
                   }`}
                 >
@@ -67,7 +67,7 @@ export default function OrdersPage() {
                 </button>
               ))}
             </div>
-            <SearchInput value={search} onChange={setSearch} placeholder="Search orders..." className="w-64" />
+            <SearchInput value={search} onChange={setSearch} placeholder="Search orders..." className="w-full sm:w-64" />
           </div>
         </CardHeader>
         <CardContent className="p-0 mt-4">

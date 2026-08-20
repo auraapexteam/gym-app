@@ -1,9 +1,11 @@
 import { Search, Plus, Menu, Bell, Building2 } from 'lucide-react';
 import { useUIStore, useAuthStore } from '@/store';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { SearchInput } from '@/components/ui';
 
-import { useJoinRequestStatus } from '@/hooks/useGyms';
+import { useJoinRequestStatus, useGymDirectory } from '@/hooks/useGyms';
+import { useMembers } from '@/hooks/useMembers';
 
 interface TopbarProps {
   title?: string;
@@ -15,6 +17,56 @@ export function Topbar({ title, breadcrumbs }: TopbarProps) {
   const { user } = useAuthStore();
   const { data: joinStatus } = useJoinRequestStatus();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const { data: membersRes } = useMembers({ limit: 100 });
+  const members = membersRes?.data || [];
+  const { data: gyms } = useGymDirectory();
+
+  const isSuperAdmin = user?.role === 'super_admin';
+  const isCustomer = user?.role === 'customer';
+
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const query = searchQuery.toLowerCase();
+    if (isSuperAdmin || isCustomer) {
+      return (gyms || [])
+        .filter((g: any) => g.name?.toLowerCase().includes(query) || g.ownerName?.toLowerCase().includes(query))
+        .slice(0, 5)
+        .map((g: any) => ({ id: g.id, title: g.name, subtitle: g.location || g.ownerName, type: 'Gym' }));
+    } else {
+      return (members || [])
+        .filter((m: any) => m.name?.toLowerCase().includes(query) || m.email?.toLowerCase().includes(query) || m.memberId?.toLowerCase().includes(query))
+        .slice(0, 5)
+        .map((m: any) => ({ id: m.id, title: m.name, subtitle: m.memberId || m.email, type: 'Member' }));
+    }
+  }, [searchQuery, members, gyms, isSuperAdmin, isCustomer]);
+
+  const renderSearchResults = () => {
+    if (!searchQuery.trim()) return null;
+    return (
+      <div className="absolute top-full left-0 right-0 mt-2 bg-aura-card border border-aura-border rounded-md shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95">
+        {searchResults.length > 0 ? searchResults.map(res => (
+          <Link 
+            key={res.id} 
+            to={res.type === 'Gym' ? `/super-admin/gyms/${res.id}` : `/members/${res.id}`} 
+            className="block px-4 py-3 border-b border-aura-border/50 hover:bg-aura-bg transition-colors" 
+            onClick={() => { setSearchQuery(''); setSearchOpen(false); }}
+          >
+            <div className="flex justify-between items-center">
+              <div className="min-w-0 pr-4">
+                <p className="text-sm font-semibold text-aura-text truncate">{res.title}</p>
+                <p className="text-xs text-aura-muted truncate">{res.subtitle}</p>
+              </div>
+              <span className="text-[10px] uppercase tracking-wider text-aura-primary/70 bg-aura-primary/10 px-2 py-0.5 rounded shrink-0">{res.type}</span>
+            </div>
+          </Link>
+        )) : (
+          <div className="p-4 text-center text-sm text-aura-muted">No results found for "{searchQuery}"</div>
+        )}
+      </div>
+    );
+  };
 
   const formattedDate = new Date().toLocaleDateString('en-US', {
     weekday: 'short',
@@ -22,12 +74,31 @@ export function Topbar({ title, breadcrumbs }: TopbarProps) {
     day: 'numeric',
   });
 
-  const isSuperAdmin = user?.role === 'super_admin';
-  const isCustomer = user?.role === 'customer';
-
   return (
     <header className="min-h-16 sm:min-h-20 bg-aura-bg/95 backdrop-blur-xl border-b border-aura-border flex items-center justify-between gap-3 px-3 sm:px-6 sticky top-0 z-[9999]">
-      {/* Left: Hamburger menu + breadcrumbs / title */}
+      {searchOpen ? (
+        <div className="flex-1 flex items-center gap-3 w-full lg:hidden animate-in fade-in slide-in-from-top-2">
+          <div className="flex-1 relative">
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder={isSuperAdmin ? 'Search gyms, owners...' : isCustomer ? 'Search gyms...' : 'Search members, plans...'}
+            />
+            {renderSearchResults()}
+          </div>
+          <button 
+            onClick={() => {
+              setSearchOpen(false);
+              setSearchQuery('');
+            }}
+            className="text-sm font-medium text-aura-muted hover:text-aura-text whitespace-nowrap px-2"
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Left: Hamburger menu + breadcrumbs / title */}
       <div className="flex items-center gap-2.5 sm:gap-4 min-w-0">
         <button
           onClick={toggleMobileMenu}
@@ -58,16 +129,18 @@ export function Topbar({ title, breadcrumbs }: TopbarProps) {
 
       {/* Right: actions */}
       <div className="flex items-center gap-2">
-        <div className="hidden lg:flex h-10 w-72 items-center gap-2 rounded-md border border-aura-border bg-aura-card px-3 text-aura-muted">
-          <Search className="h-4 w-4" />
-          <span className="text-sm">
-            {isSuperAdmin ? 'Search gyms, owners...' : isCustomer ? 'Search gyms...' : 'Search members, plans...'}
-          </span>
+        <div className="hidden lg:block w-72 relative">
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder={isSuperAdmin ? 'Search gyms, owners...' : isCustomer ? 'Search gyms...' : 'Search members, plans...'}
+          />
+          {renderSearchResults()}
         </div>
 
         {/* Search button on mobile */}
         <button
-          onClick={() => setSearchOpen(!searchOpen)}
+          onClick={() => setSearchOpen(true)}
           className="h-10 w-10 rounded-md flex items-center justify-center text-aura-muted hover:text-aura-text bg-aura-card border border-aura-border transition-colors lg:hidden"
           aria-label="Search"
         >
@@ -113,6 +186,8 @@ export function Topbar({ title, breadcrumbs }: TopbarProps) {
           </Link>
         )}
       </div>
+        </>
+      )}
     </header>
   );
 }

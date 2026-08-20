@@ -59,7 +59,13 @@ export default function AnalyticsPage() {
   ];
 
   const chartData = Array.isArray(revenueChartData) && revenueChartData.length > 0
-    ? revenueChartData
+    ? revenueChartData.map((d: any) => ({
+        ...d,
+        month: d.month || d.date || d.name || d.label || 'Month',
+        day: d.day || d.date || d.name || d.label || 'Day',
+        year: d.year || d.date || d.name || d.label || 'Year',
+        revenue: Number(d.revenue ?? d.amount ?? d.total ?? d.value ?? 0),
+      }))
     : [
         { month: 'Week 1', revenue: (stats?.monthlyRevenue || 15000) * 0.2 },
         { month: 'Week 2', revenue: (stats?.monthlyRevenue || 15000) * 0.4 },
@@ -68,7 +74,10 @@ export default function AnalyticsPage() {
       ];
 
   const attendanceData = Array.isArray(attendanceChartData) && attendanceChartData.length > 0
-    ? attendanceChartData
+    ? attendanceChartData.map((d: any) => ({
+        day: d.day || d.date || d.name || 'Day',
+        checkins: Number(d.checkins ?? d.checkIns ?? d.count ?? d.value ?? 0),
+      }))
     : [
         { day: 'Mon', checkins: 42 },
         { day: 'Tue', checkins: 58 },
@@ -147,7 +156,7 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent className="p-6 pt-0">
             <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 5 }}>
                 <defs>
                   <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#C6FF00" stopOpacity={0.3} />
@@ -161,7 +170,7 @@ export default function AnalyticsPage() {
                   contentStyle={{ backgroundColor: '#1A1D24', borderColor: '#2A2D35', borderRadius: '8px', fontSize: '12px' }}
                   formatter={(value: any) => [`₹${Number(value).toLocaleString()}`, 'Revenue']}
                 />
-                <Area type="monotone" dataKey="revenue" stroke="#C6FF00" strokeWidth={2.5} fill="url(#revGrad)" />
+                <Area type="monotone" dataKey="revenue" stroke="#C6FF00" strokeWidth={2.5} fill="url(#revGrad)" activeDot={(props: any) => <circle cx={props.cx} cy={props.cy} r={5} fill="#C6FF00" stroke="none" />} />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>

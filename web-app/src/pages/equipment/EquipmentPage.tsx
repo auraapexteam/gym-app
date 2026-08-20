@@ -127,12 +127,12 @@ export default function EquipmentPage() {
     <DashboardLayout
       breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Equipment' }]}
     >
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-xl font-bold text-aura-text">Equipment</h1>
           <p className="text-sm text-aura-muted mt-0.5">Track gym machinery, photos, and maintenance logs</p>
         </div>
-        <Button variant="primary" onClick={openAddModal} className="gap-2">
+        <Button variant="primary" onClick={openAddModal} className="gap-2 self-start sm:self-auto shrink-0">
           <Plus className="h-4 w-4" /> Add Equipment
         </Button>
       </div>

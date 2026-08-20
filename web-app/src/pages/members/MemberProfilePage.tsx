@@ -261,7 +261,7 @@ export default function MemberProfilePage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-aura-card border border-aura-border rounded-lg p-1 mb-4 overflow-x-auto">
+        <div className="flex gap-1 bg-aura-card border border-aura-border rounded-lg p-1 mb-4 overflow-x-auto max-w-full [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {TABS.map((tab) => (
             <button
               key={tab.id}

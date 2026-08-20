@@ -53,12 +53,12 @@ export default function NotificationsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-aura-card border border-aura-border rounded-md p-1 mb-4 w-fit">
+      <div className="flex gap-1 bg-aura-card border border-aura-border rounded-md p-1 mb-4 w-full sm:w-fit overflow-x-auto max-w-full [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {FILTER_TABS.map((tab) => (
           <button
             key={tab}
             onClick={() => setFilter(tab)}
-            className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+            className={`whitespace-nowrap flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded transition-colors ${
               filter === tab ? 'bg-aura-primary text-aura-bg' : 'text-aura-muted hover:text-aura-text'
             }`}
           >

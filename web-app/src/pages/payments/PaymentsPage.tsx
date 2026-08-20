@@ -75,9 +75,9 @@ export default function PaymentsPage() {
         </div>
         <button
           onClick={handlePrint}
-          className="flex items-center gap-2 bg-aura-card border border-aura-border text-aura-text text-sm font-medium px-4 py-2 rounded-md hover:border-aura-primary/50 transition-colors"
+          className="flex items-center justify-center gap-2 bg-aura-card border border-aura-border text-aura-text text-sm font-medium h-10 w-10 min-[560px]:h-auto min-[560px]:w-auto min-[560px]:px-4 min-[560px]:py-2 rounded-md hover:border-aura-primary/50 transition-colors shrink-0"
         >
-          <Download className="h-4 w-4" /> Export Report
+          <Download className="h-5 w-5 min-[560px]:h-4 min-[560px]:w-4" /> <span className="hidden min-[560px]:inline">Export Report</span>
         </button>
       </div>
 
@@ -92,12 +92,12 @@ export default function PaymentsPage() {
       <Card>
         <CardHeader className="p-6 pb-0">
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex gap-1 bg-aura-bg border border-aura-border rounded-md p-1">
+            <div className="flex gap-1 bg-aura-bg border border-aura-border rounded-md p-1 overflow-x-auto max-w-full [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {TABS.map((tab) => (
                 <button
                   key={tab}
                   onClick={() => { setActiveTab(tab); setPage(1); }}
-                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                  className={`whitespace-nowrap flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded transition-colors ${
                     activeTab === tab
                       ? 'bg-aura-primary text-aura-bg font-bold'
                       : 'text-aura-muted hover:text-aura-text'
@@ -107,7 +107,7 @@ export default function PaymentsPage() {
                 </button>
               ))}
             </div>
-            <SearchInput value={search} onChange={setSearch} placeholder="Search by customer, plan, TXN ID..." className="w-72" />
+            <SearchInput value={search} onChange={setSearch} placeholder="Search by customer, plan, TXN ID..." className="w-full sm:w-72" />
           </div>
         </CardHeader>
         <CardContent className="p-0 mt-4">

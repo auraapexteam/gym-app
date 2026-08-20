@@ -62,7 +62,10 @@ export function useAttendanceChart() {
 export function useMembershipGrowth() {
   return useQuery({
     queryKey: ['dashboard', 'membership-growth'],
-    queryFn: async () => [] as any[],
+    queryFn: async () => {
+      const res = await dashboardApi.getMembershipGrowth();
+      return res.data.data;
+    },
   });
 }
 
@@ -79,6 +82,9 @@ export function useRecentPayments() {
 export function usePeakHours() {
   return useQuery({
     queryKey: ['dashboard', 'peak-hours'],
-    queryFn: async () => [] as { hour: string; count: number }[],
+    queryFn: async () => {
+      const res = await dashboardApi.getPeakHours();
+      return res.data.data;
+    },
   });
 }
