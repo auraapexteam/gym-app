@@ -36,6 +36,22 @@ export class ProgressController {
     return sendSuccess(res, log, 'Steps logged successfully');
   }
 
+  /** Log daily note. */
+  static async logNote(req: Request, res: Response): Promise<Response> {
+    const user = currentUser(req);
+    const { note, logDate } = req.body;
+    const log = await ProgressService.logNote(user.id, note, logDate);
+    return sendSuccess(res, log, 'Daily note saved successfully');
+  }
+
+  /** Log daily sleep. */
+  static async logSleep(req: Request, res: Response): Promise<Response> {
+    const user = currentUser(req);
+    const { durationMinutes, quality, logDate } = req.body;
+    const log = await ProgressService.logSleep(user.id, durationMinutes, quality, logDate);
+    return sendSuccess(res, log, 'Sleep log saved successfully');
+  }
+
   /** Log daily progress photo. */
   static async logImage(req: Request, res: Response): Promise<Response> {
     const user = currentUser(req);

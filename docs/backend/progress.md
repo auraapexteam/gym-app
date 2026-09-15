@@ -9,13 +9,16 @@
 
 ## Overview
 
-The Progress Logbook lets customers log and track four daily fitness metrics:
+The Progress Logbook lets customers log and track daily fitness metrics:
 
 | Metric | Unit | Table |
 |---|---|---|
 | Body weight | kg (NUMERIC 5,2) | `progress_logs` |
 | Water intake | ml (INTEGER) | `water_logs` |
 | Protein intake | g (INTEGER) | `protein_logs` |
+| Step count | steps (INTEGER) | `steps_logs` |
+| Daily note | text (TEXT) | `notes_logs` |
+| Sleep tracking | duration_minutes (INT), quality (VARCHAR) | `sleep_logs` |
 | Progress photo | URL (TEXT) | `progress_images` |
 
 All logs are **per-day and per-profile**. Submitting the same metric on the same date **upserts** (overwrites) the existing row.
@@ -30,14 +33,14 @@ Base path: `/api/v1/progress`
 
 ### GET /progress/month
 
-Fetch all four log types for a given calendar month.
+Fetch all log types for a given calendar month.
 
 **Query Parameters**
 
 | Param | Type | Required | Description |
 |---|---|---|---|
 | `year` | integer (4-digit) | ✅ | e.g. `2026` |
-| `month` | integer (1–12) | ✅ | e.g. `7` for July |
+| `month` | integer (1–12) | ✅ | e.g. `9` for September |
 
 **Response 200**
 
@@ -47,16 +50,25 @@ Fetch all four log types for a given calendar month.
   "message": "Month summary fetched successfully",
   "data": {
     "weightLogs": [
-      { "id": "uuid", "weight": "72.50", "log_date": "2026-07-01" }
+      { "id": "uuid", "weight": "72.50", "log_date": "2026-09-01" }
     ],
     "waterLogs": [
-      { "id": "uuid", "amount_ml": 2500, "log_date": "2026-07-01" }
+      { "id": "uuid", "amount_ml": 2500, "log_date": "2026-09-01" }
     ],
     "proteinLogs": [
-      { "id": "uuid", "amount_g": 150, "log_date": "2026-07-01" }
+      { "id": "uuid", "amount_g": 150, "log_date": "2026-09-01" }
+    ],
+    "stepsLogs": [
+      { "id": "uuid", "steps": 8500, "log_date": "2026-09-01" }
+    ],
+    "notesLogs": [
+      { "id": "uuid", "note": "Felt energetic today!", "log_date": "2026-09-01" }
+    ],
+    "sleepLogs": [
+      { "id": "uuid", "duration_minutes": 465, "quality": "Good", "log_date": "2026-09-01" }
     ],
     "imageLogs": [
-      { "id": "uuid", "image_url": "https://...", "log_date": "2026-07-01" }
+      { "id": "uuid", "image_url": "https://...", "log_date": "2026-09-01" }
     ]
   }
 }
@@ -115,14 +127,89 @@ Log or update daily protein intake.
 ```json
 {
   "amountG": 150,
-  "logDate": "2026-07-14"
+  "logDate": "2026-09-15"
 }
 ```
 
 **Validation**
 
-- `amountG`: non-negative integer
+- `amountG`: non-negative integer (max 1 000 g)
 - `logDate`: format `YYYY-MM-DD`
+
+---
+
+### POST /progress/note
+
+Log or update a daily note / workout reflection.
+
+**Request Body**
+
+```json
+{
+  "note": "Felt energetic today during chest workout. Stretched for 15 mins.",
+  "logDate": "2026-09-15"
+}
+```
+
+**Validation**
+
+- `note`: string, non-empty, max length 1 000 characters
+- `logDate`: format `YYYY-MM-DD`
+
+**Response 200**
+
+```json
+{
+  "success": true,
+  "message": "Daily note saved successfully",
+  "data": {
+    "id": "uuid",
+    "profile_id": "user-uuid",
+    "note": "Felt energetic today during chest workout. Stretched for 15 mins.",
+    "log_date": "2026-09-15",
+    "created_at": "2026-09-15T10:00:00.000Z"
+  }
+}
+```
+
+---
+
+### POST /progress/sleep
+
+Log or update daily sleep metrics.
+
+**Request Body**
+
+```json
+{
+  "durationMinutes": 465,
+  "quality": "Good",
+  "logDate": "2026-09-15"
+}
+```
+
+**Validation**
+
+- `durationMinutes`: integer, 0 to 1 440 minutes (24 hours)
+- `quality`: string enum (`"Excellent" | "Good" | "Fair" | "Poor"`), default `"Good"`
+- `logDate`: format `YYYY-MM-DD`
+
+**Response 200**
+
+```json
+{
+  "success": true,
+  "message": "Sleep log saved successfully",
+  "data": {
+    "id": "uuid",
+    "profile_id": "user-uuid",
+    "duration_minutes": 465,
+    "quality": "Good",
+    "log_date": "2026-09-15",
+    "created_at": "2026-09-15T10:00:00.000Z"
+  }
+}
+```
 
 ---
 
@@ -139,7 +226,7 @@ Save the public URL of a progress photo for a given date.
 ```json
 {
   "imageUrl": "https://your-bucket.supabase.co/storage/v1/object/public/progress/...",
-  "logDate": "2026-07-14"
+  "logDate": "2026-09-15"
 }
 ```
 
@@ -235,6 +322,9 @@ Log a detailed exercise routine.
 | `WATER_LOG_FAILED` | Supabase upsert error on water log |
 | `PROTEIN_LOG_FAILED` | Supabase upsert error on protein log |
 | `IMAGE_LOG_FAILED` | Supabase upsert error on image log |
+| `NOTE_LOG_FAILED` | Supabase upsert error on daily note log |
+| `SLEEP_LOG_FAILED` | Supabase upsert error on sleep log |
 | `FETCH_LOGS_FAILED` | Error fetching month summary from one or more tables |
 | `WORKOUT_LOG_FAILED` | Error creating or fetching workout logs |
+
 

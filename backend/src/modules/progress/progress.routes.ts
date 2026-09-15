@@ -6,6 +6,8 @@ import {
   logProteinSchema,
   logStepsSchema,
   logImageSchema,
+  logNoteSchema,
+  logSleepSchema,
   getMonthSummarySchema,
 } from '@/modules/progress/progress.validation';
 import { authenticate, requireRole, validate, asyncHandler } from '@/shared/middleware';
@@ -55,6 +57,20 @@ router.post(
   requireRole(Role.CUSTOMER),
   validate(logStepsSchema),
   asyncHandler(ProgressController.logSteps),
+);
+
+router.post(
+  '/note',
+  requireRole(Role.CUSTOMER),
+  validate(logNoteSchema),
+  asyncHandler(ProgressController.logNote),
+);
+
+router.post(
+  '/sleep',
+  requireRole(Role.CUSTOMER),
+  validate(logSleepSchema),
+  asyncHandler(ProgressController.logSleep),
 );
 
 router.post(

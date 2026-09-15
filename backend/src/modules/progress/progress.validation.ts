@@ -47,6 +47,24 @@ export const logStepsSchema = z.object({
   }),
 });
 
+export const logNoteSchema = z.object({
+  body: z.object({
+    /** Daily note text. Max 1 000 chars. */
+    note: z.string().min(1, 'Note cannot be empty').max(1_000, 'Note cannot exceed 1 000 characters'),
+    logDate: pastOrTodayDate,
+  }),
+});
+
+export const logSleepSchema = z.object({
+  body: z.object({
+    /** Sleep duration in minutes (0 to 1440 min = 24h). */
+    durationMinutes: z.number().int().min(0, 'Duration cannot be negative').max(1_440, 'Duration cannot exceed 1 440 minutes (24 hours)'),
+    /** Sleep quality rating. Default 'Good'. */
+    quality: z.enum(['Excellent', 'Good', 'Fair', 'Poor']).default('Good'),
+    logDate: pastOrTodayDate,
+  }),
+});
+
 export const logImageSchema = z.object({
   body: z.object({
     /**

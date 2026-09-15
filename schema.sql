@@ -394,6 +394,37 @@ CREATE TABLE IF NOT EXISTS public.protein_logs (
     CONSTRAINT uq_protein_log UNIQUE (profile_id, log_date)
 );
 
+CREATE TABLE IF NOT EXISTS public.steps_logs (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    steps         INTEGER NOT NULL CHECK (steps >= 0),
+    log_date      DATE NOT NULL,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    CONSTRAINT uq_steps_log UNIQUE (profile_id, log_date)
+);
+
+CREATE TABLE IF NOT EXISTS public.notes_logs (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    note          TEXT NOT NULL,
+    log_date      DATE NOT NULL,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    CONSTRAINT uq_notes_log UNIQUE (profile_id, log_date)
+);
+
+CREATE TABLE IF NOT EXISTS public.sleep_logs (
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id       UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    duration_minutes INTEGER NOT NULL CHECK (duration_minutes >= 0),
+    quality          VARCHAR(30) DEFAULT 'Good',
+    log_date         DATE NOT NULL,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    updated_at       TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    CONSTRAINT uq_sleep_log UNIQUE (profile_id, log_date)
+);
+
 CREATE TABLE IF NOT EXISTS public.saved_gyms (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     profile_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -468,6 +499,9 @@ CREATE INDEX IF NOT EXISTS idx_progress_logs_profile ON public.progress_logs(pro
 CREATE INDEX IF NOT EXISTS idx_progress_images_profile ON public.progress_images(profile_id, log_date);
 CREATE INDEX IF NOT EXISTS idx_water_logs_profile ON public.water_logs(profile_id, log_date);
 CREATE INDEX IF NOT EXISTS idx_protein_logs_profile ON public.protein_logs(profile_id, log_date);
+CREATE INDEX IF NOT EXISTS idx_steps_logs_profile ON public.steps_logs(profile_id, log_date);
+CREATE INDEX IF NOT EXISTS idx_notes_logs_profile ON public.notes_logs(profile_id, log_date);
+CREATE INDEX IF NOT EXISTS idx_sleep_logs_profile ON public.sleep_logs(profile_id, log_date);
 
 CREATE INDEX IF NOT EXISTS idx_notifications_recipient ON public.notifications (recipient_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_gym          ON public.audit_logs (gym_id);
@@ -483,7 +517,7 @@ DECLARE
     tables TEXT[] := ARRAY[
         'gyms', 'profiles', 'gym_staff', 'members', 'plans', 'subscriptions',
         'payments', 'qr_codes', 'trainers', 'equipment', 'gallery_images', 'gym_join_requests',
-        'progress_logs', 'water_logs', 'protein_logs', 'workout_logs'
+        'progress_logs', 'water_logs', 'protein_logs', 'steps_logs', 'notes_logs', 'sleep_logs', 'workout_logs'
     ];
 BEGIN
     FOREACH t IN ARRAY tables LOOP
@@ -733,6 +767,9 @@ ALTER TABLE public.progress_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.progress_images ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.water_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.protein_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.steps_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notes_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sleep_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.saved_gyms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.workout_logs ENABLE ROW LEVEL SECURITY;
 
@@ -838,6 +875,48 @@ CREATE POLICY "protein_logs_read" ON public.protein_logs
     );
 
 CREATE POLICY "protein_logs_write" ON public.protein_logs
+    FOR ALL TO authenticated
+    USING (auth.uid() = profile_id)
+    WITH CHECK (auth.uid() = profile_id);
+
+-- 4.1. Policies for Steps Logs
+CREATE POLICY "steps_logs_read" ON public.steps_logs
+    FOR SELECT TO authenticated
+    USING (
+        auth.uid() = profile_id
+        OR profile_id IN (SELECT id FROM public.profiles WHERE gym_id = public.current_gym_id())
+        OR public.is_super_admin()
+    );
+
+CREATE POLICY "steps_logs_write" ON public.steps_logs
+    FOR ALL TO authenticated
+    USING (auth.uid() = profile_id)
+    WITH CHECK (auth.uid() = profile_id);
+
+-- 4.2. Policies for Notes Logs
+CREATE POLICY "notes_logs_read" ON public.notes_logs
+    FOR SELECT TO authenticated
+    USING (
+        auth.uid() = profile_id
+        OR profile_id IN (SELECT id FROM public.profiles WHERE gym_id = public.current_gym_id())
+        OR public.is_super_admin()
+    );
+
+CREATE POLICY "notes_logs_write" ON public.notes_logs
+    FOR ALL TO authenticated
+    USING (auth.uid() = profile_id)
+    WITH CHECK (auth.uid() = profile_id);
+
+-- 4.3. Policies for Sleep Logs
+CREATE POLICY "sleep_logs_read" ON public.sleep_logs
+    FOR SELECT TO authenticated
+    USING (
+        auth.uid() = profile_id
+        OR profile_id IN (SELECT id FROM public.profiles WHERE gym_id = public.current_gym_id())
+        OR public.is_super_admin()
+    );
+
+CREATE POLICY "sleep_logs_write" ON public.sleep_logs
     FOR ALL TO authenticated
     USING (auth.uid() = profile_id)
     WITH CHECK (auth.uid() = profile_id);
