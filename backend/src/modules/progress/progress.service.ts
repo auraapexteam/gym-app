@@ -65,6 +65,36 @@ export class ProgressService {
     return data;
   }
 
+  /** Upsert daily note log for a specific date. */
+  static async logNote(profileId: string, note: string, logDate: string): Promise<any> {
+    const { data, error } = await supabase
+      .from('notes_logs')
+      .upsert(
+        { profile_id: profileId, note, log_date: logDate, updated_at: new Date().toISOString() },
+        { onConflict: 'profile_id,log_date' }
+      )
+      .select()
+      .single();
+
+    if (error) throw new BadRequestError(error.message, 'NOTE_LOG_FAILED');
+    return data;
+  }
+
+  /** Upsert daily sleep log for a specific date. */
+  static async logSleep(profileId: string, durationMinutes: number, quality: string = 'Good', logDate: string): Promise<any> {
+    const { data, error } = await supabase
+      .from('sleep_logs')
+      .upsert(
+        { profile_id: profileId, duration_minutes: durationMinutes, quality, log_date: logDate, updated_at: new Date().toISOString() },
+        { onConflict: 'profile_id,log_date' }
+      )
+      .select()
+      .single();
+
+    if (error) throw new BadRequestError(error.message, 'SLEEP_LOG_FAILED');
+    return data;
+  }
+
   /** Upsert progress photo log for a specific date. */
   static async logImage(profileId: string, imageUrl: string, logDate: string): Promise<any> {
     const { data, error } = await supabase
@@ -91,12 +121,14 @@ export class ProgressService {
     const endDate = `${year}-${monthPad}-${String(lastDay).padStart(2, '0')}`;
 
     // Parallel fetch logs from all tables with individual error isolation
-    const [weightRes, waterRes, proteinRes, stepsRes, imageRes] = await Promise.all([
+    const [weightRes, waterRes, proteinRes, stepsRes, imageRes, notesRes, sleepRes] = await Promise.all([
       supabase.from('progress_logs').select('id, weight, log_date').eq('profile_id', profileId).gte('log_date', startDate).lte('log_date', endDate),
       supabase.from('water_logs').select('id, amount_ml, log_date').eq('profile_id', profileId).gte('log_date', startDate).lte('log_date', endDate),
       supabase.from('protein_logs').select('id, amount_g, log_date').eq('profile_id', profileId).gte('log_date', startDate).lte('log_date', endDate),
       supabase.from('steps_logs').select('id, steps, log_date').eq('profile_id', profileId).gte('log_date', startDate).lte('log_date', endDate),
       supabase.from('progress_images').select('id, image_url, log_date').eq('profile_id', profileId).gte('log_date', startDate).lte('log_date', endDate),
+      supabase.from('notes_logs').select('id, note, log_date').eq('profile_id', profileId).gte('log_date', startDate).lte('log_date', endDate),
+      supabase.from('sleep_logs').select('id, duration_minutes, quality, log_date').eq('profile_id', profileId).gte('log_date', startDate).lte('log_date', endDate),
     ]);
 
     return {
@@ -105,6 +137,8 @@ export class ProgressService {
       proteinLogs: proteinRes.data || [],
       stepsLogs: stepsRes.data || [],
       imageLogs: imageRes.data || [],
+      notesLogs: notesRes.data || [],
+      sleepLogs: sleepRes.data || [],
     };
   }
 }

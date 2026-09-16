@@ -17,12 +17,11 @@ export const testDbRegistry: {
 
 // Global mocks
 vi.mock('@/config/supabase', () => {
-  const createMockChain = () => {
-    let currentTable = '';
-    let appliedFilters: Array<{ column: string; value: any }> = [];
+  const createTableQuery = (table: string, client?: any) => {
+    let appliedFilters: Array<{ column: string; value: any; operator?: string }> = [];
 
     const getFilteredData = () => {
-      const rawData = testDbRegistry.mocks[currentTable];
+      const rawData = testDbRegistry.mocks[table];
       if (rawData === undefined || rawData === null) {
         return null;
       }
@@ -65,93 +64,95 @@ vi.mock('@/config/supabase', () => {
     };
 
     const getError = () => {
-      const rawData = testDbRegistry.mocks[currentTable];
+      const rawData = testDbRegistry.mocks[table];
       if (rawData && rawData.error !== undefined) {
         return rawData.error;
       }
       return null;
     };
 
-    const chain: any = {
-      from: vi.fn((table: string) => {
-        currentTable = table;
-        appliedFilters = [];
-        return chain;
-      }),
-      rpc: vi.fn(async (fnName: string, args: any) => {
-        const mockResult = testDbRegistry.mocks[`rpc:${fnName}`];
-        if (mockResult && mockResult.data !== undefined) {
-          return { data: mockResult.data, error: mockResult.error };
-        }
-        return { data: mockResult ?? null, error: null };
-      }),
-      select: vi.fn(() => chain),
+    const query: any = {
+      select: vi.fn((...args: any[]) => { if (client?.select) client.select(...args); return query; }),
       insert: vi.fn((payload: any) => {
+        if (client?.insert) client.insert(payload);
         const data = {
           id: '47d7dfca-8857-48f8-b3ab-5c30fbdb7bb9',
           ...payload,
         };
-        // Set dynamic return data
-        testDbRegistry.mocks[currentTable] = data;
-        return chain;
+        testDbRegistry.mocks[table] = data;
+        return query;
       }),
       upsert: vi.fn((payload: any) => {
+        if (client?.upsert) client.upsert(payload);
         const data = {
           id: '47d7dfca-8857-48f8-b3ab-5c30fbdb7bb9',
           ...(Array.isArray(payload) ? payload[0] : payload),
         };
-        testDbRegistry.mocks[currentTable] = data;
-        return chain;
+        testDbRegistry.mocks[table] = data;
+        return query;
       }),
       update: vi.fn((payload: any) => {
-        const existing = testDbRegistry.mocks[currentTable];
+        if (client?.update) {
+          const custom = client.update(payload);
+          if (custom && custom !== client) return custom;
+        }
+        const existing = testDbRegistry.mocks[table];
         if (existing) {
           if (Array.isArray(existing)) {
-            testDbRegistry.mocks[currentTable] = existing.map(e => ({ ...e, ...payload }));
+            testDbRegistry.mocks[table] = existing.map(e => ({ ...e, ...payload }));
           } else {
-            testDbRegistry.mocks[currentTable] = { ...existing, ...payload };
+            testDbRegistry.mocks[table] = { ...existing, ...payload };
           }
         } else {
-          testDbRegistry.mocks[currentTable] = payload;
+          testDbRegistry.mocks[table] = payload;
         }
-        return chain;
+        return query;
       }),
-      delete: vi.fn(() => chain),
+      delete: vi.fn((...args: any[]) => { if (client?.delete) client.delete(...args); return query; }),
       eq: vi.fn((column: string, value: any) => {
-        appliedFilters.push({ column, value });
-        return chain;
+        if (client?.eq) client.eq(column, value);
+        appliedFilters.push({ column, value, operator: 'eq' });
+        return query;
       }),
       gte: vi.fn((column: string, value: any) => {
+        if (client?.gte) client.gte(column, value);
         appliedFilters.push({ column, value, operator: 'gte' });
-        return chain;
+        return query;
       }),
       lte: vi.fn((column: string, value: any) => {
+        if (client?.lte) client.lte(column, value);
         appliedFilters.push({ column, value, operator: 'lte' });
-        return chain;
+        return query;
       }),
       gt: vi.fn((column: string, value: any) => {
+        if (client?.gt) client.gt(column, value);
         appliedFilters.push({ column, value, operator: 'gt' });
-        return chain;
+        return query;
       }),
       lt: vi.fn((column: string, value: any) => {
+        if (client?.lt) client.lt(column, value);
         appliedFilters.push({ column, value, operator: 'lt' });
-        return chain;
+        return query;
       }),
       neq: vi.fn((column: string, value: any) => {
-        return chain;
+        if (client?.neq) client.neq(column, value);
+        return query;
       }),
       in: vi.fn((column: string, values: any[]) => {
-        return chain;
+        if (client?.in) client.in(column, values);
+        return query;
       }),
       is: vi.fn((column: string, value: any) => {
-        return chain;
+        if (client?.is) client.is(column, value);
+        return query;
       }),
       or: vi.fn((filters: string) => {
-        return chain;
+        if (client?.or) client.or(filters);
+        return query;
       }),
-      order: vi.fn(() => chain),
-      range: vi.fn(() => chain),
-      limit: vi.fn(() => chain),
+      order: vi.fn((...args: any[]) => { if (client?.order) client.order(...args); return query; }),
+      range: vi.fn((...args: any[]) => { if (client?.range) client.range(...args); return query; }),
+      limit: vi.fn((...args: any[]) => { if (client?.limit) client.limit(...args); return query; }),
       maybeSingle: vi.fn(async () => {
         const data = getFilteredData();
         const error = getError();
@@ -167,7 +168,7 @@ vi.mock('@/config/supabase', () => {
       then: vi.fn((resolve: any) => {
         const data = getFilteredData();
         const error = getError();
-        const rawData = testDbRegistry.mocks[currentTable];
+        const rawData = testDbRegistry.mocks[table];
         const count = rawData && rawData.count !== undefined ? rawData.count : null;
         
         let resultList = Array.isArray(data) ? data : data ? [data] : [];
@@ -183,7 +184,41 @@ vi.mock('@/config/supabase', () => {
         }));
       }),
     };
-    return chain;
+
+    return query;
+  };
+
+  const createMockChain = () => {
+    const client: any = {
+      from: vi.fn((table: string) => createTableQuery(table, client)),
+      rpc: vi.fn(async (fnName: string, args: any) => {
+        const mockResult = testDbRegistry.mocks[`rpc:${fnName}`];
+        if (mockResult && mockResult.data !== undefined) {
+          return { data: mockResult.data, error: mockResult.error };
+        }
+        return { data: mockResult ?? null, error: null };
+      }),
+      select: vi.fn(() => client),
+      insert: vi.fn(() => client),
+      upsert: vi.fn(() => client),
+      update: vi.fn(() => client),
+      delete: vi.fn(() => client),
+      eq: vi.fn(() => client),
+      gte: vi.fn(() => client),
+      lte: vi.fn(() => client),
+      gt: vi.fn(() => client),
+      lt: vi.fn(() => client),
+      neq: vi.fn(() => client),
+      in: vi.fn(() => client),
+      is: vi.fn(() => client),
+      or: vi.fn(() => client),
+      order: vi.fn(() => client),
+      range: vi.fn(() => client),
+      limit: vi.fn(() => client),
+      single: vi.fn(() => client),
+      maybeSingle: vi.fn(() => client),
+    };
+    return client;
   };
 
   const mockSupabase = createMockChain();
