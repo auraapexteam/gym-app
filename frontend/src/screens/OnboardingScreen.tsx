@@ -4,11 +4,13 @@ import {
   Text,
   View,
   TouchableOpacity,
-  SafeAreaView,
   Dimensions,
   FlatList,
   ImageBackground,
+  Platform,
+  StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, radii } from '../theme/tokens';
 import { PrimaryButton } from '../components/PrimaryButton';
@@ -44,6 +46,7 @@ const SLIDES = [
 ];
 
 export function OnboardingScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
@@ -82,21 +85,22 @@ export function OnboardingScreen({ navigation }: any) {
   };
 
   const currentSlide = SLIDES[currentIndex];
+  const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0) + 8;
 
   return (
     <View style={styles.container}>
       {/* Header Bar overlay on top */}
-      <SafeAreaView style={styles.headerSafeArea}>
+      <View style={[styles.headerSafeArea, { paddingTop: topInset }]}>
         <View style={styles.header}>
           <View style={styles.logoRow}>
             <Zap size={22} color={colors.accent} fill={colors.accent} />
             <Text style={styles.logoText}>AURA APEX</Text>
           </View>
-          <TouchableOpacity onPress={handleFinish} style={styles.skipButton}>
+          <TouchableOpacity onPress={handleFinish} style={styles.skipButton} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Text style={styles.skipText}>Skip</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
 
       {/* Main Slides Carousel */}
       <FlatList

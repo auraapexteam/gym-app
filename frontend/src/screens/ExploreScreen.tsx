@@ -4,12 +4,14 @@ import {
   Text,
   View,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   TextInput,
   Modal,
   ActivityIndicator,
+  Platform,
+  StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Search, SlidersHorizontal, Sun, Moon, X } from 'lucide-react-native';
 import { colors, radii } from '../theme/tokens';
@@ -22,13 +24,16 @@ const CATEGORIES = ['All', 'Gym', 'CrossFit', 'Yoga', 'Boxing', 'Pilates'];
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=600&q=80';
 
 export function ExploreScreen({ navigation }: any) {
-  const { isDark, setTheme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { colors: themeColors, isDark, setTheme } = useTheme();
   const { userProfile } = useAuthStore();
   const [gyms, setGyms] = useState<GymCardData[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedGym, setSelectedGym] = useState<GymCardData | null>(null);
   const [fetchingGyms, setFetchingGyms] = useState(false);
+
+  const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0) + 8;
 
   const fetchBackendGyms = useCallback(async () => {
     try {
@@ -82,7 +87,7 @@ export function ExploreScreen({ navigation }: any) {
   });
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? colors.bg : '#F5F5F0' }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? colors.bg : '#F5F5F0', paddingTop: topInset }]}>
       {/* Header */}
       <View style={styles.topHeader}>
         <Text style={[styles.headerTitle, { color: isDark ? colors.white : colors.black }]}>
@@ -90,7 +95,13 @@ export function ExploreScreen({ navigation }: any) {
         </Text>
         <TouchableOpacity
           onPress={() => setTheme(isDark ? 'light' : 'dark')}
-          style={styles.circleBtn}
+          style={[
+            styles.circleBtn,
+            {
+              backgroundColor: isDark ? themeColors.surface : '#E5E7EB',
+              borderColor: themeColors.surfaceBorder,
+            },
+          ]}
           activeOpacity={0.8}
         >
           {isDark ? (
@@ -104,14 +115,22 @@ export function ExploreScreen({ navigation }: any) {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Search Bar & Green Filter Button */}
         <View style={styles.searchRow}>
-          <View style={styles.searchBar}>
-            <Search size={18} color={colors.textMuted} style={styles.searchIcon} />
+          <View
+            style={[
+              styles.searchBar,
+              {
+                backgroundColor: isDark ? themeColors.surface : '#FFFFFF',
+                borderColor: themeColors.surfaceBorder,
+              },
+            ]}
+          >
+            <Search size={18} color={isDark ? themeColors.textMuted : '#6B7280'} style={styles.searchIcon} />
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholder="Search gyms, trainers..."
-              placeholderTextColor={colors.textMuted}
-              style={styles.searchInput}
+              placeholderTextColor={isDark ? themeColors.textMuted : '#9CA3AF'}
+              style={[styles.searchInput, { color: isDark ? themeColors.textPrimary : '#111827' }]}
             />
           </View>
 
@@ -135,12 +154,17 @@ export function ExploreScreen({ navigation }: any) {
                 activeOpacity={0.8}
                 style={[
                   styles.categoryPill,
+                  {
+                    backgroundColor: isDark ? themeColors.surface : '#E5E7EB',
+                    borderColor: themeColors.surfaceBorder,
+                  },
                   isSelected && styles.categoryPillActive,
                 ]}
               >
                 <Text
                   style={[
                     styles.categoryText,
+                    { color: isDark ? themeColors.textPrimary : '#111827' },
                     isSelected && styles.categoryTextActive,
                   ]}
                 >
@@ -205,7 +229,7 @@ export function ExploreScreen({ navigation }: any) {
           </View>
         </Modal>
       ) : null}
-    </SafeAreaView>
+    </View>
   );
 }
 

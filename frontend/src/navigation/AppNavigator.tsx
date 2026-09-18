@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View, StyleSheet, Platform, PermissionsAndroid } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, Platform, PermissionsAndroid, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -61,6 +61,34 @@ export function AppNavigator() {
     };
     requestNotificationPermission();
 
+    // Handle deep links when returned from Google OAuth (auraapex://login-callback#access_token=...)
+    const handleDeepLink = async (url: string | null) => {
+      if (!url) return;
+      try {
+        const hash = url.split('#')[1] || url.split('?')[1] || '';
+        if (!hash) return;
+        const params: Record<string, string> = {};
+        hash.split('&').forEach((part) => {
+          const [k, v] = part.split('=');
+          if (k && v) params[k] = decodeURIComponent(v);
+        });
+        if (params.access_token && params.refresh_token) {
+          const { data } = await supabase.auth.setSession({
+            access_token: params.access_token,
+            refresh_token: params.refresh_token,
+          });
+          if (data?.session) {
+            await setSession(data.session);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to parse deep link session:', err);
+      }
+    };
+
+    Linking.getInitialURL().then(handleDeepLink);
+    const linkSubscription = Linking.addEventListener('url', (e) => handleDeepLink(e.url));
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
@@ -70,6 +98,7 @@ export function AppNavigator() {
     });
 
     return () => {
+      linkSubscription.remove();
       subscription.unsubscribe();
     };
   }, [setSession]);
@@ -81,161 +110,53 @@ export function AppNavigator() {
   const isStaffOrOwner = !!userProfile?.role && userProfile.role !== 'customer';
   const needsProfileSetup = !isStaffOrOwner && userProfile && !userProfile.onboarding_completed;
 
+  const initialRoute = accessToken
+    ? (isStaffOrOwner ? 'OwnerDashboard' : needsProfileSetup ? 'ProfileSetup' : 'MainTabs')
+    : (hasSeenOnboarding ? 'Login' : 'Onboarding');
+
+  const stackKey = accessToken
+    ? (isStaffOrOwner ? 'owner-stack' : needsProfileSetup ? 'setup-stack' : 'customer-stack')
+    : 'auth-stack';
+
   return (
     <NavigationContainer>
-        <Stack.Navigator
-          initialRouteName={hasSeenOnboarding ? 'Login' : 'Onboarding'}
-          screenOptions={{ headerShown: false }}
-        >
-          {accessToken ? (
-            isStaffOrOwner ? (
-              <Stack.Screen
-                name="OwnerDashboard"
-                component={OwnerDashboardScreen}
-                options={{ headerShown: false }}
-              />
-            ) : needsProfileSetup ? (
-              // New user profile onboarding stack (runs once)
-              <>
-                <Stack.Screen
-                  name="ProfileSetup"
-                  component={ProfileSetupScreen}
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
-                  name="MainTabs"
-                  component={CustomerTabNavigator}
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
-                  name="QRScanner"
-                  component={QRScannerScreen}
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
-                  name="QRCheckIn"
-                  component={QRCheckInScreen}
-                  options={{ title: 'QR Check-in', headerShown: true }}
-                />
-              </>
-            ) : (
-              // Customer main app stack
-              <>
-                <Stack.Screen
-                  name="MainTabs"
-                  component={CustomerTabNavigator}
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
-                  name="ProfileSetup"
-                  component={ProfileSetupScreen}
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
-                  name="QRScanner"
-                  component={QRScannerScreen}
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
-                  name="QRCheckIn"
-                  component={QRCheckInScreen}
-                  options={{ title: 'QR Check-in', headerShown: true }}
-                />
-                <Stack.Screen
-                  name="BeginnerGuide"
-                  component={BeginnerGuideScreen}
-                  options={{ title: 'Beginner Guide', headerShown: true }}
-                />
-                <Stack.Screen
-                  name="GymInfo"
-                  component={GymInfoScreen}
-                  options={{ title: 'Gym Information', headerShown: true }}
-                />
-                <Stack.Screen
-                  name="GymDirectory"
-                  component={GymDirectoryScreen}
-                  options={{ title: 'Find a Gym', headerShown: true }}
-                />
-                <Stack.Screen
-                  name="SubscriptionHistory"
-                  component={SubscriptionHistoryScreen}
-                  options={{ title: 'Subscription History', headerShown: true }}
-                />
-                <Stack.Screen
-                  name="AttendanceHistory"
-                  component={AttendanceHistoryScreen}
-                  options={{ title: 'Attendance History', headerShown: true }}
-                />
-                <Stack.Screen
-                  name="Notifications"
-                  component={NotificationsScreen}
-                  options={{ title: 'Notifications', headerShown: true }}
-                />
-                <Stack.Screen
-                  name="Settings"
-                  component={SettingsScreen}
-                  options={{ title: 'Settings', headerShown: true }}
-                />
-                <Stack.Screen
-                  name="ThemeSettings"
-                  component={ThemeSettingsScreen}
-                  options={{ title: 'Appearance', headerShown: true }}
-                />
-                <Stack.Screen
-                  name="NotificationSettings"
-                  component={NotificationSettingsScreen}
-                  options={{ title: 'Notifications', headerShown: true }}
-                />
-                <Stack.Screen
-                  name="LanguageSettings"
-                  component={LanguageSettingsScreen}
-                  options={{ title: 'Language', headerShown: true }}
-                />
-                <Stack.Screen
-                  name="SecuritySettings"
-                  component={SecuritySettingsScreen}
-                  options={{ title: 'Security', headerShown: true }}
-                />
-                <Stack.Screen
-                  name="PrivacySettings"
-                  component={PrivacySettingsScreen}
-                  options={{ title: 'Privacy', headerShown: true }}
-                />
-                <Stack.Screen
-                  name="AppSettings"
-                  component={AppSettingsScreen}
-                  options={{ title: 'Storage & Cache', headerShown: true }}
-                />
-                <Stack.Screen
-                  name="HelpSettings"
-                  component={HelpSettingsScreen}
-                  options={{ title: 'Help & Support', headerShown: true }}
-                />
-                <Stack.Screen
-                  name="AboutSettings"
-                  component={AboutSettingsScreen}
-                  options={{ title: 'About Aura Apex', headerShown: true }}
-                />
-              </>
-            )
-          ) : (
-            <>
-              <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
-              <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-              <Stack.Screen name="Signup" component={SignupScreen} options={{ title: 'Create Account', headerShown: true }} />
-              <Stack.Screen
-                name="ForgotPassword"
-                component={ForgotPasswordScreen}
-                options={{ title: 'Reset Password', headerShown: true }}
-              />
-              <Stack.Screen
-                name="ProfileSetup"
-                component={ProfileSetupScreen}
-                options={{ headerShown: false }}
-              />
-            </>
-          )}
-        </Stack.Navigator>
+      <Stack.Navigator
+        key={stackKey}
+        initialRouteName={initialRoute}
+        screenOptions={{ headerShown: false }}
+      >
+        {/* Auth Screens */}
+        <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Signup" component={SignupScreen} options={{ title: 'Create Account', headerShown: true }} />
+        <Stack.Screen
+          name="ForgotPassword"
+          component={ForgotPasswordScreen}
+          options={{ title: 'Reset Password', headerShown: true }}
+        />
+
+        {/* Main App Screens */}
+        <Stack.Screen name="MainTabs" component={CustomerTabNavigator} options={{ headerShown: false }} />
+        <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="OwnerDashboard" component={OwnerDashboardScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="QRScanner" component={QRScannerScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="QRCheckIn" component={QRCheckInScreen} options={{ title: 'QR Check-in', headerShown: true }} />
+        <Stack.Screen name="BeginnerGuide" component={BeginnerGuideScreen} options={{ title: 'Beginner Guide', headerShown: true }} />
+        <Stack.Screen name="GymInfo" component={GymInfoScreen} options={{ title: 'Gym Information', headerShown: true }} />
+        <Stack.Screen name="GymDirectory" component={GymDirectoryScreen} options={{ title: 'Find a Gym', headerShown: true }} />
+        <Stack.Screen name="SubscriptionHistory" component={SubscriptionHistoryScreen} options={{ title: 'Subscription History', headerShown: true }} />
+        <Stack.Screen name="AttendanceHistory" component={AttendanceHistoryScreen} options={{ title: 'Attendance History', headerShown: true }} />
+        <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notifications', headerShown: true }} />
+        <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings', headerShown: true }} />
+        <Stack.Screen name="ThemeSettings" component={ThemeSettingsScreen} options={{ title: 'Appearance', headerShown: true }} />
+        <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} options={{ title: 'Notifications', headerShown: true }} />
+        <Stack.Screen name="LanguageSettings" component={LanguageSettingsScreen} options={{ title: 'Language', headerShown: true }} />
+        <Stack.Screen name="SecuritySettings" component={SecuritySettingsScreen} options={{ title: 'Security', headerShown: true }} />
+        <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} options={{ title: 'Privacy', headerShown: true }} />
+        <Stack.Screen name="AppSettings" component={AppSettingsScreen} options={{ title: 'Storage & Cache', headerShown: true }} />
+        <Stack.Screen name="HelpSettings" component={HelpSettingsScreen} options={{ title: 'Help & Support', headerShown: true }} />
+        <Stack.Screen name="AboutSettings" component={AboutSettingsScreen} options={{ title: 'About Aura Apex', headerShown: true }} />
+      </Stack.Navigator>
     </NavigationContainer>
   );
 }

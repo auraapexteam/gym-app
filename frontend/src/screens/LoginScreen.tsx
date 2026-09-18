@@ -8,18 +8,22 @@ import {
   ScrollView,
   TextInput,
   ImageBackground,
+  Dimensions,
+  Platform,
+  StatusBar,
+  Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import { ChevronLeft, Mail, Phone, Shield, Lock, Eye, EyeOff } from 'lucide-react-native';
+import { ChevronLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, radii } from '../theme/tokens';
 import { PrimaryButton } from '../components/PrimaryButton';
-import { SegmentedTabs } from '../components/SegmentedTabs';
-import { OtpInput } from '../components/OtpInput';
 import { useAuthStore } from '../store/useAuthStore';
 import { apiClient } from '../api/client';
+import { supabase } from '../api/supabase';
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const GoogleIcon = () => (
@@ -31,51 +35,49 @@ const GoogleIcon = () => (
   </Svg>
 );
 
-const FacebookIcon = () => (
-  <Svg width={20} height={20} viewBox="0 0 24 24">
-    <Path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-  </Svg>
-);
-
-const AppleIcon = () => (
-  <Svg width={20} height={20} viewBox="0 0 24 24">
-    <Path fill="#FFFFFF" d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.32c.67-.82 1.12-1.96.99-3.1-.96.04-2.13.64-2.82 1.44-.61.71-1.14 1.87-.99 2.99 1.07.08 2.15-.51 2.82-1.33z"/>
-  </Svg>
-);
-
 export function LoginScreen({ route, navigation }: any) {
+  const insets = useSafeAreaInsets();
   const { setSession, loadUserProfile } = useAuthStore();
-  const [step, setStep] = useState<'input' | 'verify'>('input');
-  const [authMode, setAuthMode] = useState<string>('email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const prefillEmail = route?.params?.prefillEmail;
     if (prefillEmail) {
       setEmail(prefillEmail);
-      setAuthMode('email');
     }
   }, [route?.params?.prefillEmail]);
-  const [showPassword, setShowPassword] = useState(false);
-  const [phone, setPhone] = useState('');
-  const [otpValue, setOtpValue] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [resendTimer, setResendTimer] = useState(25);
 
-  useEffect(() => {
-    let interval: any;
-    if (step === 'verify' && resendTimer > 0) {
-      interval = setInterval(() => {
-        setResendTimer((prev) => prev - 1);
-      }, 1000);
+  const handleGoogleSignIn = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: 'auraapex://login-callback',
+        },
+      });
+
+      if (error) {
+        Alert.alert('Google Sign-In', error.message);
+      } else if (data?.url) {
+        const supported = await Linking.canOpenURL(data.url);
+        if (supported) {
+          await Linking.openURL(data.url);
+        } else {
+          Alert.alert('Google Sign-In', 'Opening Google Authentication page...');
+        }
+      }
+    } catch (err: any) {
+      Alert.alert('Google Sign-In Error', err.message || 'Failed to initiate Google Sign-In.');
+    } finally {
+      setLoading(false);
     }
-    return () => clearInterval(interval);
-  }, [step, resendTimer]);
+  };
 
   const isEmailFormValid = email.trim().length > 0 && password.length >= 6;
-  const isPhoneFormValid = phone.trim().length >= 10;
-  const isOtpComplete = otpValue.trim().length === 6;
 
   const navigateAfterAuth = async () => {
     try {
@@ -123,60 +125,12 @@ export function LoginScreen({ route, navigation }: any) {
     }
   };
 
-  const handleSendPhoneOtp = async () => {
-    const cleanPhone = phone.trim();
-    if (cleanPhone.length < 10) {
-      Alert.alert('Invalid Phone', 'Please enter a valid 10-digit mobile number.');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const fullPhone = cleanPhone.startsWith('+') ? cleanPhone : `+91${cleanPhone}`;
-      const res = await apiClient.post('/auth/phone-otp', { phone: fullPhone });
-      if (res.data?.message) {
-        console.log('OTP Sent:', res.data.message);
-      }
-      setOtpValue('');
-      setResendTimer(25);
-      setStep('verify');
-    } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Failed to send OTP code.';
-      Alert.alert('OTP Failed', msg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyPhoneOtp = async () => {
-    if (!isOtpComplete) return;
-    const cleanPhone = phone.trim();
-    const fullPhone = cleanPhone.startsWith('+') ? cleanPhone : `+91${cleanPhone}`;
-
-    try {
-      setLoading(true);
-      const res = await apiClient.post('/auth/verify-otp', {
-        phone: fullPhone,
-        code: otpValue.trim(),
-      });
-
-      if (res.data?.success && res.data.data?.session) {
-        await setSession(res.data.data.session, res.data.data.profile);
-        await navigateAfterAuth();
-      } else {
-        throw new Error(res.data?.message || 'Verification failed');
-      }
-    } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Invalid or expired OTP code.';
-      Alert.alert('Verification Failed', msg);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0) + 8;
+  const bottomInset = Math.max(insets.bottom, 20) + 24;
 
   return (
     <View style={styles.container}>
-      {/* Top Hero Image (~30% height) */}
+      {/* Top Hero Image (~28% screen height) */}
       <ImageBackground
         source={{
           uri: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=1000&q=80',
@@ -186,13 +140,11 @@ export function LoginScreen({ route, navigation }: any) {
       >
         <View style={styles.darkGradientOverlay} />
 
-        <SafeAreaView style={styles.headerSafeArea}>
+        <View style={[styles.headerSafeArea, { paddingTop: topInset }]}>
           <View style={styles.topHeader}>
             <TouchableOpacity
               onPress={() => {
-                if (step === 'verify') {
-                  setStep('input');
-                } else if (navigation.canGoBack()) {
+                if (navigation.canGoBack()) {
                   navigation.goBack();
                 }
               }}
@@ -204,196 +156,106 @@ export function LoginScreen({ route, navigation }: any) {
 
             <Text style={styles.brandText}>AURA APEX</Text>
           </View>
-        </SafeAreaView>
+        </View>
       </ImageBackground>
 
       {/* Bottom Sheet Card (`colors.bgElevated`) */}
       <View style={styles.bottomSheetCard}>
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomInset }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {step === 'input' ? (
-            <>
-              {/* Heading */}
-              <Text style={styles.headingTitle}>
-                <Text style={styles.greenText}>Sign in </Text>
-                <Text style={styles.whiteText}>for{'\n'}Fitness Success</Text>
-              </Text>
-              <Text style={styles.subtext}>Join India's fastest growing fitness ecosystem.</Text>
+          {/* Heading */}
+          <Text style={styles.headingTitle}>
+            <Text style={styles.greenText}>Sign in </Text>
+            <Text style={styles.whiteText}>for{'\n'}Fitness Success</Text>
+          </Text>
+          <Text style={styles.subtext}>Join India's fastest growing fitness ecosystem.</Text>
 
-              {/* Segmented Control */}
-              <SegmentedTabs
-                options={[
-                  { key: 'email', label: 'Email', icon: <Mail size={16} color={authMode === 'email' ? colors.black : colors.textSecondary} /> },
-                  { key: 'phone', label: 'Phone', icon: <Phone size={16} color={authMode === 'phone' ? colors.black : colors.textSecondary} /> },
-                ]}
-                activeKey={authMode}
-                onChange={(key) => setAuthMode(key)}
-                style={styles.segmentedMargin}
-              />
+          {/* Email & Password Input Fields */}
+          <View style={styles.inputFieldBox}>
+            <Mail size={18} color={colors.textMuted} style={styles.inputIcon} />
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              placeholder="Email address"
+              placeholderTextColor={colors.textMuted}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              style={styles.textInput}
+            />
+          </View>
 
-              {/* Input Box */}
-              {authMode === 'email' ? (
-                <>
-                  <View style={styles.inputFieldBox}>
-                    <Mail size={18} color={colors.textMuted} style={styles.inputIcon} />
-                    <TextInput
-                      value={email}
-                      onChangeText={setEmail}
-                      placeholder="Email address"
-                      placeholderTextColor={colors.textMuted}
-                      autoCapitalize="none"
-                      keyboardType="email-address"
-                      style={styles.textInput}
-                    />
-                  </View>
-
-                  <View style={styles.inputFieldBox}>
-                    <Lock size={18} color={colors.textMuted} style={styles.inputIcon} />
-                    <TextInput
-                      value={password}
-                      onChangeText={setPassword}
-                      placeholder="Password"
-                      placeholderTextColor={colors.textMuted}
-                      secureTextEntry={!showPassword}
-                      autoCapitalize="none"
-                      style={styles.textInput}
-                    />
-                    <TouchableOpacity
-                      onPress={() => setShowPassword(!showPassword)}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                      {showPassword ? (
-                        <EyeOff size={18} color={colors.textMuted} />
-                      ) : (
-                        <Eye size={18} color={colors.textMuted} />
-                      )}
-                    </TouchableOpacity>
-                  </View>
-
-                  <TouchableOpacity
-                    onPress={() => navigation.navigate('ForgotPassword')}
-                    style={styles.forgotPasswordRow}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-                  </TouchableOpacity>
-
-                  {/* Sign In Primary Button */}
-                  <PrimaryButton
-                    title="Sign In"
-                    onPress={handleEmailSignIn}
-                    disabled={!isEmailFormValid}
-                    loading={loading}
-                    style={styles.ctaMargin}
-                  />
-                </>
+          <View style={styles.inputFieldBox}>
+            <Lock size={18} color={colors.textMuted} style={styles.inputIcon} />
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Password"
+              placeholderTextColor={colors.textMuted}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              style={styles.textInput}
+            />
+            <TouchableOpacity
+              onPress={() => setShowPassword(!showPassword)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              {showPassword ? (
+                <EyeOff size={18} color={colors.textMuted} />
               ) : (
-                <>
-                  <View style={styles.inputFieldBox}>
-                    <Text style={styles.flagCode}>🇮🇳 +91</Text>
-                    <View style={styles.inputDivider} />
-                    <TextInput
-                      value={phone}
-                      onChangeText={setPhone}
-                      placeholder="Mobile number"
-                      placeholderTextColor={colors.textMuted}
-                      keyboardType="phone-pad"
-                      maxLength={10}
-                      style={styles.textInput}
-                    />
-                  </View>
-
-                  {/* Send OTP Primary Button */}
-                  <PrimaryButton
-                    title="Send OTP"
-                    onPress={handleSendPhoneOtp}
-                    disabled={!isPhoneFormValid}
-                    loading={loading}
-                    style={styles.ctaMargin}
-                  />
-                </>
+                <Eye size={18} color={colors.textMuted} />
               )}
+            </TouchableOpacity>
+          </View>
 
-              {/* New here? Create account link */}
-              <View style={styles.accountLinkContainer}>
-                <Text style={styles.accountText}>
-                  New here?{' '}
-                  <Text
-                    style={styles.accountGreenLink}
-                    onPress={() => navigation.navigate('Signup')}
-                  >
-                    Create account
-                  </Text>
-                </Text>
-              </View>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('ForgotPassword')}
+            style={styles.forgotPasswordRow}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+          </TouchableOpacity>
 
-              {/* Divider */}
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>Or</Text>
-                <View style={styles.dividerLine} />
-              </View>
+          {/* Sign In Primary Button */}
+          <PrimaryButton
+            title="Sign In"
+            onPress={handleEmailSignIn}
+            disabled={!isEmailFormValid}
+            loading={loading}
+            style={styles.ctaMargin}
+          />
 
-              {/* Social Login Buttons */}
-              <View style={styles.socialRow}>
-                <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
-                  <GoogleIcon />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
-                  <FacebookIcon />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
-                  <AppleIcon />
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
-            <>
-              {/* Green Shield Icon */}
-              <View style={styles.shieldSquare}>
-                <Shield size={24} color={colors.black} strokeWidth={2.5} />
-              </View>
-
-              {/* Verify OTP Heading */}
-              <Text style={styles.headingTitle}>
-                <Text style={styles.whiteText}>Verify OTP</Text>
+          {/* New here? Create account link */}
+          <View style={styles.accountLinkContainer}>
+            <Text style={styles.accountText}>
+              New here?{' '}
+              <Text
+                style={styles.accountGreenLink}
+                onPress={() => navigation.navigate('Signup', { prefillEmail: email.trim() })}
+              >
+                Create account
               </Text>
-              <Text style={styles.subtext}>
-                6-digit code sent to +91 {phone}
-              </Text>
+            </Text>
+          </View>
 
-              {/* 6 Digit OTP Input */}
-              <OtpInput
-                length={6}
-                onCodeChange={(val) => setOtpValue(val)}
-                onCodeFilled={(val) => setOtpValue(val)}
-              />
+          {/* Divider */}
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>Or continue with</Text>
+            <View style={styles.dividerLine} />
+          </View>
 
-              {/* Resend Countdown */}
-              <View style={styles.resendRow}>
-                <TouchableOpacity
-                  disabled={resendTimer > 0}
-                  onPress={handleSendPhoneOtp}
-                >
-                  <Text style={[styles.resendText, resendTimer > 0 && styles.resendTextDisabled]}>
-                    {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend OTP'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Verify & Continue Button */}
-              <PrimaryButton
-                title="Verify & Continue"
-                onPress={handleVerifyPhoneOtp}
-                disabled={!isOtpComplete}
-                loading={loading}
-                style={styles.ctaMargin}
-              />
-            </>
-          )}
+          {/* Google Only Sign-In Button */}
+          <TouchableOpacity
+            style={styles.googleButton}
+            activeOpacity={0.85}
+            onPress={handleGoogleSignIn}
+          >
+            <GoogleIcon />
+            <Text style={styles.googleButtonText}>Sign in with Google</Text>
+          </TouchableOpacity>
         </ScrollView>
       </View>
     </View>
@@ -407,20 +269,24 @@ const styles = StyleSheet.create({
   },
   heroBackground: {
     width: '100%',
-    height: '34%',
+    height: Math.max(SCREEN_HEIGHT * 0.28, 220),
   },
   darkGradientOverlay: {
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(10, 10, 10, 0.55)',
   },
   headerSafeArea: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
   },
   topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingVertical: 4,
   },
   backButton: {
     width: 38,
@@ -538,27 +404,28 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.surfaceBorder,
   },
   dividerText: {
     color: colors.textSecondary,
     fontSize: 12,
     marginHorizontal: 12,
   },
-  socialRow: {
+  googleButton: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  socialButton: {
-    flex: 1,
-    height: 48,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 4,
+    height: 50,
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+  },
+  googleButtonText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '700',
+    marginLeft: 10,
   },
   shieldSquare: {
     width: 44,

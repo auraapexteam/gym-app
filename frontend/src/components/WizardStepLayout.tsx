@@ -4,9 +4,11 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
+  Platform,
+  StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radii } from '../theme/tokens';
 import { ChevronLeft } from 'lucide-react-native';
 import { PrimaryButton } from './PrimaryButton';
@@ -38,59 +40,61 @@ export function WizardStepLayout({
   loading = false,
   children,
 }: WizardStepLayoutProps) {
+  const insets = useSafeAreaInsets();
   const progressPercent = (currentStep / totalSteps) * 100;
   const stepText = `${String(currentStep).padStart(2, '0')} / ${totalSteps}`;
 
+  const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0) + 4;
+  const bottomInset = Math.max(insets.bottom, 12);
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        {/* Top Header Chrome */}
-        <View style={styles.headerRow}>
-          <TouchableOpacity
-            onPress={onBack}
-            activeOpacity={0.8}
-            style={styles.backButton}
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-          >
-            <ChevronLeft size={20} color={colors.textPrimary} />
-          </TouchableOpacity>
-
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
-          </View>
-
-          <Text style={styles.stepText}>{stepText}</Text>
-        </View>
-
-        {/* Content Area */}
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+    <View style={[styles.container, { paddingTop: topInset, paddingBottom: bottomInset }]}>
+      {/* Top Header Chrome */}
+      <View style={styles.headerRow}>
+        <TouchableOpacity
+          onPress={onBack}
+          activeOpacity={0.8}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
         >
-          {/* Emoji */}
-          <Text style={styles.emojiText}>{emoji}</Text>
+          <ChevronLeft size={20} color={colors.textPrimary} />
+        </TouchableOpacity>
 
-          {/* Title & Subtitle */}
-          <Text style={styles.titleText}>{title}</Text>
-          <Text style={styles.subtitleText}>{subtitle}</Text>
-
-          {/* Step Control */}
-          <View style={styles.stepControlWrapper}>{children}</View>
-        </ScrollView>
-
-        {/* Sticky Bottom CTA */}
-        <View style={styles.bottomFooter}>
-          <PrimaryButton
-            title={nextButtonLabel}
-            onPress={onNext}
-            disabled={!canContinue}
-            loading={loading}
-          />
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
         </View>
+
+        <Text style={styles.stepText}>{stepText}</Text>
       </View>
-    </SafeAreaView>
+
+      {/* Content Area */}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Emoji */}
+        <Text style={styles.emojiText}>{emoji}</Text>
+
+        {/* Title & Subtitle */}
+        <Text style={styles.titleText}>{title}</Text>
+        <Text style={styles.subtitleText}>{subtitle}</Text>
+
+        {/* Step Control */}
+        <View style={styles.stepControlWrapper}>{children}</View>
+      </ScrollView>
+
+      {/* Sticky Bottom CTA */}
+      <View style={styles.bottomFooter}>
+        <PrimaryButton
+          title={nextButtonLabel}
+          onPress={onNext}
+          disabled={!canContinue}
+          loading={loading}
+        />
+      </View>
+    </View>
   );
 }
 

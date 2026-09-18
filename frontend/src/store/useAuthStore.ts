@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Session, User } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../api/supabase';
 import { apiClient } from '../api/client';
 import { useGymStore } from '../store/useGymStore';
@@ -59,6 +60,7 @@ interface AuthState {
   loading: boolean;
   setSession: (session: any, profileData?: any) => Promise<void>;
   loadUserProfile: () => Promise<void>;
+  completeOnboarding: (data: Partial<UserProfile>) => Promise<void>;
   loadSubscription: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -108,6 +110,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               gym_id: profileData.gymId ?? profileData.gym_id ?? null,
               status: profileData.status ?? null,
               created_at: profileData.createdAt ?? profileData.created_at ?? null,
+              onboarding_completed: profileData.onboardingCompleted ?? profileData.onboarding_completed ?? true,
             },
           });
         } else {
@@ -126,6 +129,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               gym_id: null,
               status: null,
               created_at: null,
+              onboarding_completed: true,
             },
           });
         }
@@ -151,12 +155,49 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
+
       if (!error && data) {
-        set({ userProfile: data as UserProfile });
+        // Existing registered user: onboarding_completed is true -> goes straight to Home screen
+        set({
+          userProfile: {
+            ...data,
+            onboarding_completed: data.onboarding_completed ?? true,
+          } as UserProfile,
+        });
+      } else {
+        // Auto-initialize profile for new Google Sign-In or newly registered user
+        const initialProfile: UserProfile = {
+          id: user.id,
+          email: user.email ?? null,
+          full_name: (user.user_metadata?.full_name as string) ?? (user.user_metadata?.name as string) ?? null,
+          phone: user.phone ?? null,
+          avatar_url: (user.user_metadata?.avatar_url as string) ?? (user.user_metadata?.picture as string) ?? null,
+          role: 'customer',
+          gym_id: null,
+          status: 'active',
+          created_at: new Date().toISOString(),
+          onboarding_completed: false,
+        };
+
+        try {
+          const { data: createdProfile } = await supabase
+            .from('profiles')
+            .upsert(initialProfile)
+            .select('*')
+            .single();
+
+          if (createdProfile) {
+            set({ userProfile: createdProfile as UserProfile });
+          } else {
+            set({ userProfile: initialProfile });
+          }
+        } catch {
+          set({ userProfile: initialProfile });
+        }
       }
     } catch (err) {
-      console.warn('Failed to load user profile:', err);
+      console.warn('Failed to load or initialize user profile:', err);
     }
   },
 
@@ -190,8 +231,39 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  completeOnboarding: async (data: Partial<UserProfile>) => {
+    const user = get().user;
+    const currentProfile = get().userProfile;
+
+    const updatedProfile: UserProfile = {
+      ...(currentProfile || {}),
+      ...data,
+      id: user?.id || currentProfile?.id || '',
+      email: user?.email || currentProfile?.email || null,
+      onboarding_completed: true,
+    } as UserProfile;
+
+    // Immediately set userProfile in Zustand so AppNavigator re-renders and switches stack instantly
+    set({ userProfile: updatedProfile });
+
+    if (user?.id) {
+      (async () => {
+        try {
+          await supabase.from('profiles').upsert(updatedProfile);
+        } catch (err) {
+          console.warn('Background profile save error:', err);
+        }
+      })();
+    }
+  },
+
   signOut: async () => {
     set({ loading: true });
+    try {
+      await AsyncStorage.setItem('has_seen_onboarding', 'true');
+    } catch {
+      // ignore
+    }
     try {
       await supabase.auth.signOut();
     } catch (error) {

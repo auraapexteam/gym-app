@@ -3,8 +3,9 @@ import { API_BASE_URL } from '../config';
 import { useAuthStore } from '../store/useAuthStore';
 
 const cleanBaseUrl = (url: string) => {
-  if (!url) return '';
-  const clean = url.trim().replace(/\/+$/, '');
+  const fallback = 'https://gym-app-xtru.onrender.com/api/v1';
+  const target = (url && url.trim().length > 0) ? url : fallback;
+  const clean = target.trim().replace(/\/+$/, '');
   return clean.endsWith('/api/v1') ? clean : `${clean}/api/v1`;
 };
 

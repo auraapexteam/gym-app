@@ -5,13 +5,14 @@ import {
   View,
   TouchableOpacity,
   Alert,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   TextInput,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../api/supabase';
 import { useTheme } from '../context/ThemeContext';
 import { KeyRound, MailCheck } from 'lucide-react-native';
@@ -19,6 +20,7 @@ import { KeyRound, MailCheck } from 'lucide-react-native';
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function ForgotPasswordScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
 
@@ -27,6 +29,9 @@ export function ForgotPasswordScreen({ navigation }: any) {
   const [emailError, setEmailError] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+
+  const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0);
+  const bottomInset = Math.max(insets.bottom, 16) + 16;
 
   const handleSend = async () => {
     setEmailError('');
@@ -57,7 +62,7 @@ export function ForgotPasswordScreen({ navigation }: any) {
 
   if (sent) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: topInset, paddingBottom: bottomInset }]}>
         <View style={styles.successWrapper}>
           <View style={styles.successIconBadge}>
             <MailCheck size={40} color={colors.success} />
@@ -74,13 +79,13 @@ export function ForgotPasswordScreen({ navigation }: any) {
             <Text style={styles.primaryButtonText}>Back to Sign In</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
+    <View style={[styles.container, { paddingTop: topInset }]}>
+      <ScrollView contentContainerStyle={[styles.scrollContainer, { paddingBottom: bottomInset }]} keyboardShouldPersistTaps="handled">
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
           <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.backButton}>
             <Text style={styles.backButtonText}>← Back to sign in</Text>
@@ -136,7 +141,7 @@ export function ForgotPasswordScreen({ navigation }: any) {
           </View>
         </KeyboardAvoidingView>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

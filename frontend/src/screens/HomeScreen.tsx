@@ -7,6 +7,7 @@ import {
   ScrollView,
   FlatList,
   ImageBackground,
+  Image,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,8 +28,10 @@ import {
   Flame,
   Play,
   Zap,
+  Calendar,
 } from 'lucide-react-native';
 import { apiClient } from '../api/client';
+import { todayLocalDateString } from '../utils/date';
 
 export function HomeScreen({ navigation }: any) {
   const { isDark, setTheme } = useTheme();
@@ -58,6 +61,26 @@ export function HomeScreen({ navigation }: any) {
     loadSubscription();
     fetchMyRequestStatus();
     fetchDirectory();
+
+    const now = new Date();
+    const todayStr = todayLocalDateString();
+
+    apiClient.get('/progress/month', {
+      params: { year: String(now.getFullYear()), month: String(now.getMonth() + 1) }
+    })
+      .then((res) => {
+        if (res.data?.success && res.data.data) {
+          const d = res.data.data;
+          const todayWater = (d.waterLogs || []).find((w: any) => (w.log_date || w.logDate || '').slice(0, 10) === todayStr);
+          const todayProtein = (d.proteinLogs || []).find((p: any) => (p.log_date || p.logDate || '').slice(0, 10) === todayStr);
+          const todaySteps = (d.stepsLogs || []).find((s: any) => (s.log_date || s.logDate || '').slice(0, 10) === todayStr);
+
+          if (todayWater) setWaterVal((todayWater.amount_ml || todayWater.amountMl || 0) / 1000);
+          if (todayProtein) setProteinVal(todayProtein.amount_g || todayProtein.amountG || 0);
+          if (todaySteps) setStepsVal(todaySteps.steps || 0);
+        }
+      })
+      .catch(() => {});
 
     apiClient.get('/attendance/me')
       .then((res) => {
@@ -124,9 +147,16 @@ export function HomeScreen({ navigation }: any) {
           <View style={styles.heroOverlay} />
           <SafeAreaView style={styles.heroSafeArea}>
             <View style={styles.heroHeaderRow}>
-              <View>
-                <Text style={styles.greetingText}>Good morning 👋</Text>
-                <Text style={styles.userNameText}>{userName}</Text>
+              <View style={styles.userGreetingRow}>
+                <Image
+                  source={require('../assets/logo.png')}
+                  style={styles.appLogoHeader}
+                  resizeMode="cover"
+                />
+                <View>
+                  <Text style={styles.greetingText}>Good morning 👋</Text>
+                  <Text style={styles.userNameText}>{userName}</Text>
+                </View>
               </View>
 
               <View style={styles.topActionsCluster}>
@@ -164,14 +194,15 @@ export function HomeScreen({ navigation }: any) {
                 </TouchableOpacity>
               </View>
             </View>
+
+            <View style={styles.todayBadgePill}>
+              <Calendar size={13} color={colors.accent} style={{ marginRight: 6 }} />
+              <Text style={styles.todayBadgeText}>TODAY</Text>
+            </View>
           </SafeAreaView>
         </ImageBackground>
 
         <View style={styles.bodyPadding}>
-          <View style={styles.todayBadgePill}>
-            <Text style={styles.todayBadgeText}>TODAY</Text>
-          </View>
-
           <View
             style={[
               styles.dailyActivityCard,
@@ -336,7 +367,7 @@ const styles = StyleSheet.create({
   },
   heroBackground: {
     width: '100%',
-    height: 220,
+    height: 230,
   },
   heroOverlay: {
     ...StyleSheet.absoluteFill,
@@ -346,13 +377,25 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     justifyContent: 'space-between',
-    paddingBottom: 16,
+    paddingBottom: 12,
   },
   heroHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingTop: 8,
+  },
+  userGreetingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  appLogoHeader: {
+    width: 38,
+    height: 38,
+    borderRadius: 8,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(182, 255, 0, 0.3)',
   },
   greetingText: {
     color: colors.textSecondary,
@@ -361,9 +404,9 @@ const styles = StyleSheet.create({
   },
   userNameText: {
     color: colors.white,
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '900',
-    marginTop: 2,
+    marginTop: 1,
   },
   topActionsCluster: {
     flexDirection: 'row',
@@ -411,13 +454,16 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   todayBadgePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: colors.accentDim,
+    backgroundColor: 'rgba(182, 255, 0, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(182, 255, 0, 0.4)',
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: radii.pill,
-    marginBottom: 10,
-    marginTop: 4,
+    marginBottom: 8,
   },
   todayBadgeText: {
     color: colors.accent,
@@ -427,7 +473,7 @@ const styles = StyleSheet.create({
   },
   bodyPadding: {
     paddingHorizontal: 20,
-    marginTop: -16,
+    marginTop: 12,
   },
   dailyActivityCard: {
     borderRadius: radii.lg,

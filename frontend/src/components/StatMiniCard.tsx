@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { colors, radii } from '../theme/tokens';
+import { radii } from '../theme/tokens';
+import { useTheme } from '../context/ThemeContext';
 
 interface StatMiniCardProps {
   icon: React.ReactNode;
@@ -17,13 +18,24 @@ export function StatMiniCard({
   label,
   style,
 }: StatMiniCardProps) {
+  const { colors: themeColors, isDark } = useTheme();
+
   return (
-    <View style={[styles.card, style]}>
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: isDark ? themeColors.bgElevated : '#FFFFFF',
+          borderColor: themeColors.surfaceBorder,
+        },
+        style,
+      ]}
+    >
       <View style={[styles.iconWrapper, { backgroundColor: iconBgColor }]}>
         {icon}
       </View>
-      <Text style={styles.valueText}>{value}</Text>
-      <Text style={styles.labelText}>{label}</Text>
+      <Text style={[styles.valueText, { color: themeColors.textPrimary }]}>{value}</Text>
+      <Text style={[styles.labelText, { color: isDark ? themeColors.textSecondary : '#4B5563' }]}>{label}</Text>
     </View>
   );
 }
@@ -31,11 +43,9 @@ export function StatMiniCard({
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    backgroundColor: colors.bgElevated,
     borderRadius: radii.md,
     padding: 12,
     borderWidth: 1,
-    borderColor: colors.surfaceBorder,
     alignItems: 'flex-start',
   },
   iconWrapper: {
@@ -47,14 +57,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   valueText: {
-    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '800',
   },
   labelText: {
-    color: colors.textSecondary,
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '600',
     marginTop: 2,
   },
 });

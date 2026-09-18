@@ -30,7 +30,7 @@ const springConfig = {
 };
 
 const TabButton = React.memo(({ isFocused, label, IconComponent, onPress }: any) => {
-  const { isDark } = useTheme();
+  const { isDark, colors: themeColors } = useTheme();
   const focusedProgress = useSharedValue(isFocused ? 1 : 0);
   const buttonScale = useSharedValue(1);
 
@@ -47,6 +47,9 @@ const TabButton = React.memo(({ isFocused, label, IconComponent, onPress }: any)
 
   const AnimatedIcon = useMemo(() => Animated.createAnimatedComponent(IconComponent), [IconComponent]);
 
+  const activeColor = themeColors.accent || (isDark ? '#B6FF00' : '#96D600');
+  const inactiveColor = isDark ? '#9CA3AF' : '#6B7280';
+
   const animatedIconStyle = useAnimatedStyle(() => {
     return {
       transform: [
@@ -55,7 +58,7 @@ const TabButton = React.memo(({ isFocused, label, IconComponent, onPress }: any)
       color: interpolateColor(
         focusedProgress.value,
         [0, 1],
-        [isDark ? '#9CA3AF' : '#6B7280', colors.accent]
+        [inactiveColor, activeColor]
       ),
     };
   });
@@ -66,7 +69,7 @@ const TabButton = React.memo(({ isFocused, label, IconComponent, onPress }: any)
       color: interpolateColor(
         focusedProgress.value,
         [0, 1],
-        [isDark ? '#9CA3AF' : '#6B7280', colors.accent]
+        [inactiveColor, activeColor]
       ),
     };
   });
@@ -92,7 +95,14 @@ const TabButton = React.memo(({ isFocused, label, IconComponent, onPress }: any)
     >
       <Animated.View style={animatedButtonStyle}>
         <View style={styles.iconContainer}>
-          {isFocused ? <View style={styles.activeGlowPill} /> : null}
+          {isFocused ? (
+            <View
+              style={[
+                styles.activeGlowPill,
+                { backgroundColor: isDark ? 'rgba(182, 255, 0, 0.18)' : 'rgba(132, 204, 22, 0.18)' },
+              ]}
+            />
+          ) : null}
           <AnimatedIcon
             size={22}
             style={animatedIconStyle}
@@ -108,7 +118,7 @@ const TabButton = React.memo(({ isFocused, label, IconComponent, onPress }: any)
 });
 
 function CustomTabBar({ state, navigation }: any) {
-  const { isDark } = useTheme();
+  const { isDark, colors: themeColors } = useTheme();
 
   return (
     <View style={styles.tabBarContainer}>
@@ -116,8 +126,12 @@ function CustomTabBar({ state, navigation }: any) {
         style={[
           styles.glassShell,
           {
-            backgroundColor: isDark ? colors.bgElevated : colors.surface,
-            borderColor: colors.surfaceBorder,
+            backgroundColor: isDark ? themeColors.bgElevated || '#141414' : '#FFFFFF',
+            borderColor: isDark ? themeColors.surfaceBorder || '#2A2A2A' : '#E5E7EB',
+            shadowColor: '#000000',
+            shadowOpacity: isDark ? 0.35 : 0.08,
+            shadowRadius: isDark ? 14 : 10,
+            elevation: isDark ? 8 : 4,
           },
         ]}
       >
@@ -166,6 +180,7 @@ export function CustomerTabNavigator() {
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
+        animation: 'none',
       }}
     >
       <Tab.Screen name="HomeTab" component={HomeScreen} options={{ title: 'Home' }} />

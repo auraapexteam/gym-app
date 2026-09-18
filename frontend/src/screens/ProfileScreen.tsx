@@ -7,8 +7,10 @@ import {
   Alert,
   ScrollView,
   Image,
+  Platform,
+  StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { colors, radii } from '../theme/tokens';
 import { useAuthStore } from '../store/useAuthStore';
@@ -34,7 +36,10 @@ import {
 } from 'lucide-react-native';
 
 export function ProfileScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const { userProfile, signOut, loadUserProfile, user } = useAuthStore();
+
+  const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0) + 8;
   const { fetchMyRequestStatus, savedGymIds, fetchSavedGyms } = useGymStore();
   const { isDark, setTheme } = useTheme();
 
@@ -92,7 +97,13 @@ export function ProfileScreen({ navigation }: any) {
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out of Aura Apex?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: () => signOut() },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          await signOut();
+        },
+      },
     ]);
   };
 
@@ -103,13 +114,13 @@ export function ProfileScreen({ navigation }: any) {
   const goalPercent = userProfile ? '100%' : '0%';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? colors.bg : '#F5F5F0' }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? colors.bg : '#F5F5F0', paddingTop: topInset }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Top Bar Header */}
         <View style={styles.topBar}>
           <TouchableOpacity
             onPress={() => setTheme(isDark ? 'light' : 'dark')}
-            style={styles.circleBtn}
+            style={[styles.circleBtn, { backgroundColor: isDark ? colors.surface : '#E5E7EB', borderColor: isDark ? colors.surfaceBorder : '#D1D5DB' }]}
             activeOpacity={0.8}
           >
             {isDark ? (
@@ -120,7 +131,7 @@ export function ProfileScreen({ navigation }: any) {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => navigation.navigate('Settings')}
-            style={styles.circleBtn}
+            style={[styles.circleBtn, { backgroundColor: isDark ? colors.surface : '#E5E7EB', borderColor: isDark ? colors.surfaceBorder : '#D1D5DB' }]}
             activeOpacity={0.8}
           >
             <Settings size={18} color={isDark ? colors.white : colors.black} />
@@ -133,8 +144,8 @@ export function ProfileScreen({ navigation }: any) {
             {avatarUrl ? (
               <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
             ) : (
-              <View style={styles.avatarFallback}>
-                <UserIcon size={36} color={colors.accent} />
+              <View style={[styles.avatarFallback, { backgroundColor: isDark ? colors.surface : '#E5E7EB' }]}>
+                <UserIcon size={36} color={isDark ? colors.accent : '#4D7C0F'} />
               </View>
             )}
             <View style={styles.cameraBadge}>
@@ -146,14 +157,14 @@ export function ProfileScreen({ navigation }: any) {
             <Text style={[styles.userName, { color: isDark ? colors.white : colors.black }]}>
               {nameDisplay}
             </Text>
-            {emailDisplay ? <Text style={styles.userEmail}>{emailDisplay}</Text> : null}
+            {emailDisplay ? <Text style={[styles.userEmail, { color: isDark ? colors.textSecondary : '#4B5563' }]}>{emailDisplay}</Text> : null}
 
             {/* Badges Row */}
             <View style={styles.badgeRow}>
               <View style={styles.proBadge}>
                 <Text style={styles.proBadgeText}>Apex Pro</Text>
               </View>
-              <View style={styles.streakBadge}>
+              <View style={[styles.streakBadge, { backgroundColor: isDark ? colors.surface : '#E5E7EB', borderColor: isDark ? colors.surfaceBorder : '#D1D5DB' }]}>
                 <Text style={[styles.streakBadgeText, { color: isDark ? colors.white : colors.black }]}>
                   🔥 {activeDaysCount}-day
                 </Text>
@@ -168,21 +179,21 @@ export function ProfileScreen({ navigation }: any) {
             <Text style={[styles.statNumber, { color: isDark ? colors.white : colors.black }]}>
               {workoutsCount}
             </Text>
-            <Text style={styles.statLabel}>Workouts</Text>
+            <Text style={[styles.statLabel, { color: isDark ? colors.textSecondary : '#4B5563' }]}>Workouts</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statCol}>
             <Text style={[styles.statNumber, { color: isDark ? colors.white : colors.black }]}>
               {savedGymIds.length}
             </Text>
-            <Text style={styles.statLabel}>Gyms</Text>
+            <Text style={[styles.statLabel, { color: isDark ? colors.textSecondary : '#4B5563' }]}>Gyms</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statCol}>
             <Text style={[styles.statNumber, { color: isDark ? colors.white : colors.black }]}>
               {activeDaysCount}
             </Text>
-            <Text style={styles.statLabel}>Active Days</Text>
+            <Text style={[styles.statLabel, { color: isDark ? colors.textSecondary : '#4B5563' }]}>Active Days</Text>
           </View>
         </View>
 
@@ -197,7 +208,7 @@ export function ProfileScreen({ navigation }: any) {
                 <Text style={[styles.goalTitle, { color: isDark ? colors.white : colors.black }]}>
                   Fitness Goal
                 </Text>
-                <Text style={styles.goalSub}>{goalSubtext}</Text>
+                <Text style={[styles.goalSub, { color: isDark ? colors.textSecondary : '#4B5563' }]}>{goalSubtext}</Text>
               </View>
             </View>
             <Text style={styles.goalPercent}>{goalPercent}</Text>
@@ -221,10 +232,10 @@ export function ProfileScreen({ navigation }: any) {
               <Text style={[styles.darkModeTitle, { color: isDark ? colors.white : colors.black }]}>
                 {isDark ? 'Dark Mode' : 'Light Mode'}
               </Text>
-              <Text style={styles.darkModeSub}>Tap to switch to {isDark ? 'light' : 'dark'}</Text>
+              <Text style={[styles.darkModeSub, { color: isDark ? colors.textSecondary : '#4B5563' }]}>Tap to switch to {isDark ? 'light' : 'dark'}</Text>
             </View>
           </View>
-          <View style={styles.darkModeToggleCircle}>
+          <View style={[styles.darkModeToggleCircle, { backgroundColor: isDark ? colors.surface : '#E5E7EB' }]}>
             {isDark ? <Moon size={16} color={colors.accent} /> : <Sun size={16} color={colors.accent} />}
           </View>
         </TouchableOpacity>
@@ -241,10 +252,10 @@ export function ProfileScreen({ navigation }: any) {
               </View>
               <View>
                 <Text style={[styles.menuTitle, { color: isDark ? colors.white : colors.black }]}>My Workouts</Text>
-                <Text style={styles.menuSub}>24 this month</Text>
+                <Text style={[styles.menuSub, { color: isDark ? colors.textSecondary : '#4B5563' }]}>24 this month</Text>
               </View>
             </View>
-            <ChevronRight size={18} color={colors.textMuted} />
+            <ChevronRight size={18} color={isDark ? colors.textMuted : '#9CA3AF'} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -257,10 +268,10 @@ export function ProfileScreen({ navigation }: any) {
               </View>
               <View>
                 <Text style={[styles.menuTitle, { color: isDark ? colors.white : colors.black }]}>Saved Gyms</Text>
-                <Text style={styles.menuSub}>5 saved</Text>
+                <Text style={[styles.menuSub, { color: isDark ? colors.textSecondary : '#4B5563' }]}>5 saved</Text>
               </View>
             </View>
-            <ChevronRight size={18} color={colors.textMuted} />
+            <ChevronRight size={18} color={isDark ? colors.textMuted : '#9CA3AF'} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -273,10 +284,10 @@ export function ProfileScreen({ navigation }: any) {
               </View>
               <View>
                 <Text style={[styles.menuTitle, { color: isDark ? colors.white : colors.black }]}>Achievements</Text>
-                <Text style={styles.menuSub}>8 of 15</Text>
+                <Text style={[styles.menuSub, { color: isDark ? colors.textSecondary : '#4B5563' }]}>8 of 15</Text>
               </View>
             </View>
-            <ChevronRight size={18} color={colors.textMuted} />
+            <ChevronRight size={18} color={isDark ? colors.textMuted : '#9CA3AF'} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -289,10 +300,10 @@ export function ProfileScreen({ navigation }: any) {
               </View>
               <View>
                 <Text style={[styles.menuTitle, { color: isDark ? colors.white : colors.black }]}>Membership</Text>
-                <Text style={styles.menuSub}>Monthly · Active</Text>
+                <Text style={[styles.menuSub, { color: isDark ? colors.textSecondary : '#4B5563' }]}>Monthly · Active</Text>
               </View>
             </View>
-            <ChevronRight size={18} color={colors.textMuted} />
+            <ChevronRight size={18} color={isDark ? colors.textMuted : '#9CA3AF'} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -305,7 +316,7 @@ export function ProfileScreen({ navigation }: any) {
               </View>
               <Text style={[styles.menuTitle, { color: isDark ? colors.white : colors.black }]}>Privacy & Security</Text>
             </View>
-            <ChevronRight size={18} color={colors.textMuted} />
+            <ChevronRight size={18} color={isDark ? colors.textMuted : '#9CA3AF'} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -318,7 +329,7 @@ export function ProfileScreen({ navigation }: any) {
               </View>
               <Text style={[styles.menuTitle, { color: isDark ? colors.white : colors.black }]}>Help & Support</Text>
             </View>
-            <ChevronRight size={18} color={colors.textMuted} />
+            <ChevronRight size={18} color={isDark ? colors.textMuted : '#9CA3AF'} />
           </TouchableOpacity>
         </View>
 
@@ -332,7 +343,7 @@ export function ProfileScreen({ navigation }: any) {
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

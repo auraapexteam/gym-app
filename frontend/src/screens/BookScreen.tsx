@@ -4,9 +4,11 @@ import {
   Text,
   View,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
+  Platform,
+  StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { QrCode, Dumbbell, Zap, Sun, Moon, Check } from 'lucide-react-native';
 import { colors, radii } from '../theme/tokens';
 import { useTheme } from '../context/ThemeContext';
@@ -16,8 +18,12 @@ import { PrimaryButton } from '../components/PrimaryButton';
 import { apiClient } from '../api/client';
 
 export function BookScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const { isDark, setTheme } = useTheme();
   const { userProfile, user, subscription, loadSubscription, loadUserProfile } = useAuthStore();
+  
+  const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0) + 8;
+  
   const [activeTab, setActiveTab] = useState<'scan' | 'history'>('scan');
   const [scannedCount, setScannedCount] = useState(0);
   const [historyItems, setHistoryItems] = useState<any[]>([]);
@@ -71,7 +77,7 @@ export function BookScreen({ navigation }: any) {
     : 'Active';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? colors.bg : '#F5F5F0' }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? colors.bg : '#F5F5F0', paddingTop: topInset }]}>
       {/* Top Header */}
       <View style={styles.topHeader}>
         <Text style={[styles.headerTitle, { color: isDark ? colors.white : colors.black }]}>
@@ -170,7 +176,7 @@ export function BookScreen({ navigation }: any) {
               <Text style={[styles.qrTitle, { color: isDark ? colors.white : colors.black }]}>
                 Scan Gym QR Code
               </Text>
-              <Text style={styles.qrSub}>
+              <Text style={[styles.qrSub, { color: isDark ? colors.textMuted : '#4B5563' }]}>
                 Point your camera at the gym's entry QR code to check in instantly
               </Text>
 
@@ -196,7 +202,9 @@ export function BookScreen({ navigation }: any) {
                   <Text style={[styles.stepName, { color: isDark ? colors.white : colors.black }]}>
                     Arrive at the gym
                   </Text>
-                  <Text style={styles.stepDesc}>Show up at your registered Aura Apex gym</Text>
+                  <Text style={[styles.stepDesc, { color: isDark ? colors.textMuted : '#4B5563' }]}>
+                    Show up at your registered Aura Apex gym
+                  </Text>
                 </View>
               </View>
 
@@ -209,7 +217,9 @@ export function BookScreen({ navigation }: any) {
                   <Text style={[styles.stepName, { color: isDark ? colors.white : colors.black }]}>
                     Open Scanner
                   </Text>
-                  <Text style={styles.stepDesc}>Tap 'Open Scanner' and allow camera access</Text>
+                  <Text style={[styles.stepDesc, { color: isDark ? colors.textMuted : '#4B5563' }]}>
+                    Tap 'Open Scanner' and allow camera access
+                  </Text>
                 </View>
               </View>
 
@@ -222,7 +232,9 @@ export function BookScreen({ navigation }: any) {
                   <Text style={[styles.stepName, { color: isDark ? colors.white : colors.black }]}>
                     Scan & Check In
                   </Text>
-                  <Text style={styles.stepDesc}>Point at the entry QR — you're in instantly</Text>
+                  <Text style={[styles.stepDesc, { color: isDark ? colors.textMuted : '#4B5563' }]}>
+                    Point at the entry QR — you're in instantly
+                  </Text>
                 </View>
               </View>
             </View>
@@ -283,7 +295,7 @@ export function BookScreen({ navigation }: any) {
           </>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

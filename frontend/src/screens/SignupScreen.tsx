@@ -10,8 +10,10 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
+  StatusBar,
+  Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { ChevronLeft, User, Mail, Lock } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -29,30 +31,46 @@ const GoogleIcon = () => (
   </Svg>
 );
 
-const FacebookIcon = () => (
-  <Svg width={20} height={20} viewBox="0 0 24 24">
-    <Path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-  </Svg>
-);
-
-const AppleIcon = () => (
-  <Svg width={20} height={20} viewBox="0 0 24 24">
-    <Path fill="#FFFFFF" d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.32c.67-.82 1.12-1.96.99-3.1-.96.04-2.13.64-2.82 1.44-.61.71-1.14 1.87-.99 2.99 1.07.08 2.15-.51 2.82-1.33z"/>
-  </Svg>
-);
-
-export function SignupScreen({ navigation }: any) {
+export function SignupScreen({ route, navigation }: any) {
+  const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
 
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState(route?.params?.prefillFullName || '');
+  const [email, setEmail] = useState(route?.params?.prefillEmail || route?.params?.email || '');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: 'auraapex://login-callback',
+        },
+      });
+
+      if (error) {
+        Alert.alert('Google Sign-In', error.message);
+      } else if (data?.url) {
+        const supported = await Linking.canOpenURL(data.url);
+        if (supported) {
+          await Linking.openURL(data.url);
+        } else {
+          Alert.alert('Google Sign-In', 'Opening Google Authentication page...');
+        }
+      }
+    } catch (err: any) {
+      Alert.alert('Google Sign-In Error', err.message || 'Failed to initiate Google Sign-In.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSignup = async () => {
     setEmailError('');
@@ -116,9 +134,12 @@ export function SignupScreen({ navigation }: any) {
     }
   };
 
+  const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0);
+  const bottomInset = Math.max(insets.bottom, 20) + 24;
+
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
+    <View style={[styles.container, { paddingTop: topInset }]}>
+      <ScrollView contentContainerStyle={[styles.scrollContainer, { paddingBottom: bottomInset }]} keyboardShouldPersistTaps="handled">
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
@@ -230,26 +251,23 @@ export function SignupScreen({ navigation }: any) {
             {/* Divider */}
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>Or</Text>
+              <Text style={styles.dividerText}>Or continue with</Text>
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Social Buttons */}
-            <View style={styles.socialRow}>
-              <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
-                <GoogleIcon />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
-                <FacebookIcon />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
-                <AppleIcon />
-              </TouchableOpacity>
-            </View>
+            {/* Google Only Sign-In Button */}
+            <TouchableOpacity
+              style={styles.googleButton}
+              activeOpacity={0.85}
+              onPress={handleGoogleSignIn}
+            >
+              <GoogleIcon />
+              <Text style={styles.googleButtonText}>Sign in with Google</Text>
+            </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -389,26 +407,27 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#88ef0c',
+    backgroundColor: '#2d3540',
   },
   dividerText: {
     marginHorizontal: 12,
     fontSize: 13,
     color: '#94a3b8',
   },
-  socialRow: {
+  googleButton: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  socialButton: {
-    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     height: 52,
     backgroundColor: '#1f262e',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#2d3540',
-    justifyContent: 'center',
-    alignItems: 'center',
+  },
+  googleButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '700',
+    marginLeft: 12,
   },
 });

@@ -60,7 +60,7 @@ const CustomSlider = ({ value, min, max, onChange, unit }: any) => {
 };
 
 export function ProfileSetupScreen({ navigation }: any) {
-  const { user, loadUserProfile } = useAuthStore();
+  const { user, loadUserProfile, completeOnboarding, signOut } = useAuthStore();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
@@ -91,8 +91,10 @@ export function ProfileSetupScreen({ navigation }: any) {
   const handleBack = () => {
     if (step > 1) {
       setStep(step - 1);
-    } else {
+    } else if (navigation.canGoBack()) {
       navigation.goBack();
+    } else {
+      signOut();
     }
   };
 
@@ -115,24 +117,16 @@ export function ProfileSetupScreen({ navigation }: any) {
         onboarding_completed: true,
       };
 
-      if (user?.id) {
-        await supabase
-          .from('profiles')
-          .update(payload)
-          .eq('id', user.id);
-      }
+      await completeOnboarding(payload);
 
       try {
         await apiClient.patch('/auth/me', payload);
       } catch (apiErr) {
         console.log('REST API patch fallback');
       }
-
-      await loadUserProfile();
-      navigation.replace('MainTabs');
     } catch (err: any) {
-      Alert.alert('Profile Complete! 🎉', 'Welcome to Aura Apex!');
-      navigation.replace('MainTabs');
+      console.warn('Complete onboarding error:', err);
+      await completeOnboarding({ onboarding_completed: true });
     } finally {
       setLoading(false);
     }

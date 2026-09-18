@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { colors } from '../theme/tokens';
+import { useTheme } from '../context/ThemeContext';
 
 interface ProgressRingProps {
   percentage: number; // 0 to 100
@@ -20,6 +20,7 @@ export function ProgressRing({
   centerText,
   subLabel,
 }: ProgressRingProps) {
+  const { colors: themeColors, isDark } = useTheme();
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (circumference * Math.min(100, Math.max(0, percentage))) / 100;
@@ -33,7 +34,7 @@ export function ProgressRing({
             cx={size / 2}
             cy={size / 2}
             r={radius}
-            stroke="#222"
+            stroke={isDark ? '#262626' : '#E5E7EB'}
             strokeWidth={strokeWidth}
             fill="transparent"
           />
@@ -52,10 +53,10 @@ export function ProgressRing({
           />
         </Svg>
         <View pointerEvents="none" style={styles.centerContent}>
-          <Text style={styles.centerText}>{centerText}</Text>
+          <Text style={[styles.centerText, { color: themeColors.textPrimary }]}>{centerText}</Text>
         </View>
       </View>
-      <Text style={styles.subLabel}>{subLabel}</Text>
+      <Text style={[styles.subLabel, { color: isDark ? themeColors.textSecondary : '#4B5563' }]}>{subLabel}</Text>
     </View>
   );
 }
@@ -75,15 +76,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   centerText: {
-    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '800',
   },
   subLabel: {
-    color: colors.textSecondary,
     fontSize: 12,
     marginTop: 8,
-    fontWeight: '600',
+    fontWeight: '700',
     textAlign: 'center',
   },
 });
