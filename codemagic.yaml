@@ -63,7 +63,7 @@ workflows:
       - name: Configure App Store signing profiles
         script: |
           cd "$CM_BUILD_DIR/frontend"
-          xcode-project use-profiles
+          xcode-project use-profiles --project ios/SubscriptionManagement.xcodeproj
       - name: Build signed Release IPA
         script: |
           cd "$CM_BUILD_DIR/frontend"
