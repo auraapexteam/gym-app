@@ -3,6 +3,8 @@ workflows:
     name: Aura Apex iOS Release IPA
     max_build_duration: 120
     instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: codemagic
     triggering:
       events:
         - push
