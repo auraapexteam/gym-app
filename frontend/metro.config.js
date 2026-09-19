@@ -1,5 +1,7 @@
 const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
 
+const projectRoot = __dirname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 /**
  * Metro configuration
  * https://reactnative.dev/docs/metro
@@ -9,8 +11,10 @@ const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
 
 const config = {
   resolver: {
-    // `blacklistRE` is the deprecated name; modern Metro reads `blockList`.
-    blockList: /android\/.*|ios\/.*|backend\/.*/,
+    // Exclude only the app's native project folders. An unanchored `ios/`
+    // pattern also matches `node_modules/axios/` and prevents Metro from
+    // resolving Axios in Release bundles.
+    blockList: new RegExp(`^${projectRoot}[\\\\/](?:android|ios)[\\\\/].*$`),
   },
 };
 
