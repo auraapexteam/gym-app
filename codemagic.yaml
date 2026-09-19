@@ -64,6 +64,27 @@ workflows:
         script: |
           cd "$CM_BUILD_DIR/frontend"
           xcode-project use-profiles --project ios/SubscriptionManagement.xcodeproj
+      - name: Validate React Native release bundle
+        script: |
+          set -euxo pipefail
+          cd "$CM_BUILD_DIR/frontend"
+
+          echo "Node version:"
+          node --version
+
+          echo "NPM version:"
+          npm --version
+
+          echo "React Native version:"
+          node -p "require('react-native/package.json').version"
+
+          echo "Running Release iOS bundle..."
+          npx react-native bundle \
+            --platform ios \
+            --dev false \
+            --entry-file index.js \
+            --bundle-output /tmp/main.jsbundle \
+            --assets-dest /tmp/rn-assets
       - name: Build signed Release IPA
         script: |
           cd "$CM_BUILD_DIR/frontend"
