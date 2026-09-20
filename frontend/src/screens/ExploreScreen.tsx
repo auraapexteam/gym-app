@@ -32,6 +32,8 @@ export function ExploreScreen({ navigation }: any) {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedGym, setSelectedGym] = useState<GymCardData | null>(null);
   const [fetchingGyms, setFetchingGyms] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [sortBy, setSortBy] = useState('recommended');
 
   const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0) + 8;
 
@@ -86,6 +88,13 @@ export function ExploreScreen({ navigation }: any) {
     return matchesSearch && matchesCategory;
   });
 
+  const sortedGyms = [...filteredGyms].sort((a, b) => {
+    if (sortBy === 'price_low') return (a.monthlyPrice || 0) - (b.monthlyPrice || 0);
+    if (sortBy === 'price_high') return (b.monthlyPrice || 0) - (a.monthlyPrice || 0);
+    if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
+    return 0; // recommended
+  });
+
   return (
     <View style={[styles.container, { backgroundColor: isDark ? colors.bg : '#F5F5F0', paddingTop: topInset }]}>
       {/* Header */}
@@ -134,7 +143,7 @@ export function ExploreScreen({ navigation }: any) {
             />
           </View>
 
-          <TouchableOpacity style={styles.filterButton} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.filterButton} activeOpacity={0.85} onPress={() => setShowFilterModal(true)}>
             <SlidersHorizontal size={20} color={colors.black} />
           </TouchableOpacity>
         </View>
@@ -182,7 +191,7 @@ export function ExploreScreen({ navigation }: any) {
           </View>
         ) : (
           <View style={styles.gymList}>
-            {filteredGyms.map((gym) => (
+            {sortedGyms.map((gym) => (
               <GymCard
                 key={gym.id}
                 gym={gym}
@@ -225,6 +234,58 @@ export function ExploreScreen({ navigation }: any) {
               >
                 <Text style={styles.bookCTAText}>View Gym Details & Book</Text>
               </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
+
+      {/* Filter / Sort Modal */}
+      {showFilterModal ? (
+        <Modal visible animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity
+              style={styles.dismissOverlay}
+              onPress={() => setShowFilterModal(false)}
+            />
+            <View style={styles.modalSheet}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Sort & Filter</Text>
+                <TouchableOpacity onPress={() => setShowFilterModal(false)}>
+                  <X size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.modalSub}>Sort By</Text>
+
+              <View style={{ gap: 8, paddingBottom: 16 }}>
+                {[
+                  { id: 'recommended', label: 'Recommended' },
+                  { id: 'price_low', label: 'Price: Low to High' },
+                  { id: 'price_high', label: 'Price: High to Low' },
+                  { id: 'rating', label: 'Highest Rated' },
+                ].map((option) => (
+                  <TouchableOpacity
+                    key={option.id}
+                    onPress={() => {
+                      setSortBy(option.id);
+                      setShowFilterModal(false);
+                    }}
+                    style={[
+                      styles.filterOption,
+                      sortBy === option.id && styles.filterOptionActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.filterOptionText,
+                        sortBy === option.id && styles.filterOptionTextActive,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
           </View>
         </Modal>
@@ -376,6 +437,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     color: colors.black,
+  },
+  filterOption: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    marginBottom: 8,
+  },
+  filterOptionActive: {
+    backgroundColor: 'rgba(196, 255, 14, 0.1)',
+    borderColor: colors.accent,
+  },
+  filterOptionText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  filterOptionTextActive: {
+    color: colors.accent,
+    fontWeight: '700',
   },
 });
 
