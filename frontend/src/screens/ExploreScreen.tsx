@@ -89,8 +89,8 @@ export function ExploreScreen({ navigation }: any) {
   });
 
   const sortedGyms = [...filteredGyms].sort((a, b) => {
-    if (sortBy === 'price_low') return (a.monthlyPrice || 0) - (b.monthlyPrice || 0);
-    if (sortBy === 'price_high') return (b.monthlyPrice || 0) - (a.monthlyPrice || 0);
+    if (sortBy === 'price_low') return Number(a.monthlyPrice || 0) - Number(b.monthlyPrice || 0);
+    if (sortBy === 'price_high') return Number(b.monthlyPrice || 0) - Number(a.monthlyPrice || 0);
     if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
     return 0; // recommended
   });
