@@ -109,7 +109,7 @@ const TabButton = React.memo(({ isFocused, label, IconComponent, onPress }: any)
             strokeWidth={isFocused ? 2.4 : 1.8}
           />
         </View>
-        <Animated.Text style={[styles.tabLabel, animatedLabelStyle]}>
+        <Animated.Text style={[styles.tabLabel, animatedLabelStyle]} numberOfLines={1} adjustsFontSizeToFit>
           {label}
         </Animated.Text>
       </Animated.View>

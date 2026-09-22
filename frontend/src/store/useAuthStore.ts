@@ -258,27 +258,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signOut: async () => {
-    set({ loading: true });
+    // Clear local state immediately for a snappy UI transition
+    set({
+      user: null,
+      userProfile: null,
+      accessToken: null,
+      subscription: null,
+      loading: false,
+    });
+    useGymStore.getState().reset();
+
     try {
       await AsyncStorage.setItem('has_seen_onboarding', 'true');
     } catch {
       // ignore
     }
+
     try {
       await supabase.auth.signOut();
     } catch (error) {
-      // Even if the network revoke fails, the local session must be cleared —
-      // otherwise the user is stuck "logged in" while offline.
+      // Even if the network revoke fails, the local session is cleared
       console.warn('Signout error (local session cleared anyway):', error);
-    } finally {
-      set({
-        user: null,
-        userProfile: null,
-        accessToken: null,
-        subscription: null,
-        loading: false,
-      });
-      useGymStore.getState().reset();
     }
   },
 }));

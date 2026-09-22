@@ -658,7 +658,7 @@ export function ProgressScreen() {
                         active && { backgroundColor: '#A855F7', borderColor: '#A855F7' }
                       ]}
                     >
-                      <Text style={[styles.qualityPillText, active && { color: colors.white }]}>
+                      <Text style={[styles.qualityPillText, active && { color: colors.white }]} numberOfLines={1} adjustsFontSizeToFit>
                         {q}
                       </Text>
                     </TouchableOpacity>
@@ -984,10 +984,11 @@ const styles = StyleSheet.create({
     borderColor: colors.surfaceBorder,
     backgroundColor: colors.surface,
     alignItems: 'center',
-    marginHorizontal: 3,
+    marginHorizontal: 2,
+    paddingHorizontal: 2,
   },
   qualityPillText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: colors.textSecondary,
   },

@@ -179,21 +179,21 @@ export function ProfileScreen({ navigation }: any) {
             <Text style={[styles.statNumber, { color: isDark ? colors.white : colors.black }]}>
               {workoutsCount}
             </Text>
-            <Text style={[styles.statLabel, { color: isDark ? colors.textSecondary : '#4B5563' }]}>Workouts</Text>
+            <Text style={[styles.statLabel, { color: isDark ? colors.textSecondary : '#4B5563' }]} numberOfLines={1} adjustsFontSizeToFit>Workouts</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statCol}>
             <Text style={[styles.statNumber, { color: isDark ? colors.white : colors.black }]}>
               {savedGymIds.length}
             </Text>
-            <Text style={[styles.statLabel, { color: isDark ? colors.textSecondary : '#4B5563' }]}>Gyms</Text>
+            <Text style={[styles.statLabel, { color: isDark ? colors.textSecondary : '#4B5563' }]} numberOfLines={1} adjustsFontSizeToFit>Gyms</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statCol}>
             <Text style={[styles.statNumber, { color: isDark ? colors.white : colors.black }]}>
               {activeDaysCount}
             </Text>
-            <Text style={[styles.statLabel, { color: isDark ? colors.textSecondary : '#4B5563' }]}>Active Days</Text>
+            <Text style={[styles.statLabel, { color: isDark ? colors.textSecondary : '#4B5563' }]} numberOfLines={1} adjustsFontSizeToFit>Active Days</Text>
           </View>
         </View>
 
@@ -478,9 +478,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: colors.textSecondary,
+    textAlign: 'center',
   },
   statDivider: {
     width: 1,

@@ -41,7 +41,7 @@ export function PrimaryButton({
         <ActivityIndicator color={colors.black} size="small" />
       ) : (
         <>
-          <Text style={[styles.text, isDisabled && styles.disabledText, textStyle]}>
+          <Text style={[styles.text, isDisabled && styles.disabledText, textStyle]} numberOfLines={1} adjustsFontSizeToFit>
             {displayText}
           </Text>
           {icon ? icon : null}
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,

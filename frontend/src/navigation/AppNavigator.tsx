@@ -119,9 +119,8 @@ export function AppNavigator() {
     : 'auth-stack';
 
   return (
-    <NavigationContainer>
+    <NavigationContainer key={stackKey}>
       <Stack.Navigator
-        key={stackKey}
         initialRouteName={initialRoute}
         screenOptions={{ headerShown: false }}
       >
