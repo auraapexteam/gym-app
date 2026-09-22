@@ -618,3 +618,32 @@ Security Guarantees:
 - Tokens issued follow standard JWT schema and bearer authentication lifecycle.
 
 ---
+
+# 124. Account Deletion (GDPR & App Store Compliance)
+
+Purpose: Allows authenticated customers and users to self-delete their account and permanently purge their personal data, meeting Apple App Store & Google Play privacy requirements.
+
+Endpoints:
+- `DELETE /api/v1/auth/account`
+- `DELETE /api/v1/auth/me` (alias)
+
+Authentication:
+- Required (`Authorization: Bearer <accessToken>`)
+
+Behavior:
+1. Validates the caller's JWT and resolves their profile.
+2. Forbids `super_admin` self-deletion to prevent platform lockout.
+3. Invokes Supabase Auth Admin deletion (`supabase.auth.admin.deleteUser(userId)`).
+4. Cascades delete through `public.profiles` (`ON DELETE CASCADE`), which immediately purges all associated member rows, progress logs (`notes_logs`, `sleep_logs`, `progress_logs`, `water_logs`, `protein_logs`, `steps_logs`), workout history, saved gym bookmarks, and gym join requests.
+5. Records an audit event (`auth.delete_account`).
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Account deleted successfully",
+  "data": null
+}
+```
+
+---

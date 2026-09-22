@@ -77,6 +77,8 @@ export const authApi = {
 
   logout: () => axiosInstance.post<ApiResponse<null>>('/auth/logout'),
 
+  deleteAccount: () => axiosInstance.delete<ApiResponse<null>>('/auth/account'),
+
   me: () =>
     axiosInstance.get<ApiResponse<BackendProfile>>('/auth/me').then((res) => ({
       ...res,

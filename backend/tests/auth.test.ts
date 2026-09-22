@@ -92,4 +92,46 @@ describe('Auth Module', () => {
       expect(res.status).toBe(401);
     });
   });
+
+  describe('DELETE /api/v1/auth/account & DELETE /api/v1/auth/me', () => {
+    it('should successfully delete customer account', async () => {
+      setupAuthUser(Role.CUSTOMER, null, '47d7dfca-8857-48f8-b3ab-5c30fbdb7ba5', 'delete-me@example.com');
+      mockTable('profiles', {
+        id: '47d7dfca-8857-48f8-b3ab-5c30fbdb7ba5',
+        email: 'delete-me@example.com',
+        role: Role.CUSTOMER,
+        status: 'active',
+      });
+
+      const res = await request(app)
+        .delete('/api/v1/auth/account')
+        .set('Authorization', 'Bearer 47d7dfca-8857-48f8-b3ab-5c30fbdb7ba5');
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toBe('Account deleted successfully');
+    });
+
+    it('should reject unauthenticated delete request', async () => {
+      const res = await request(app).delete('/api/v1/auth/account');
+      expect(res.status).toBe(401);
+    });
+
+    it('should prevent super_admin self-deletion', async () => {
+      setupAuthUser(Role.SUPER_ADMIN, null, '47d7dfca-8857-48f8-b3ab-5c30fbdb7ba0', 'admin@example.com');
+      mockTable('profiles', {
+        id: '47d7dfca-8857-48f8-b3ab-5c30fbdb7ba0',
+        email: 'admin@example.com',
+        role: Role.SUPER_ADMIN,
+        status: 'active',
+      });
+
+      const res = await request(app)
+        .delete('/api/v1/auth/account')
+        .set('Authorization', 'Bearer 47d7dfca-8857-48f8-b3ab-5c30fbdb7ba0');
+
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+    });
+  });
 });

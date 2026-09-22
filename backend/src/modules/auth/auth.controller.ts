@@ -79,5 +79,20 @@ export class AuthController {
     });
     return sendSuccess(res, result, 'Phone verification successful');
   }
+
+  static async deleteAccount(req: Request, res: Response): Promise<Response> {
+    const user = currentUser(req);
+    await AuthService.deleteAccount(user.id);
+    await AuditService.record({
+      actorId: user.id,
+      actorRole: user.role,
+      gymId: user.gymId,
+      action: 'auth.delete_account',
+      resourceType: 'profile',
+      resourceId: user.id,
+      ipAddress: clientIp(req),
+    });
+    return sendSuccess(res, null, 'Account deleted successfully');
+  }
 }
 

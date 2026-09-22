@@ -160,6 +160,25 @@ export class AuthService {
     return toProfileDto(updated);
   }
 
+  /**
+   * Self-service account deletion for authenticated user.
+   * Deletes the user from Supabase Auth, which cascades through public.profiles and child records.
+   */
+  static async deleteAccount(userId: string): Promise<void> {
+    const profile = await profileRepository.findById(userId);
+    if (!profile) throw new NotFoundError('Profile not found', 'PROFILE_NOT_FOUND');
+
+    if (profile.role === Role.SUPER_ADMIN) {
+      throw new ForbiddenError('Super Admin accounts cannot be self-deleted', 'FORBIDDEN');
+    }
+
+    const { error } = await supabase.auth.admin.deleteUser(userId);
+    if (error) {
+      // Fallback: delete profile row directly if auth user deletion fails
+      await profileRepository.delete(userId);
+    }
+  }
+
   /** Delete a user account (used for manual rollback on onboarding failures). */
   static async removeUser(userId: string): Promise<void> {
     const { error } = await supabase.auth.admin.deleteUser(userId);

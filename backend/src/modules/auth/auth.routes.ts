@@ -35,5 +35,7 @@ router.post(
 router.post('/logout', authenticate, asyncHandler(AuthController.logout));
 router.get('/me', authenticate, asyncHandler(AuthController.me));
 router.patch('/me', authenticate, validate(updateProfileSchema), asyncHandler(AuthController.updateMe));
+router.delete('/account', authenticate, asyncHandler(AuthController.deleteAccount));
+router.delete('/me', authenticate, asyncHandler(AuthController.deleteAccount));
 
 export default router;
