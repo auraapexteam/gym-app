@@ -71,16 +71,18 @@ export function ProfileScreen({ navigation }: any) {
   }, [fetchMyRequestStatus, fetchSavedGyms]);
 
   const handlePickAvatar = async () => {
-    const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.8, maxWidth: 1200, maxHeight: 1200 });
-    if (result.didCancel || !result.assets?.[0]) return;
-
-    const asset = result.assets[0];
-    if (!asset.uri) return;
-
     try {
+      const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.8, maxWidth: 1200, maxHeight: 1200 });
+      if (result.errorCode) {
+        Alert.alert('Photo unavailable', result.errorMessage || 'Please check photo access in Settings and try again.');
+        return;
+      }
+      if (result.didCancel || !result.assets?.[0]?.uri) return;
+      const asset = result.assets[0];
+      const uri = result.assets[0].uri;
       setUploadingAvatar(true);
       const publicUrl = await uploadPersonalImage(
-        { uri: asset.uri, fileName: asset.fileName, type: asset.type, fileSize: asset.fileSize },
+        { uri, fileName: asset.fileName, type: asset.type, fileSize: asset.fileSize },
         'avatar'
       );
       const res = await apiClient.patch('/auth/me', { avatarUrl: publicUrl });

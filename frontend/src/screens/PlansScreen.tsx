@@ -36,7 +36,6 @@ interface Plan {
   description: string;
   price: number;
   durationDays: number;
-  billing_interval: 'month' | 'year';
   features?: string[];
 }
 
@@ -149,7 +148,6 @@ export function PlansScreen({ route, navigation }: any) {
             description: p.description || '',
             price: Number(p.price),
             durationDays,
-            billing_interval: durationDays >= 365 ? 'year' : 'month',
             features: planFeatures,
           };
         });
@@ -247,7 +245,7 @@ export function PlansScreen({ route, navigation }: any) {
     setCheckoutOpen(false);
   };
 
-  const getIntervalLabel = (plan: Plan) => (plan.billing_interval === 'year' ? '/yr' : '/mo');
+  const getIntervalLabel = (plan: Plan) => ` / ${plan.durationDays} days`;
 
   const activeSub = useMemo(() => {
     if (!subscription) return null;

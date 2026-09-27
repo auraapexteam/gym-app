@@ -1,83 +1,36 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   TouchableOpacity,
-  Switch,
   ScrollView,
   Alert,
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
 import { useAuthStore } from '../store/useAuthStore';
 import { ChevronRight, Trash2, FileText, X } from 'lucide-react-native';
-
-const PRIVACY_STORAGE_KEY = '@aura_apex_privacy_settings';
 
 export function PrivacySettingsScreen() {
   const { colors, isDark } = useTheme();
   const { user, userProfile, subscription } = useAuthStore();
 
-  // Privacy states
-  const [dataSharing, setDataSharing] = useState(true);
-  const [analytics, setAnalytics] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
-
-  useEffect(() => {
-    AsyncStorage.getItem(PRIVACY_STORAGE_KEY).then((data) => {
-      if (data) {
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed.dataSharing !== undefined) setDataSharing(parsed.dataSharing);
-          if (parsed.analytics !== undefined) setAnalytics(parsed.analytics);
-        } catch {
-          // ignore parsing error
-        }
-      }
-    });
-  }, []);
-
-  const handleToggleDataSharing = async (val: boolean) => {
-    setDataSharing(val);
-    await AsyncStorage.setItem(
-      PRIVACY_STORAGE_KEY,
-      JSON.stringify({ dataSharing: val, analytics })
-    );
-  };
-
-  const handleToggleAnalytics = async (val: boolean) => {
-    setAnalytics(val);
-    await AsyncStorage.setItem(
-      PRIVACY_STORAGE_KEY,
-      JSON.stringify({ dataSharing, analytics: val })
-    );
-  };
 
   const handlePlaceholderAction = (action: string) => {
     Alert.alert(
       action,
-      `Aura Apex operates under strict end-to-end data security standards. Your personal records are protected and never shared with third-party advertising networks.`,
+      'This document is not available in this build.',
       [{ text: 'OK' }]
     );
   };
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      '⚠ Delete Account',
-      'Are you absolutely sure you want to delete your Aura Apex account? This action is permanent and will remove your member profile and workout logs.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete Permanently',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('Request Submitted', 'Your account deletion request has been submitted.');
-          },
-        },
-      ]
+      'Deletion unavailable',
+      'Account deletion is not connected in this build. No request has been submitted and your account has not been deleted.'
     );
   };
 
@@ -86,7 +39,7 @@ export function PrivacySettingsScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={[styles.title, { color: colors.foreground }]}>Privacy & Data Protection</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Control how your gym membership and biometric logs are collected, shared, and stored.
+          Review your account details and privacy information.
         </Text>
 
         {/* Legal Docs Card */}
@@ -113,40 +66,6 @@ export function PrivacySettingsScreen() {
           </View>
         </View>
 
-        {/* Data Collection Toggles Card */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Data collection preferences</Text>
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={styles.toggleRow}>
-              <View style={styles.rowLeft}>
-                <Text style={[styles.rowLabel, { color: colors.foreground }]}>Share weight progress</Text>
-                <Text style={[styles.rowDesc, { color: colors.mutedForeground }]}>
-                  Allow your linked personal trainer and coaches to view your logbook charts.
-                </Text>
-              </View>
-              <Switch
-                value={dataSharing}
-                onValueChange={handleToggleDataSharing}
-                trackColor={{ false: 'rgba(255,255,255,0.08)', true: colors.primary }}
-              />
-            </View>
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-            <View style={styles.toggleRow}>
-              <View style={styles.rowLeft}>
-                <Text style={[styles.rowLabel, { color: colors.foreground }]}>Anonymous analytics</Text>
-                <Text style={[styles.rowDesc, { color: colors.mutedForeground }]}>
-                  Help us improve app features by sending anonymous performance metrics.
-                </Text>
-              </View>
-              <Switch
-                value={analytics}
-                onValueChange={handleToggleAnalytics}
-                trackColor={{ false: 'rgba(255,255,255,0.08)', true: colors.primary }}
-              />
-            </View>
-          </View>
-        </View>
-
         {/* Account Data Card */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Manage Account Data</Text>
@@ -157,9 +76,9 @@ export function PrivacySettingsScreen() {
               onPress={() => setExportModalOpen(true)}
             >
               <View style={styles.rowLeft}>
-                <Text style={[styles.rowLabel, { color: colors.foreground }]}>Request account data export</Text>
+                <Text style={[styles.rowLabel, { color: colors.foreground }]}>View account summary</Text>
                 <Text style={[styles.rowDesc, { color: colors.mutedForeground }]}>
-                  View and inspect all your stored active subscriptions, attendance, and logbook entries.
+                  View your profile and current plan. This is not a complete data export.
                 </Text>
               </View>
               <ChevronRight size={14} color={colors.mutedForeground} />
@@ -220,10 +139,9 @@ export function PrivacySettingsScreen() {
                 style={[styles.doneBtn, { backgroundColor: colors.primary }]}
                 onPress={() => {
                   setExportModalOpen(false);
-                  Alert.alert('Data Exported', 'A comprehensive archive has been generated for your records.');
                 }}
               >
-                <Text style={styles.doneBtnText}>Close Data Export</Text>
+                <Text style={styles.doneBtnText}>Close summary</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>

@@ -12,8 +12,6 @@ import { useAuthStore } from '../store/useAuthStore';
 import {
   ChevronRight,
   Palette,
-  Bell,
-  Globe,
   Lock,
   Eye,
   Settings,
@@ -36,18 +34,6 @@ export function SettingsScreen({ navigation }: any) {
           icon: Palette,
           color: colors.primary,
         },
-        {
-          id: 'NotificationSettings',
-          label: 'Notifications',
-          icon: Bell,
-          color: colors.success,
-        },
-        {
-          id: 'LanguageSettings',
-          label: 'Language preference',
-          icon: Globe,
-          color: colors.info,
-        },
       ],
     },
     {
@@ -61,7 +47,7 @@ export function SettingsScreen({ navigation }: any) {
         },
         {
           id: 'PrivacySettings',
-          label: 'Privacy policy',
+          label: 'Privacy & account data',
           icon: Eye,
           color: colors.destructive,
         },

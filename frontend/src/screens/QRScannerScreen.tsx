@@ -11,6 +11,8 @@ import {
   ActivityIndicator,
   PermissionsAndroid,
   Platform,
+  Linking,
+  AppState,
 } from 'react-native';
 import { Camera } from 'react-native-camera-kit';
 import { colors, radii } from '../theme/tokens';
@@ -22,6 +24,25 @@ export function QRScannerScreen({ navigation }: any) {
   const [submitting, setSubmitting] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const submittingRef = useRef(false);
+  const [cameraKey, setCameraKey] = useState(0);
+
+  useEffect(() => {
+    const listener = AppState.addEventListener('change', (state) => {
+      // CameraKit checks iOS permission on mount, including after a Settings change.
+      if (state === 'active' && Platform.OS === 'ios') {
+        setHasPermission(true);
+        setCameraKey((key) => key + 1);
+      } else if (state === 'active' && Platform.OS === 'android') {
+        PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.CAMERA)
+          .then((granted) => {
+            setHasPermission(granted);
+            setCameraKey((key) => key + 1);
+          })
+          .catch(() => setHasPermission(false));
+      }
+    });
+    return () => listener.remove();
+  }, []);
 
   useEffect(() => {
     const checkCameraPermission = async () => {
@@ -124,10 +145,12 @@ export function QRScannerScreen({ navigation }: any) {
         <View style={styles.scannerCenter}>
           {hasPermission && (
             <Camera
+              key={cameraKey}
               style={StyleSheet.absoluteFill}
               scanBarcode={true}
               onReadCode={(event: any) => handleBarcodeRead(event?.nativeEvent?.codeStringValue)}
               showFrame={false}
+              onError={() => setHasPermission(false)}
             />
           )}
 
@@ -150,6 +173,16 @@ export function QRScannerScreen({ navigation }: any) {
 
         {/* Footer info */}
         <View style={styles.footer}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={() => Linking.openSettings().catch(() => {
+              Alert.alert('Open Settings', 'Open your device Settings and allow camera access for Aura Apex, then return to the scanner.');
+            })}
+          >
+            <Text style={styles.footerTip}>
+              {hasPermission === false ? 'Camera unavailable. Tap to check camera access in Settings.' : 'Camera not working? Open camera settings'}
+            </Text>
+          </TouchableOpacity>
           {submitting ? (
             <View style={styles.loadingRow}>
               <ActivityIndicator size="small" color={colors.accent} />

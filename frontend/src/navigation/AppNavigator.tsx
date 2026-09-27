@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View, StyleSheet, Platform, PermissionsAndroid, Linking } from 'react-native';
+import { ActivityIndicator, Alert, View, StyleSheet, Platform, PermissionsAndroid, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { supabase } from '../api/supabase';
+import { completeOAuthCallback } from '../api/oauthCallback';
 import { useAuthStore } from '../store/useAuthStore';
 import { COLORS } from '../theme/tokens';
 
@@ -61,28 +62,14 @@ export function AppNavigator() {
     };
     requestNotificationPermission();
 
-    // Handle deep links when returned from Google OAuth (auraapex://login-callback#access_token=...)
+    // Both Google and Apple return through the same authenticated callback.
     const handleDeepLink = async (url: string | null) => {
       if (!url) return;
       try {
-        const hash = url.split('#')[1] || url.split('?')[1] || '';
-        if (!hash) return;
-        const params: Record<string, string> = {};
-        hash.split('&').forEach((part) => {
-          const [k, v] = part.split('=');
-          if (k && v) params[k] = decodeURIComponent(v);
-        });
-        if (params.access_token && params.refresh_token) {
-          const { data } = await supabase.auth.setSession({
-            access_token: params.access_token,
-            refresh_token: params.refresh_token,
-          });
-          if (data?.session) {
-            await setSession(data.session);
-          }
-        }
-      } catch (err) {
-        console.warn('Failed to parse deep link session:', err);
+        const session = await completeOAuthCallback(url);
+        if (session) await setSession(session);
+      } catch {
+        Alert.alert('Sign-in incomplete', 'Sign-in was cancelled or could not be completed. Please try again.');
       }
     };
 

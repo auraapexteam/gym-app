@@ -21,15 +21,15 @@ export function HelpSettingsScreen() {
   const faqs = [
     {
       q: 'How do gym check-ins work?',
-      a: 'Tap the QR Code button in the center of the bottom navigation bar. Point your screen toward the reception display scanner to automatically check in and log your attendance.',
+      a: 'Tap the QR Code button in the bottom navigation bar, then scan the gym entry QR code with your camera or enter the active gym token manually.',
     },
     {
       q: 'Can I cancel my subscription anytime?',
-      a: 'Yes, you can pause or cancel your active subscription plan directly under the Plans Tab or contact gym support. Your active period will remain valid until the expiration date.',
+      a: 'Contact your gym to discuss cancellation, pauses, and any applicable refund terms for your membership.',
     },
     {
       q: 'How do I log my daily fitness metrics?',
-      a: 'Go to the Logbook tab (Progress) or click "+ Log Today" on the Home dashboard. You can log weight (kg), water (L), and protein (g). Log entries are saved locally and synced.',
+      a: 'Go to the Logbook tab (Progress) or tap "+ Log Today" on the Home dashboard. You can log weight (kg), water (L), and protein (g). An internet connection is required to save your entries.',
     },
   ];
 
@@ -37,8 +37,8 @@ export function HelpSettingsScreen() {
     setExpandedIndex(expandedIndex === idx ? null : idx);
   };
 
-  const SUPPORT_EMAIL = 'support@auraapex.com';
-  const SUPPORT_PHONE = '+919876543210';
+  const SUPPORT_EMAIL = 'contact@auraapex.in';
+  const SUPPORT_PHONE = '+918010949460';
 
   const openLink = async (url: string) => {
     try {
@@ -116,7 +116,7 @@ export function HelpSettingsScreen() {
                 </View>
                 <Text style={[styles.rowLabel, { color: colors.foreground }]}>Email Support</Text>
               </View>
-              <Text style={[styles.valueLabel, { color: colors.mutedForeground }]}>support@auraapex.com</Text>
+              <Text style={[styles.valueLabel, { color: colors.mutedForeground }]}>{SUPPORT_EMAIL}</Text>
             </TouchableOpacity>
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <TouchableOpacity
@@ -130,7 +130,7 @@ export function HelpSettingsScreen() {
                 </View>
                 <Text style={[styles.rowLabel, { color: colors.foreground }]}>Call Help Desk</Text>
               </View>
-              <Text style={[styles.valueLabel, { color: colors.mutedForeground }]}>+91 98765 43210</Text>
+              <Text style={[styles.valueLabel, { color: colors.mutedForeground }]}>+91 80109 49460</Text>
             </TouchableOpacity>
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <TouchableOpacity
