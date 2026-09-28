@@ -19,6 +19,7 @@ import { ChevronLeft, User, Mail, Lock } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../api/supabase';
 import { useTheme } from '../context/ThemeContext';
+import { PrivacyPolicyLink } from '../components/PrivacyPolicyLink';
 import { AppleSignInButton } from '../components/AppleSignInButton';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -267,6 +268,7 @@ export function SignupScreen({ route, navigation }: any) {
             </TouchableOpacity>
             <AppleSignInButton disabled={loading} />
           </View>
+          <PrivacyPolicyLink />
         </KeyboardAvoidingView>
       </ScrollView>
     </View>

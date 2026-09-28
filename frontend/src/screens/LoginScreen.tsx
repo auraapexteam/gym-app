@@ -19,6 +19,7 @@ import { ChevronLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, radii } from '../theme/tokens';
 import { PrimaryButton } from '../components/PrimaryButton';
+import { PrivacyPolicyLink } from '../components/PrivacyPolicyLink';
 import { AppleSignInButton } from '../components/AppleSignInButton';
 import { useAuthStore } from '../store/useAuthStore';
 import { apiClient } from '../api/client';
@@ -258,6 +259,7 @@ export function LoginScreen({ route, navigation }: any) {
             <Text style={styles.googleButtonText}>Sign in with Google</Text>
           </TouchableOpacity>
           <AppleSignInButton disabled={loading} />
+          <PrivacyPolicyLink />
         </ScrollView>
       </View>
     </View>

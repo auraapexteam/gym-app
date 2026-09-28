@@ -13,7 +13,7 @@ export function DeleteAccountButton() {
     const closeConfirmation = () => { confirmationOpen.current = false; };
     Alert.alert(
       'Permanently delete your account?',
-      'This cannot be undone. Your Aura Apex account, profile, memberships, attendance and logbook history (including notes, sleep and progress logs) will be permanently deleted. You will lose access to your account and memberships.',
+      'This cannot be undone. You will lose access to your Aura Apex account, memberships and personal fitness history.\n\nDeleting your account does not issue a refund. Contact your gym owner about unused membership fees or payment disputes. You can still delete your account now; gym approval is not required. This does not affect any rights you have under applicable law.\n\nCertain gym payment and accounting records, including identifying details needed for those records, may be retained for legal obligations or resolving payment disputes.',
       [
         { text: 'Cancel', style: 'cancel', onPress: closeConfirmation },
         {

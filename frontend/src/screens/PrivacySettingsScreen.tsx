@@ -13,6 +13,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuthStore } from '../store/useAuthStore';
 import { ChevronRight, FileText, X } from 'lucide-react-native';
 import { DeleteAccountButton } from '../components/DeleteAccountButton';
+import { openPrivacyPolicy } from '../components/PrivacyPolicyLink';
 
 export function PrivacySettingsScreen() {
   const { colors, isDark } = useTheme();
@@ -43,7 +44,9 @@ export function PrivacySettingsScreen() {
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.row}
-              onPress={() => handlePlaceholderAction('Privacy Policy')}
+              accessibilityRole="link"
+              accessibilityLabel="Privacy policy"
+              onPress={openPrivacyPolicy}
             >
               <Text style={[styles.rowLabel, { color: colors.foreground }]}>Privacy policy</Text>
               <ChevronRight size={14} color={colors.mutedForeground} />
