@@ -48,10 +48,14 @@ test('account summary does not claim to generate an export', async () => {
   expect(Alert.alert).not.toHaveBeenCalled();
 });
 
-test('unconnected deletion never reports success', async () => {
+test('deletion requires explicit confirmation', async () => {
   await act(async () => { tree = Renderer.create(<PrivacySettingsScreen />); });
   press('Delete account permanently');
-  expect(Alert.alert).toHaveBeenCalledWith('Deletion unavailable', expect.stringContaining('has not been deleted'));
+  expect(Alert.alert).toHaveBeenCalledWith(
+    'Permanently delete your account?', expect.stringContaining('cannot be undone'),
+    expect.arrayContaining([expect.objectContaining({ text: 'Cancel', style: 'cancel' })]),
+    expect.any(Object)
+  );
 });
 
 test('unimplemented notification and translation preferences are not advertised', async () => {

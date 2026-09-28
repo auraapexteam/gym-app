@@ -11,7 +11,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useAuthStore } from '../store/useAuthStore';
-import { ChevronRight, Trash2, FileText, X } from 'lucide-react-native';
+import { ChevronRight, FileText, X } from 'lucide-react-native';
+import { DeleteAccountButton } from '../components/DeleteAccountButton';
 
 export function PrivacySettingsScreen() {
   const { colors, isDark } = useTheme();
@@ -24,13 +25,6 @@ export function PrivacySettingsScreen() {
       action,
       'This document is not available in this build.',
       [{ text: 'OK' }]
-    );
-  };
-
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Deletion unavailable',
-      'Account deletion is not connected in this build. No request has been submitted and your account has not been deleted.'
     );
   };
 
@@ -87,14 +81,7 @@ export function PrivacySettingsScreen() {
         </View>
 
         {/* Delete Account Button */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={[styles.deleteBtn, { backgroundColor: 'rgba(248, 113, 113, 0.12)', borderColor: 'rgba(248, 113, 113, 0.25)' }]}
-          onPress={handleDeleteAccount}
-        >
-          <Trash2 size={16} color="#f87171" style={{ marginRight: 8 }} />
-          <Text style={styles.deleteText}>Delete account permanently</Text>
-        </TouchableOpacity>
+        <DeleteAccountButton />
       </ScrollView>
 
       {/* Account Data Export Modal */}
