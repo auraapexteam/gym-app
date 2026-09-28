@@ -13,7 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
 import { useAuthStore } from '../store/useAuthStore';
-import { ChevronRight, Trash2, FileText, X } from 'lucide-react-native';
+import { ChevronRight, FileText, X } from 'lucide-react-native';
+import { DeleteAccountButton } from '../components/DeleteAccountButton';
 
 const PRIVACY_STORAGE_KEY = '@aura_apex_privacy_settings';
 
@@ -61,23 +62,6 @@ export function PrivacySettingsScreen() {
       action,
       `Aura Apex operates under strict end-to-end data security standards. Your personal records are protected and never shared with third-party advertising networks.`,
       [{ text: 'OK' }]
-    );
-  };
-
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      '⚠ Delete Account',
-      'Are you absolutely sure you want to delete your Aura Apex account? This action is permanent and will remove your member profile and workout logs.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete Permanently',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('Request Submitted', 'Your account deletion request has been submitted.');
-          },
-        },
-      ]
     );
   };
 
@@ -168,14 +152,7 @@ export function PrivacySettingsScreen() {
         </View>
 
         {/* Delete Account Button */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={[styles.deleteBtn, { backgroundColor: 'rgba(248, 113, 113, 0.12)', borderColor: 'rgba(248, 113, 113, 0.25)' }]}
-          onPress={handleDeleteAccount}
-        >
-          <Trash2 size={16} color="#f87171" style={{ marginRight: 8 }} />
-          <Text style={styles.deleteText}>Delete account permanently</Text>
-        </TouchableOpacity>
+        <DeleteAccountButton />
       </ScrollView>
 
       {/* Account Data Export Modal */}
