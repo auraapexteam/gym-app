@@ -38,7 +38,7 @@ import { AppSplashScreen } from '../components/AppSplashScreen';
 const Stack = createNativeStackNavigator();
 
 export function AppNavigator() {
-  const { accessToken, userProfile, setSession, initializing } = useAuthStore();
+  const { accessToken, userProfile, setSession, initializing, deletingAccount } = useAuthStore();
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -103,7 +103,7 @@ export function AppNavigator() {
     };
   }, [setSession]);
 
-  if (initializing || hasSeenOnboarding === null || (accessToken && !userProfile)) {
+  if (initializing || (deletingAccount && !accessToken) || hasSeenOnboarding === null || (accessToken && !userProfile)) {
     return <AppSplashScreen />;
   }
 

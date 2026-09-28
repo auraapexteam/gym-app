@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Session, User } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../api/supabase';
+import { supabase, clearDeletedAccountSession } from '../api/supabase';
 import { apiClient } from '../api/client';
 import { useGymStore } from '../store/useGymStore';
 
@@ -58,6 +58,8 @@ interface AuthState {
   /** True until the first persisted-session restore completes. */
   initializing: boolean;
   loading: boolean;
+  deletingAccount: boolean;
+  deleteAccount: () => Promise<{ localCleanupFailed: boolean }>;
   setSession: (session: any, profileData?: any) => Promise<void>;
   loadUserProfile: () => Promise<void>;
   completeOnboarding: (data: Partial<UserProfile>) => Promise<void>;
@@ -69,6 +71,8 @@ interface AuthState {
 // TOKEN_REFRESHED can fire in quick succession) so profile/subscription
 // loads never interleave and clobber each other.
 let sessionChain: Promise<void> = Promise.resolve();
+// Ignore already queued auth events for an account deleted during this run.
+let deletedUserId: string | null = null;
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
@@ -77,12 +81,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   subscription: null,
   initializing: true,
   loading: false,
+  deletingAccount: false,
 
   setSession: (session: any, profileData?: any) => {
     sessionChain = sessionChain.then(async () => {
       if (session) {
         const token = session.access_token ?? session.accessToken ?? null;
         const userId = session.user?.id ?? profileData?.id ?? session.id ?? null;
+        if (userId && userId === deletedUserId) return;
 
         const userObj: any = session.user ?? (userId ? {
           id: userId,
@@ -116,6 +122,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         } else {
           await get().loadUserProfile();
         }
+
+        if (get().user?.id !== userId || userId === deletedUserId) return;
 
         if (!get().userProfile && userId) {
           set({
@@ -157,6 +165,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         .eq('id', user.id)
         .maybeSingle();
 
+      if (get().user?.id !== user.id || user.id === deletedUserId) return;
+
       if (!error && data) {
         // Existing registered user: onboarding_completed is true -> goes straight to Home screen
         set({
@@ -187,12 +197,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             .select('*')
             .single();
 
+          if (get().user?.id !== user.id || user.id === deletedUserId) return;
+
           if (createdProfile) {
             set({ userProfile: createdProfile as UserProfile });
           } else {
             set({ userProfile: initialProfile });
           }
         } catch {
+          if (get().user?.id !== user.id || user.id === deletedUserId) return;
           set({ userProfile: initialProfile });
         }
       }
@@ -203,9 +216,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   loadSubscription: async () => {
     if (!get().accessToken) return;
+    const userId = get().user?.id;
     try {
       set({ loading: true });
       const response = await apiClient.get('/subscriptions/me');
+      if (get().user?.id !== userId || userId === deletedUserId) return;
       if (response.data && response.data.success) {
         const rawData = response.data.data;
         // /subscriptions/me returns either an array or a single object
@@ -254,6 +269,38 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           console.warn('Background profile save error:', err);
         }
       })();
+    }
+  },
+
+  deleteAccount: async () => {
+    if (get().deletingAccount) throw new Error('Account deletion is already in progress.');
+    const userId = get().user?.id;
+    if (!userId || !get().accessToken) throw new Error('Please sign in again before deleting your account.');
+    if (get().userProfile?.role === 'super_admin') {
+      throw new Error('Super admin accounts cannot be self-deleted.');
+    }
+
+    set({ deletingAccount: true });
+    try {
+      // apiClient attaches the current Bearer token. Never send a user ID or
+      // privileged Supabase credentials: the backend selects the caller.
+      const response = await apiClient.delete('/auth/account');
+      if (response.data?.success !== true) {
+        throw new Error('Account deletion was not confirmed. Please try again or contact support.');
+      }
+      deletedUserId = userId;
+      set({ user: null, userProfile: null, accessToken: null, subscription: null, loading: false, initializing: false });
+      useGymStore.getState().reset();
+      try {
+        await clearDeletedAccountSession();
+        return { localCleanupFailed: false };
+      } catch {
+        // The server has already deleted the account. Do not repeat DELETE or
+        // claim that it failed just because local storage cleanup had an error.
+        return { localCleanupFailed: true };
+      }
+    } finally {
+      set({ deletingAccount: false });
     }
   },
 

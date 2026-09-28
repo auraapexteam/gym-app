@@ -44,6 +44,7 @@ interface GymState {
 // Monotonic id so a slow, older directory response can never overwrite the
 // results of a newer search (type-ahead race).
 let directoryRequestId = 0;
+let accountDataGeneration = 0;
 
 export const useGymStore = create<GymState>((set, get) => ({
   directory: [],
@@ -86,9 +87,11 @@ export const useGymStore = create<GymState>((set, get) => ({
   },
 
   fetchSavedGyms: async () => {
+    const generation = accountDataGeneration;
     try {
       set({ savedLoading: true });
       const res = await apiClient.get('/gyms/saved');
+      if (generation !== accountDataGeneration) return;
       if (res.data?.success) {
         const gyms = res.data.data || [];
         set({
@@ -99,13 +102,15 @@ export const useGymStore = create<GymState>((set, get) => ({
     } catch (err: any) {
       console.warn('Failed to load saved gyms:', err);
     } finally {
-      set({ savedLoading: false });
+      if (generation === accountDataGeneration) set({ savedLoading: false });
     }
   },
 
   toggleBookmarkGym: async (gymId: string) => {
+    const generation = accountDataGeneration;
     try {
       const res = await apiClient.post(`/gyms/${gymId}/bookmark`);
+      if (generation !== accountDataGeneration) return { success: false };
       if (res.data?.success) {
         const isBookmarked = res.data.data?.isBookmarked ?? res.data.isBookmarked;
         set((state) => {
@@ -125,23 +130,27 @@ export const useGymStore = create<GymState>((set, get) => ({
   },
 
   fetchMyRequestStatus: async () => {
+    const generation = accountDataGeneration;
     try {
       set({ requestStatusLoading: true });
       const res = await apiClient.get('/gyms/join-request/status');
+      if (generation !== accountDataGeneration) return;
       if (res.data?.success) {
         set({ myRequest: res.data.data || null });
       }
     } catch (err: any) {
       console.warn('Failed to load join request status:', err);
     } finally {
-      set({ requestStatusLoading: false });
+      if (generation === accountDataGeneration) set({ requestStatusLoading: false });
     }
   },
 
   submitJoinRequest: async (gymId: string) => {
+    const generation = accountDataGeneration;
     try {
       set({ submitting: true });
       const res = await apiClient.post('/gyms/join-request', { gymId });
+      if (generation !== accountDataGeneration) return { success: false };
       if (res.data?.success) {
         await get().fetchMyRequestStatus();
         return { success: true };
@@ -150,11 +159,13 @@ export const useGymStore = create<GymState>((set, get) => ({
     } catch (err: any) {
       return { success: false, message: err.response?.data?.message || err.message };
     } finally {
-      set({ submitting: false });
+      if (generation === accountDataGeneration) set({ submitting: false });
     }
   },
 
-  reset: () =>
+  reset: () => {
+    accountDataGeneration += 1;
+    directoryRequestId += 1;
     set({
       directory: [],
       directoryLoading: false,
@@ -165,5 +176,6 @@ export const useGymStore = create<GymState>((set, get) => ({
       myRequest: null,
       requestStatusLoading: false,
       submitting: false,
-    }),
+    });
+  },
 }));
