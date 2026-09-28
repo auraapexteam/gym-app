@@ -1,0 +1,49 @@
+workflows:
+  aura-apex-android-test:
+    name: Aura Apex Android Test APK
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: frontend-app
+          include: true
+    environment:
+      node: 22.11.0
+      java: 17
+    scripts:
+      - name: Install locked JavaScript dependencies
+        script: |
+          set -eu
+          cd "$CM_BUILD_DIR/frontend"
+          npm ci
+      - name: Basic mobile checks
+        script: |
+          set -eu
+          cd "$CM_BUILD_DIR/frontend"
+          npm run typecheck
+          npm test -- --runInBand
+      - name: Configure Android SDK
+        script: |
+          set -eu
+          : "${ANDROID_SDK_ROOT:?Android SDK is unavailable}"
+          printf 'sdk.dir=%s\n' "$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/frontend/android/local.properties"
+      - name: Build standalone test APK
+        script: |
+          set -eu
+          cd "$CM_BUILD_DIR/frontend/android"
+          # Release JS bundle, existing debug signing key: testing only, not Google Play.
+          # bash avoids relying on executable permission from a Windows checkout.
+          bash ./gradlew assembleRelease --no-daemon --stacktrace
+      - name: Collect universal test APK
+        script: |
+          set -eu
+          cd "$CM_BUILD_DIR"
+          mkdir -p build-artifacts
+          cp frontend/android/app/build/outputs/apk/release/app-universal-release.apk build-artifacts/Aura_Apex-test.apk
+          shasum -a 256 build-artifacts/Aura_Apex-test.apk > build-artifacts/SHA256SUMS.txt
+    artifacts:
+      - build-artifacts/Aura_Apex-test.apk
+      - build-artifacts/SHA256SUMS.txt
+      - frontend/android/app/build/outputs/mapping/release/mapping.txt

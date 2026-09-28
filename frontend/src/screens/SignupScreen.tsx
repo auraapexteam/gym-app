@@ -19,6 +19,7 @@ import { ChevronLeft, User, Mail, Lock } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../api/supabase';
 import { useTheme } from '../context/ThemeContext';
+import { PrivacyPolicyLink } from '../components/PrivacyPolicyLink';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -265,6 +266,7 @@ export function SignupScreen({ route, navigation }: any) {
               <Text style={styles.googleButtonText}>Sign in with Google</Text>
             </TouchableOpacity>
           </View>
+          <PrivacyPolicyLink />
         </KeyboardAvoidingView>
       </ScrollView>
     </View>

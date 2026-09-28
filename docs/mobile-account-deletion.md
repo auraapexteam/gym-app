@@ -5,7 +5,11 @@ Added on 2026-09-28 for `ios-ipa` (iOS) and `frontend-app` (Android).
 ## User flow
 
 Profile -> Settings -> Privacy -> Delete account permanently. The native confirmation
-lists the account data being deleted and warns that deletion cannot be undone.
+warns that deletion cannot be undone and removes app access. It explains that
+deletion does not issue a refund, directs membership/payment disputes to the gym
+owner without requiring gym approval, and warns that necessary payment/accounting
+records and identifying details may remain for legal obligations or disputes.
+It does not promise that every gym record disappears or waive statutory rights.
 Cancel/dismiss does not send a request. Confirmation sends authenticated
 `DELETE /api/v1/auth/account` using the existing API client and current Bearer token.
 Repeated submissions are blocked while pending.
@@ -31,6 +35,10 @@ The frontend cannot detect that partial success from the current response.
 
 Also verify Apple credential revocation, intended cascade/storage cleanup and
 existing-token handling on the server. No backend or database changes were made.
+The operator now wants necessary gym financial records retained. Reconcile that
+requirement with the cascade-delete implementation and define retained fields,
+purposes and expiry before release. Personal fitness logs are not financial
+records. A frontend warning does not enforce retention or owner access limits.
 
 ## Basic verification
 

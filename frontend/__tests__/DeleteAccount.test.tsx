@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Platform, TouchableOpacity } from 'react-native';
+import { Alert, Platform, Switch, Text, TouchableOpacity } from 'react-native';
 import Renderer, { act } from 'react-test-renderer';
 import { DeleteAccountButton } from '../src/components/DeleteAccountButton';
 import { useAuthStore } from '../src/store/useAuthStore';
@@ -55,9 +55,25 @@ test.each(['ios', 'android'] as const)('requires confirmation and permits cancel
     'Permanently delete your account?', expect.stringContaining('memberships'),
     expect.any(Array), expect.objectContaining({ cancelable: true })
   );
+  const warning = (Alert.alert as jest.Mock).mock.calls[0][1];
+  expect(warning).toContain('does not issue a refund');
+  expect(warning).toContain('Contact your gym owner');
+  expect(warning).toContain('gym approval is not required');
+  expect(warning).toContain('accounting records');
+  expect(warning).toContain('identifying details');
+  expect(warning).not.toContain('attendance and logbook history');
   act(() => confirmation()[0].onPress());
   expect(apiClient.delete).not.toHaveBeenCalled();
   expect(useAuthStore.getState().accessToken).toBe('test-token');
+});
+
+test('privacy settings does not offer unimplemented sharing or analytics controls', async () => {
+  await act(async () => { tree = Renderer.create(<PrivacySettingsScreen />); });
+  const labels = tree!.root.findAllByType(Text).map(node => node.props.children).flat().join(' ');
+  expect(tree!.root.findAllByType(Switch)).toHaveLength(0);
+  expect(labels).not.toMatch(/trainer|coaches|Anonymous analytics|Request account data export/i);
+  expect(labels).toContain('View account summary');
+  expect(labels).toContain('not a complete data export');
 });
 
 test('privacy settings exposes the connected deletion button', async () => {
