@@ -6,6 +6,12 @@ import { useAuthStore } from '../src/store/useAuthStore';
 import { useGymStore } from '../src/store/useGymStore';
 import { apiClient } from '../src/api/client';
 import { clearDeletedAccountSession, supabase } from '../src/api/supabase';
+import { PrivacySettingsScreen } from '../src/screens/PrivacySettingsScreen';
+
+jest.mock('../src/context/ThemeContext', () => ({
+  useTheme: () => ({ colors: require('../src/theme/colors').darkColors, isDark: true }),
+}));
+jest.mock('react-native-safe-area-context', () => ({ SafeAreaView: require('react-native').View }));
 
 jest.mock('../src/api/client', () => ({ apiClient: { delete: jest.fn(), get: jest.fn() } }));
 jest.mock('../src/api/supabase', () => ({
@@ -52,6 +58,14 @@ test.each(['ios', 'android'] as const)('requires confirmation and permits cancel
   act(() => confirmation()[0].onPress());
   expect(apiClient.delete).not.toHaveBeenCalled();
   expect(useAuthStore.getState().accessToken).toBe('test-token');
+});
+
+test('privacy settings exposes the connected deletion button', async () => {
+  await act(async () => { tree = Renderer.create(<PrivacySettingsScreen />); });
+  const button = tree!.root.findByType(DeleteAccountButton).findByType(TouchableOpacity);
+  act(() => button.props.onPress());
+  await act(async () => { await confirmation()[1].onPress(); });
+  expect(apiClient.delete).toHaveBeenCalledWith('/auth/account');
 });
 
 test('deletes once, clears account and gym state, and prevents stale auth restore', async () => {
