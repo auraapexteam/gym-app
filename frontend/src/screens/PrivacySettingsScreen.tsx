@@ -32,7 +32,7 @@ export function PrivacySettingsScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.title, { color: colors.foreground }]}>Privacy & Data Protection</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>Privacy & account deletion</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
           Review your account details and privacy information.
         </Text>

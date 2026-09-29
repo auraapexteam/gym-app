@@ -61,7 +61,7 @@ export function SettingsScreen({ navigation }: any) {
         },
         {
           id: 'PrivacySettings',
-          label: 'Privacy policy',
+          label: 'Privacy & account deletion',
           icon: Eye,
           color: colors.destructive,
         },

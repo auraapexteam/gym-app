@@ -314,7 +314,7 @@ export function ProfileScreen({ navigation }: any) {
               <View style={styles.menuIconBox}>
                 <ShieldCheck size={18} color={colors.accent} />
               </View>
-              <Text style={[styles.menuTitle, { color: isDark ? colors.white : colors.black }]}>Privacy & Security</Text>
+              <Text style={[styles.menuTitle, { color: isDark ? colors.white : colors.black }]}>Privacy & account deletion</Text>
             </View>
             <ChevronRight size={18} color={isDark ? colors.textMuted : '#9CA3AF'} />
           </TouchableOpacity>
