@@ -73,6 +73,7 @@ test('privacy settings does not offer unimplemented sharing or analytics control
   expect(tree!.root.findAllByType(Switch)).toHaveLength(0);
   expect(labels).not.toMatch(/trainer|coaches|Anonymous analytics|Request account data export/i);
   expect(labels).toContain('View account summary');
+  expect(labels).toContain('Privacy & account deletion');
   expect(labels).toContain('not a complete data export');
 });
 

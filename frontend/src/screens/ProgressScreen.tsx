@@ -46,8 +46,8 @@ export function ProgressScreen() {
   const [proteinInput, setProteinInput] = useState('0');
   const [steps, setSteps] = useState(0);
   const [note, setNote] = useState('');
-  const [sleepHours, setSleepHours] = useState('7');
-  const [sleepMinutes, setSleepMinutes] = useState('45');
+  const [sleepHours, setSleepHours] = useState('0');
+  const [sleepMinutes, setSleepMinutes] = useState('0');
   const [sleepQuality, setSleepQuality] = useState<'Excellent' | 'Good' | 'Fair' | 'Poor'>('Good');
 
   // Calendar month state
@@ -203,6 +203,11 @@ export function ProgressScreen() {
         setSleepQuality((log.sleep.quality as any) || 'Good');
       }
     }
+    if (!log?.sleep) {
+      setSleepHours('0');
+      setSleepMinutes('0');
+      setSleepQuality('Good');
+    }
   }, [selectedDate, monthLogs]);
 
   useFocusEffect(
@@ -284,10 +289,10 @@ export function ProgressScreen() {
   const currentSleep = monthLogs[selectedDate]?.sleep;
   const sleepHrsDisplay = currentSleep
     ? Math.floor(currentSleep.durationMinutes / 60)
-    : parseInt(sleepHours, 10) || 7;
+    : parseInt(sleepHours, 10) || 0;
   const sleepMinsDisplay = currentSleep
     ? currentSleep.durationMinutes % 60
-    : parseInt(sleepMinutes, 10) || 45;
+    : parseInt(sleepMinutes, 10) || 0;
   const sleepQualityDisplay = currentSleep ? currentSleep.quality : sleepQuality;
 
   return (
@@ -623,7 +628,8 @@ export function ProgressScreen() {
                   <TextInput
                     value={sleepHours}
                     onChangeText={setSleepHours}
-                    placeholder="7"
+                    accessibilityLabel="Sleep hours"
+                    placeholder="0"
                     placeholderTextColor={colors.textMuted}
                     keyboardType="numeric"
                     style={[styles.logInput, { color: isDark ? colors.white : colors.black, textAlign: 'center' }]}
@@ -634,7 +640,8 @@ export function ProgressScreen() {
                   <TextInput
                     value={sleepMinutes}
                     onChangeText={setSleepMinutes}
-                    placeholder="45"
+                    accessibilityLabel="Sleep minutes"
+                    placeholder="0"
                     placeholderTextColor={colors.textMuted}
                     keyboardType="numeric"
                     style={[styles.logInput, { color: isDark ? colors.white : colors.black, textAlign: 'center' }]}

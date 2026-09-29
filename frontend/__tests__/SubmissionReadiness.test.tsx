@@ -63,7 +63,7 @@ test('unimplemented notification and translation preferences are not advertised'
   const labels = tree.root.findAllByType(Text).map((node) => node.props.children);
   expect(labels).not.toContain('Notifications');
   expect(labels).not.toContain('Language preference');
-  expect(labels).toContain('Privacy & account data');
+  expect(labels).toContain('Privacy & account deletion');
 });
 
 describe.each([LoginScreen, SignupScreen])('%p login options', (Screen) => {

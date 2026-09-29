@@ -47,7 +47,7 @@ export function SettingsScreen({ navigation }: any) {
         },
         {
           id: 'PrivacySettings',
-          label: 'Privacy & account data',
+          label: 'Privacy & account deletion',
           icon: Eye,
           color: colors.destructive,
         },
