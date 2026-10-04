@@ -1,0 +1,14 @@
+[
+  {
+    "name": "@react-native-async-storage/async-storage",
+    "version": "3.1.1",
+    "file": "async-storage-3.1.1/LICENSE",
+    "url": "https://raw.githubusercontent.com/react-native-async-storage/async-storage/4535ff0728207221a5831ed59dcebab1e4fba33e/LICENSE",
+    "npmMetadataUrl": "https://registry.npmjs.org/@react-native-async-storage%2fasync-storage/3.1.1",
+    "tag": "@react-native-async-storage/async-storage@3.1.1",
+    "tagObject": "98de6abba0965bb8f7e1400d566d4d6ae129588c",
+    "gitHead": "4535ff0728207221a5831ed59dcebab1e4fba33e",
+    "sha256": "3de673d2b0d5814b1710ea910b597e0754349b1e31b4f48643052e6c8344bbfa",
+    "verifiedOn": "2026-10-04"
+  }
+]
