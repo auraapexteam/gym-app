@@ -1,8 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { AuthError } from '@supabase/supabase-js';
 import request from 'supertest';
 import { createApp } from '@/app';
 import { mockTable, resetMocks, setupAuthUser } from './utils/test-helpers';
 import { Role } from '@/shared/rbac';
+import { supabase } from '@/config/supabase';
+import { profileRepository } from '@/modules/auth/auth.repository';
 
 const app = createApp();
 
@@ -94,7 +97,7 @@ describe('Auth Module', () => {
   });
 
   describe('DELETE /api/v1/auth/account & DELETE /api/v1/auth/me', () => {
-    it('should successfully delete customer account', async () => {
+    it.each(['/api/v1/auth/account', '/api/v1/auth/me'])('successfully deletes a customer through %s', async (endpoint) => {
       setupAuthUser(Role.CUSTOMER, null, '47d7dfca-8857-48f8-b3ab-5c30fbdb7ba5', 'delete-me@example.com');
       mockTable('profiles', {
         id: '47d7dfca-8857-48f8-b3ab-5c30fbdb7ba5',
@@ -104,12 +107,46 @@ describe('Auth Module', () => {
       });
 
       const res = await request(app)
-        .delete('/api/v1/auth/account')
+        .delete(endpoint)
         .set('Authorization', 'Bearer 47d7dfca-8857-48f8-b3ab-5c30fbdb7ba5');
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.message).toBe('Account deleted successfully');
+      expect(supabase.auth.admin.deleteUser).toHaveBeenCalledWith('47d7dfca-8857-48f8-b3ab-5c30fbdb7ba5');
+    });
+
+    it.each(['provider error', 'network rejection'])('preserves the profile and returns a retryable failure on %s', async (failure) => {
+      const userId = '47d7dfca-8857-48f8-b3ab-5c30fbdb7ba5';
+      setupAuthUser(Role.CUSTOMER, null, userId, 'delete-me@example.com');
+      const removeProfile = vi.spyOn(profileRepository, 'hardDelete');
+      if (failure === 'provider error') {
+        vi.mocked(supabase.auth.admin.deleteUser).mockResolvedValueOnce({
+          data: { user: null },
+          error: new AuthError('Provider internal detail'),
+        });
+      } else {
+        vi.mocked(supabase.auth.admin.deleteUser).mockRejectedValueOnce(new Error('Provider internal detail'));
+      }
+
+      const res = await request(app)
+        .delete('/api/v1/auth/account')
+        .set('Authorization', `Bearer ${userId}`);
+
+      expect(res.status).toBe(503);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('ACCOUNT_DELETION_FAILED');
+      expect(JSON.stringify(res.body)).not.toContain('Provider internal detail');
+      expect(removeProfile).not.toHaveBeenCalled();
+      expect(await profileRepository.findById(userId)).not.toBeNull();
+
+      const retry = await request(app)
+        .delete('/api/v1/auth/account')
+        .set('Authorization', `Bearer ${userId}`);
+      expect(retry.status).toBe(200);
+      expect(retry.body.success).toBe(true);
+      expect(supabase.auth.admin.deleteUser).toHaveBeenCalledTimes(2);
+      removeProfile.mockRestore();
     });
 
     it('should reject unauthenticated delete request', async () => {
@@ -132,6 +169,7 @@ describe('Auth Module', () => {
 
       expect(res.status).toBe(403);
       expect(res.body.success).toBe(false);
+      expect(supabase.auth.admin.deleteUser).not.toHaveBeenCalled();
     });
   });
 });

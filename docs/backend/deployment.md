@@ -1,9 +1,17 @@
 # Deployment & Infrastructure
 
-- **Purpose**: Explains deployment setup on Railway, GitHub Actions CI/CD workflows, environment parameters, background jobs, and system monitoring.
+- **Purpose**: Explains the Render backend deployment, GitHub Actions validation, environment parameters, background jobs, and system monitoring.
 - **Scope**: Infrastructure hosting config, deployment scripts, monitoring pipelines, and backups.
 - **Related Documents**: [Database Architecture](./database.md), [Testing & QA](./testing.md)
-- **Last Updated**: 2026-07-13
+- **Last Updated**: 2026-10-04
+
+The production backend is the Render `gym-app` service, built from GitHub `main`
+with the service root directory set to `backend`. The reviewed configuration is
+[`render.yaml`](../../render.yaml); follow the application and verification steps
+in [the backend deployment runbook](../../backend/DEPLOYMENT.md). Adding this file
+does not change an existing dashboard-managed service by itself. The operational
+procedures below are requirements, not evidence that backups, monitoring or
+staging have already been configured.
 
 ---
 
@@ -594,7 +602,8 @@ Never serve large media directly from Express.
 
 # 208. Deployment Strategy
 
-Deploy backend on Railway.
+Deploy the backend on the existing Render `gym-app` service. Use the reviewed
+production configuration and [deployment runbook](../../backend/DEPLOYMENT.md).
 
 Requirements
 
@@ -761,9 +770,9 @@ Failed pipelines block merges.
 
 ---
 
-# 227. Railway Deployment
+# 227. Render Deployment
 
-Railway hosts
+Render hosts
 
 Express Backend
 
@@ -779,7 +788,9 @@ Build Command
 
 Start Command
 
-Deployment should be automatic from GitHub.
+The configuration targets GitHub `main`, runs a production build before startup,
+and uses `/ready` as the health check. Automatic deployment is configured to wait
+for passing checks when the configuration is applied to the existing service.
 
 ---
 

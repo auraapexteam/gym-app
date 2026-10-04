@@ -9,7 +9,7 @@ The API contract is fully documented and served interactively at:
 
 This document is the reference guide for local environment setup, architecture patterns, and conventions.
 
-- **Stack:** Node.js · Express · TypeScript (strict) · Supabase (PostgreSQL + Auth + Storage) · Razorpay · Zod · Pino
+- **Stack:** Node.js (>=22.12.0; CI and Render use Node 22) · Express · TypeScript (strict) · Supabase (PostgreSQL + Auth + Storage) · Razorpay · Zod · Pino
 - **Base URL (local):** `http://localhost:5000`
 - **API prefix:** `/api/v1`
 
