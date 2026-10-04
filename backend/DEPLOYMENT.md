@@ -7,6 +7,11 @@ Reviewed on 2026-10-04. Production currently uses the existing Render service
 with compilation checks disabled. This change prepares the following settings
 in [`../render.yaml`](../render.yaml); it does not deploy them.
 
+Use Node 22.12.0 or later for backend development, tests and builds. The locked
+Supabase SDK requires Node 22+ for its native WebSocket implementation; the locked
+Vite test tooling requires at least 22.12.0 on that release line. GitHub Actions
+and Render both select the latest Node 22 release. Node 20 is unsupported.
+
 | Setting | Reviewed value |
 | --- | --- |
 | Root directory | `backend` |
