@@ -1,0 +1,39 @@
+# Review and apply to the existing gym-app service after merging this change.
+# Commands run inside backend because rootDir is backend.
+services:
+  - type: web
+    name: gym-app
+    runtime: node
+    plan: free
+    region: ohio
+    branch: main
+    rootDir: backend
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /ready
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: API_VERSION
+        value: v1
+      - key: LOG_LEVEL
+        value: info
+      - key: ALLOWED_ORIGINS
+        value: https://gym-app-web-app.vercel.app,https://gym-app-9iws.vercel.app,https://gym-app-pw9a.vercel.app
+      - key: SUPABASE_STORAGE_BUCKET
+        value: gym-media
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
