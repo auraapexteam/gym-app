@@ -118,7 +118,7 @@ Gym-Management-App/
 ## 3. Prerequisites
 
 Before starting, ensure you have the following installed:
-* **Node.js** (LTS version >= 22.11.0)
+* **Node.js** (LTS version >= 22.12.0; backend CI and Render use Node 22)
 * **Java Development Kit (JDK)** (version 17, recommended for React Native 0.74+)
 * **Android Studio & SDK** (configured with `ANDROID_HOME` environment variables)
 * **Supabase CLI** (installed for managing database schemas and triggers)
