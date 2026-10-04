@@ -8,7 +8,9 @@
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "licenses:generate": "node scripts/generate-third-party-notices.cjs",
+    "licenses:check": "node scripts/generate-third-party-notices.cjs --check"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^3.1.1",
