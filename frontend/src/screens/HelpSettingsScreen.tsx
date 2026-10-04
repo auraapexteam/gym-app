@@ -21,7 +21,7 @@ export function HelpSettingsScreen() {
   const faqs = [
     {
       q: 'How do gym check-ins work?',
-      a: 'Tap the QR Code button in the bottom navigation bar, then scan the gym entry QR code with your camera or enter the active gym token manually.',
+      a: 'Open the Book tab, then scan the gym entry QR code with your camera or enter the active gym token manually.',
     },
     {
       q: 'Can I cancel my subscription anytime?',
@@ -44,7 +44,7 @@ export function HelpSettingsScreen() {
     try {
       await Linking.openURL(url);
     } catch {
-      Alert.alert('Unavailable', 'No app on this device can handle that action.');
+      Alert.alert('Unable to contact support', `You can email ${SUPPORT_EMAIL} or call +91 80109 49460 directly.`);
     }
   };
 
@@ -108,6 +108,7 @@ export function HelpSettingsScreen() {
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.row}
+              accessibilityRole="link"
               onPress={() => handleContactAction('email')}
             >
               <View style={styles.rowLeft}>
@@ -122,6 +123,7 @@ export function HelpSettingsScreen() {
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.row}
+              accessibilityRole="link"
               onPress={() => handleContactAction('phone')}
             >
               <View style={styles.rowLeft}>
@@ -136,6 +138,7 @@ export function HelpSettingsScreen() {
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.row}
+              accessibilityRole="link"
               onPress={() => handleContactAction('feedback')}
             >
               <View style={styles.rowLeft}>

@@ -1,22 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
   View,
-  SafeAreaView,
   TouchableOpacity,
   ScrollView,
-  Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
-import { Sparkles, ChevronRight, Globe, Share2, Star } from 'lucide-react-native';
+import { Sparkles, ChevronRight, Globe, Share2 } from 'lucide-react-native';
+import { OpenSourceLicensesModal } from '../components/OpenSourceLicensesModal';
+import { openAuraApexWebsite, shareAuraApex } from '../utils/settingsActions';
 
 export function AboutSettingsScreen() {
   const { colors } = useTheme();
 
-  const handlePlaceholderAction = (action: string) => {
-    Alert.alert(action, `This action triggers the ${action} system flow or opens the web link in the browser.`, [{ text: 'OK' }]);
-  };
+  const [licensesOpen, setLicensesOpen] = useState(false);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -32,29 +31,6 @@ export function AboutSettingsScreen() {
           </Text>
         </View>
 
-        {/* System parameters card */}
-        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.row}>
-            <Text style={[styles.rowLabel, { color: colors.foreground }]}>Version</Text>
-            <Text style={[styles.valueLabel, { color: colors.mutedForeground }]}>1.0.0</Text>
-          </View>
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          <View style={styles.row}>
-            <Text style={[styles.rowLabel, { color: colors.foreground }]}>Build Number</Text>
-            <Text style={[styles.valueLabel, { color: colors.mutedForeground }]}>102</Text>
-          </View>
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          <View style={styles.row}>
-            <Text style={[styles.rowLabel, { color: colors.foreground }]}>Developer</Text>
-            <Text style={[styles.valueLabel, { color: colors.mutedForeground }]}>Apex Solutions Ltd</Text>
-          </View>
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          <View style={styles.row}>
-            <Text style={[styles.rowLabel, { color: colors.foreground }]}>Copyright</Text>
-            <Text style={[styles.valueLabel, { color: colors.mutedForeground }]}>© 2026 Aura Gyms</Text>
-          </View>
-        </View>
-
         {/* Action triggers Card */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Actions</Text>
@@ -62,7 +38,9 @@ export function AboutSettingsScreen() {
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.row}
-              onPress={() => handlePlaceholderAction('Visit Website')}
+              accessibilityRole="link"
+              accessibilityLabel="Visit Aura Apex website"
+              onPress={openAuraApexWebsite}
             >
               <View style={styles.rowLeft}>
                 <Globe size={15} color={colors.primary} />
@@ -74,23 +52,13 @@ export function AboutSettingsScreen() {
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.row}
-              onPress={() => handlePlaceholderAction('Rate App')}
-            >
-              <View style={styles.rowLeft}>
-                <Star size={15} color="#fbbf24" />
-                <Text style={[styles.rowLabel, { color: colors.foreground }]}>Rate on App Store / Play Store</Text>
-              </View>
-              <ChevronRight size={14} color={colors.mutedForeground} />
-            </TouchableOpacity>
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.row}
-              onPress={() => handlePlaceholderAction('Share App')}
+              accessibilityRole="button"
+              accessibilityLabel="Share Aura Apex website"
+              onPress={shareAuraApex}
             >
               <View style={styles.rowLeft}>
                 <Share2 size={15} color="#10b981" />
-                <Text style={[styles.rowLabel, { color: colors.foreground }]}>Share Aura Apex app</Text>
+                <Text style={[styles.rowLabel, { color: colors.foreground }]}>Share Aura Apex</Text>
               </View>
               <ChevronRight size={14} color={colors.mutedForeground} />
             </TouchableOpacity>
@@ -98,7 +66,9 @@ export function AboutSettingsScreen() {
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.row}
-              onPress={() => handlePlaceholderAction('Open Source Software Licenses')}
+              accessibilityRole="button"
+              accessibilityLabel="Open source licenses"
+              onPress={() => setLicensesOpen(true)}
             >
               <View style={styles.rowLeft}>
                 <Globe size={15} color="#8b5cf6" />
@@ -109,6 +79,7 @@ export function AboutSettingsScreen() {
           </View>
         </View>
       </ScrollView>
+      <OpenSourceLicensesModal visible={licensesOpen} onClose={() => setLicensesOpen(false)} />
     </SafeAreaView>
   );
 }
@@ -180,10 +151,6 @@ const styles = StyleSheet.create({
   rowLabel: {
     fontSize: 14,
     fontWeight: '700',
-  },
-  valueLabel: {
-    fontSize: 13,
-    fontWeight: '600',
   },
   divider: {
     height: 1,

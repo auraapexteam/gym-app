@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Platform, Switch, Text } from 'react-native';
+import { Alert, Linking, Platform, Switch, Text } from 'react-native';
 import Renderer, { act } from 'react-test-renderer';
 import { PrivacySettingsScreen } from '../src/screens/PrivacySettingsScreen';
 import { SettingsScreen } from '../src/screens/SettingsScreen';
@@ -39,6 +39,16 @@ function press(label: string) {
 test('does not offer privacy switches that cannot enforce consent', async () => {
   await act(async () => { tree = Renderer.create(<PrivacySettingsScreen />); });
   expect(tree.root.findAllByType(Switch)).toHaveLength(0);
+});
+
+test('Terms opens the permanent terms page instead of a placeholder', async () => {
+  jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+  await act(async () => { tree = Renderer.create(<PrivacySettingsScreen />); });
+  const action = tree.root.findAll((node) => node.props.accessibilityLabel === 'Terms of service'
+    && typeof node.props.onPress === 'function')[0];
+  await act(async () => { await action.props.onPress(); });
+  expect(Linking.openURL).toHaveBeenCalledWith('https://www.auraapex.in/terms-of-service');
+  expect(Alert.alert).not.toHaveBeenCalled();
 });
 
 test('account summary does not claim to generate an export', async () => {
