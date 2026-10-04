@@ -5,7 +5,6 @@ import {
   View,
   TouchableOpacity,
   ScrollView,
-  Alert,
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,20 +13,13 @@ import { useAuthStore } from '../store/useAuthStore';
 import { ChevronRight, FileText, X } from 'lucide-react-native';
 import { DeleteAccountButton } from '../components/DeleteAccountButton';
 import { openPrivacyPolicy } from '../components/PrivacyPolicyLink';
+import { openTermsOfService } from '../utils/settingsActions';
 
 export function PrivacySettingsScreen() {
   const { colors, isDark } = useTheme();
   const { user, userProfile, subscription } = useAuthStore();
 
   const [exportModalOpen, setExportModalOpen] = useState(false);
-
-  const handlePlaceholderAction = (action: string) => {
-    Alert.alert(
-      action,
-      'This document is not available in this build.',
-      [{ text: 'OK' }]
-    );
-  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -55,7 +47,9 @@ export function PrivacySettingsScreen() {
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.row}
-              onPress={() => handlePlaceholderAction('Terms & Conditions')}
+              accessibilityRole="link"
+              accessibilityLabel="Terms of service"
+              onPress={openTermsOfService}
             >
               <Text style={[styles.rowLabel, { color: colors.foreground }]}>Terms & conditions</Text>
               <ChevronRight size={14} color={colors.mutedForeground} />

@@ -141,7 +141,7 @@ export function SettingsScreen({ navigation }: any) {
         ))}
 
         <Text style={[styles.footerText, { color: colors.mutedForeground }]}>
-          Aura Apex · Version 1.0.0 (102)
+          Aura Apex
         </Text>
       </ScrollView>
     </SafeAreaView>

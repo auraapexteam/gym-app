@@ -6,13 +6,13 @@ import {
   SafeAreaView,
   TouchableOpacity,
   ScrollView,
-  Linking,
   PermissionsAndroid,
   Platform,
   AppState,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { ShieldCheck, ShieldAlert, ExternalLink } from 'lucide-react-native';
+import { openSystemAppSettings } from '../utils/settingsActions';
 
 type PermissionStatus = 'granted' | 'denied' | 'unknown';
 
@@ -117,12 +117,13 @@ export function AppSettingsScreen() {
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.row}
-              onPress={() => Linking.openSettings()}
+              accessibilityRole="button"
+              onPress={openSystemAppSettings}
             >
               <View style={styles.rowLeft}>
                 <Text style={[styles.rowLabel, { color: colors.foreground }]}>Open system app settings</Text>
                 <Text style={[styles.rowDesc, { color: colors.mutedForeground }]}>
-                  View storage usage, clear cache, or change permissions from Android settings.
+                  Manage permissions and available storage options from your device's app settings.
                 </Text>
               </View>
               <ExternalLink size={16} color={colors.mutedForeground} />
