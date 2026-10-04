@@ -17,6 +17,7 @@ import {
   ConflictError,
   ForbiddenError,
   NotFoundError,
+  ServiceUnavailableError,
   UnauthorizedError,
 } from '@/shared/errors';
 
@@ -172,10 +173,16 @@ export class AuthService {
       throw new ForbiddenError('Super Admin accounts cannot be self-deleted', 'FORBIDDEN');
     }
 
-    const { error } = await supabase.auth.admin.deleteUser(userId);
-    if (error) {
-      // Fallback: delete profile row directly if auth user deletion fails
-      await profileRepository.delete(userId);
+    try {
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+      if (error) throw error;
+    } catch {
+      // Preserve the profile and access when Auth deletion fails. Deleting only
+      // the profile would leave a surviving Auth account and report false success.
+      throw new ServiceUnavailableError(
+        'Account deletion could not be completed. Please try again.',
+        'ACCOUNT_DELETION_FAILED',
+      );
     }
   }
 
