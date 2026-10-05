@@ -1,51 +1,15 @@
-import axiosInstance from './axios';
-import type { LoginPayload, RegisterPayload, OTPPayload, ApiResponse, User } from '@/types';
+import axiosInstance, { refreshClient } from './axios';
+import { useAuthStore } from '@/store/auth.store';
+import type { LoginPayload, RegisterPayload, ApiResponse, User } from '@/types';
+import { toAuthResponse, toUser } from './auth.contract';
+import type { BackendProfile, BackendAuthResponse } from './auth.contract';
 
 export interface AuthResponse {
   user: User;
   token: string;
+  refreshToken: string;
+  expiresAt: number | null;
 }
-
-interface BackendProfile {
-  id: string;
-  email: string;
-  phone: string | null;
-  fullName: string | null;
-  avatarUrl: string | null;
-  role: User['role'];
-  gymId: string | null;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface BackendAuthResponse {
-  session: {
-    accessToken: string;
-    refreshToken: string;
-    expiresAt: number | null;
-    tokenType: 'bearer';
-  };
-  profile: BackendProfile;
-}
-
-const toUser = (profile: BackendProfile): User => ({
-  id: profile.id,
-  email: profile.email,
-  name: profile.fullName || profile.email,
-  role: (profile.role as string) === 'owner' ? 'gym_owner' : profile.role,
-  avatar: profile.avatarUrl || undefined,
-  phone: profile.phone || undefined,
-  gymId: profile.gymId || undefined,
-  isActive: profile.status === 'active',
-  createdAt: profile.createdAt,
-  updatedAt: profile.updatedAt,
-});
-
-const toAuthResponse = (data: BackendAuthResponse): AuthResponse => ({
-  user: toUser(data.profile),
-  token: data.session.accessToken,
-});
 
 export const authApi = {
   login: (payload: LoginPayload) =>
@@ -75,7 +39,11 @@ export const authApi = {
   resetPassword: (accessToken: string, password: string) =>
     axiosInstance.post<ApiResponse<null>>('/auth/reset-password', { accessToken, password }),
 
-  logout: () => axiosInstance.post<ApiResponse<null>>('/auth/logout'),
+  logout: async () => {
+    const token = useAuthStore.getState().token;
+    useAuthStore.getState().logout();
+    if (token) await refreshClient.post<ApiResponse<null>>('/auth/logout', {}, { headers: { Authorization: `Bearer ${token}` } });
+  },
 
   deleteAccount: () => axiosInstance.delete<ApiResponse<null>>('/auth/account'),
 
