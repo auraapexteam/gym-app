@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { env } from '@/config/env';
 
 /**
  * Returns today's ISO date string (YYYY-MM-DD) in UTC.
@@ -67,20 +66,9 @@ export const logSleepSchema = z.object({
 
 export const logImageSchema = z.object({
   body: z.object({
-    /**
-     * Progress images must be stored in Supabase Storage (this project's bucket).
-     * We verify the URL starts with the project's Supabase storage host to prevent
-     * arbitrary external image URLs being persisted.
-     */
-    imageUrl: z
-      .string()
-      .url()
-      .refine(
-        (url) => url.startsWith(env.SUPABASE_URL),
-        { message: 'Image URL must be a Supabase storage URL for this project' },
-      ),
+    imagePath: z.string().min(1).max(500),
     logDate: pastOrTodayDate,
-  }),
+  }).strict(),
 });
 
 export const getMonthSummarySchema = z.object({

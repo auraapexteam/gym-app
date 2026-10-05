@@ -54,14 +54,16 @@ export class ProgressController {
 
   /** Log daily progress photo. */
   static async logImage(req: Request, res: Response): Promise<Response> {
+    res.setHeader('Cache-Control', 'private, no-store');
     const user = currentUser(req);
-    const { imageUrl, logDate } = req.body;
-    const log = await ProgressService.logImage(user.id, imageUrl, logDate);
+    const { imagePath, logDate } = req.body;
+    const log = await ProgressService.logImage(user.id, imagePath, logDate);
     return sendSuccess(res, log, 'Progress image saved successfully');
   }
 
   /** Fetch summary logs for a calendar month. */
   static async getMonthSummary(req: Request, res: Response): Promise<Response> {
+    res.setHeader('Cache-Control', 'private, no-store');
     const user = currentUser(req);
     // Values are validated and cast by Zod validator
     const year = Number(req.query.year);
