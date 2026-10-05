@@ -38,3 +38,10 @@ export const supabaseAnon: SupabaseClient = createClient(
     },
   },
 );
+
+/** Auth exchanges must not share a mutable session across concurrent callers. */
+export const createAuthClient = (): SupabaseClient => createClient(
+  env.SUPABASE_URL,
+  env.SUPABASE_ANON_KEY,
+  { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } },
+);
