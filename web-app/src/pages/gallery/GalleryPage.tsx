@@ -1,3 +1,4 @@
+import { accountQueryKey } from '@/store/auth.store';
 import { useState } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardContent, Button, Modal, Input } from '@/components/ui';
@@ -17,7 +18,7 @@ export default function GalleryPage() {
   const qc = useQueryClient();
 
   const { data: images = [], isLoading } = useQuery({
-    queryKey: ['gallery'],
+    queryKey: accountQueryKey(['gallery']),
     queryFn: async () => {
       const res = await galleryApi.getImages();
       return Array.isArray(res.data.data) ? res.data.data : [];
