@@ -5,6 +5,11 @@ import { currentUser, clientIp } from '@/shared/utils';
 import { sendSuccess, sendCreated } from '@/shared/responses';
 
 export class AuthController {
+  static async refresh(req: Request, res: Response): Promise<Response> {
+    const result = await AuthService.refresh(req.body.refreshToken);
+    return sendSuccess(res, result, 'Session refreshed');
+  }
+
   static async register(req: Request, res: Response): Promise<Response> {
     const result = await AuthService.register(req.body);
     await AuditService.record({

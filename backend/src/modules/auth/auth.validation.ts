@@ -28,6 +28,10 @@ export const loginSchema = z.object({
   }),
 });
 
+export const refreshSchema = z.object({
+  body: z.object({ refreshToken: z.string().min(1).max(4096) }).strict(),
+});
+
 export const forgotPasswordSchema = z.object({
   body: z.object({
     email: z.string().email().max(160),
@@ -46,9 +50,30 @@ export const updateProfileSchema = z.object({
     .object({
       fullName:  z.string().min(1).max(120),
       phone:     z.string().min(5).max(20).nullable().or(z.literal('')),
-      avatarUrl: z.string().url().max(500).nullable().or(z.literal('')),
+      avatarUrl: z.literal('').nullable(),
+      avatarPath: z.string().min(1).max(500).nullable(),
+      dateOfBirth: z.string().date().refine(value => value <= new Date().toISOString().slice(0, 10), 'Date of birth cannot be in the future').nullable(),
+      gender: z.string().max(40).nullable(),
+      weightKg: z.number().positive().max(500).nullable(),
+      heightCm: z.number().positive().max(300).nullable(),
+      fitnessLevel: z.string().max(60).nullable(),
+      fitnessGoal: z.string().max(300).nullable(),
+      trainingFrequency: z.string().max(80).nullable(),
+      locationAddress: z.string().max(300).nullable(),
+      gymPreference: z.string().max(200).nullable(),
+      hasHealthCondition: z.boolean().nullable(),
+      healthConditions: z.array(z.string().min(1).max(100)).max(20),
+      dietaryPreference: z.string().max(100).nullable(),
+      onboardingCompleted: z.boolean(),
+      healthDataConsent: z.boolean(),
     })
-    .partial(),
+    .partial().strict().refine(value => Object.keys(value).length > 0, 'Provide a profile field to update')
+    .refine(value => {
+      const health = [value.weightKg, value.heightCm, value.fitnessLevel, value.fitnessGoal,
+        value.trainingFrequency, value.hasHealthCondition, value.dietaryPreference];
+      const collecting = health.some(item => item !== undefined && item !== null && item !== '') || Boolean(value.healthConditions?.length);
+      return !collecting || value.healthDataConsent === true;
+    }, 'Consent is required to save optional fitness information'),
 });
 
 export const phoneOtpSchema = z.object({
