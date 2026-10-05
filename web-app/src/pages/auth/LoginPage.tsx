@@ -36,8 +36,8 @@ export default function LoginPage() {
       const res = await authApi.login(data);
       return res.data.data;
     },
-    onSuccess: ({ user, token }) => {
-      setAuth(user, token);
+    onSuccess: ({ user, token, refreshToken, expiresAt }) => {
+      setAuth(user, token, { refreshToken, expiresAt });
       toast.success(`Welcome back, ${user.name}!`);
       if (user.role === 'super_admin') {
         navigate('/super-admin/gyms', { replace: true });
