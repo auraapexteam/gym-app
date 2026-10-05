@@ -1,10 +1,11 @@
+import { accountQueryKey } from '@/store/auth.store';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { staffApi, CreateStaffPayload } from '@/api/staff';
 import { toast } from 'sonner';
 
 export function useStaff() {
   return useQuery({
-    queryKey: ['staff'],
+    queryKey: accountQueryKey(['staff']),
     queryFn: async () => {
       const res = await staffApi.list();
       const raw = Array.isArray(res.data.data) ? res.data.data : [];

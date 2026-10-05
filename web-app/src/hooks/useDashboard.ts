@@ -1,9 +1,10 @@
+import { accountQueryKey } from '@/store/auth.store';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '@/api';
 
 export function useDashboardStats() {
   return useQuery({
-    queryKey: ['dashboard', 'stats'],
+    queryKey: accountQueryKey(['dashboard', 'stats']),
     queryFn: async () => {
       const res = await dashboardApi.getStats();
       const raw = res.data.data;
@@ -28,7 +29,7 @@ export function useDashboardStats() {
 
 export function useRevenueChart(period: 'week' | 'month' | 'year' = 'month') {
   return useQuery({
-    queryKey: ['dashboard', 'revenue', period],
+    queryKey: accountQueryKey(['dashboard', 'revenue', period]),
     queryFn: async () => {
       const now = new Date();
       const days = period === 'week' ? 7 : period === 'year' ? 365 : 30;
@@ -45,7 +46,7 @@ export function useRevenueChart(period: 'week' | 'month' | 'year' = 'month') {
 
 export function useAttendanceChart() {
   return useQuery({
-    queryKey: ['dashboard', 'attendance'],
+    queryKey: accountQueryKey(['dashboard', 'attendance']),
     queryFn: async () => {
       const now = new Date();
       const past = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -61,14 +62,14 @@ export function useAttendanceChart() {
 
 export function useMembershipGrowth() {
   return useQuery({
-    queryKey: ['dashboard', 'membership-growth'],
+    queryKey: accountQueryKey(['dashboard', 'membership-growth']),
     queryFn: async () => [] as any[],
   });
 }
 
 export function useRecentPayments() {
   return useQuery({
-    queryKey: ['dashboard', 'recent-payments'],
+    queryKey: accountQueryKey(['dashboard', 'recent-payments']),
     queryFn: async () => {
       const res = await dashboardApi.getRecentPayments(5);
       return res.data.data;
@@ -78,7 +79,7 @@ export function useRecentPayments() {
 
 export function usePeakHours() {
   return useQuery({
-    queryKey: ['dashboard', 'peak-hours'],
+    queryKey: accountQueryKey(['dashboard', 'peak-hours']),
     queryFn: async () => [] as { hour: string; count: number }[],
   });
 }

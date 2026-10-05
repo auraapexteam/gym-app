@@ -1,10 +1,11 @@
+import { accountQueryKey } from '@/store/auth.store';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { gymsApi } from '@/api/gyms';
 import { toast } from 'sonner';
 
 export function useGymDirectory() {
   return useQuery({
-    queryKey: ['gym-directory'],
+    queryKey: accountQueryKey(['gym-directory']),
     queryFn: async () => {
       const res = await gymsApi.listDirectory();
       return res.data.data || [];
@@ -14,7 +15,7 @@ export function useGymDirectory() {
 
 export function useJoinRequestStatus() {
   return useQuery({
-    queryKey: ['join-request-status'],
+    queryKey: accountQueryKey(['join-request-status']),
     queryFn: async () => {
       const res = await gymsApi.getJoinStatus();
       return res.data.data || null;
@@ -39,7 +40,7 @@ export function useApplyJoinGym() {
 
 export function usePendingJoinRequests() {
   return useQuery({
-    queryKey: ['pending-join-requests'],
+    queryKey: accountQueryKey(['pending-join-requests']),
     queryFn: async () => {
       const res = await gymsApi.listPendingRequests();
       return res.data.data || [];
@@ -80,7 +81,7 @@ export function useRejectJoinRequest() {
 
 export function useMyGymProfile() {
   return useQuery({
-    queryKey: ['my-gym-profile'],
+    queryKey: accountQueryKey(['my-gym-profile']),
     queryFn: async () => {
       const res = await gymsApi.getMine();
       return res.data.data || null;
