@@ -1,3 +1,4 @@
+import { accountQueryKey } from '@/store/auth.store';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardContent, CardHeader, CardTitle, Badge } from '@/components/ui';
 import { paymentsApi } from '@/api';
@@ -7,7 +8,7 @@ import { CreditCard, CheckCircle2, DollarSign } from 'lucide-react';
 
 export default function CustomerPaymentsPage() {
   const { data: payments = [], isLoading } = useQuery({
-    queryKey: ['customer-payments'],
+    queryKey: accountQueryKey(['customer-payments']),
     queryFn: async () => {
       const res = await paymentsApi.getAll();
       return Array.isArray(res.data.data) ? res.data.data : [];
