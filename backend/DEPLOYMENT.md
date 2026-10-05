@@ -68,3 +68,38 @@ Official provider references:
 [Blueprint specification](https://render.com/docs/blueprint-spec),
 [monorepo root directories](https://render.com/docs/monorepo-support), and
 [Node/Express deployments](https://render.com/docs/deploy-node-express-app).
+
+## Compliance core changes — 5 October 2026
+
+Apply `20261004010000_steps_api_only.sql` and then
+`20261004020000_profiles_api_only.sql` before deploying the updated backend.
+Profile reads now select the additive onboarding/consent columns; deploying
+before the migration can break sign-in. These migrations preserve saved rows,
+deny direct client business writes, and keep authenticated own-profile SELECT.
+
+Keep the public gym gallery bucket separate from `SUPABASE_PERSONAL_STORAGE_BUCKET`
+(default `gym-personal`). The personal bucket must be private, with a positive
+file-size limit no greater than 5,242,880 bytes and a nonempty image-only MIME
+allowlist (`image/jpeg`, `image/png`, `image/webp`). Review `storage.objects`
+policies for broad client access; bucket privacy alone is insufficient.
+
+Personal uploads return an owned path and signed upload target instead of a
+public URL. Profile updates use `avatarPath`, and progress photos use
+`imagePath`. Read URLs expire after 300 seconds. Integrate the updated intended
+mobile/portal clients before exposing the changed contract. The older main
+mobile photo flow is not automatically updated by the separate iOS-based
+mobile worktree. Legacy public images are suppressed in API responses; this
+does not migrate or delete the existing public objects.
+
+`POST /api/v1/auth/refresh` rotates session credentials using a request-scoped
+Auth client. Supabase outages return 503 so clients preserve renewable sessions;
+invalid credentials return 401. `PATCH /api/v1/auth/me` accepts only the caller's
+allowlisted profile fields. Saving optional fitness profile information requires
+`healthDataConsent: true`; the server records the notice version and timestamp.
+Withdrawal clears those optional profile fields, and does not claim to remove
+prior log history or establish verified parental consent.
+
+Test these changes on the separate staging service with synthetic data first.
+The source changes do not apply migrations, create a bucket, deploy production,
+or establish end-to-end deletion, Apple revocation, payment reconciliation or
+native release readiness.

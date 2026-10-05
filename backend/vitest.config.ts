@@ -11,6 +11,9 @@ export default defineConfig({
       // The entire supabase module is mocked in tests; these dummy values
       // exist only to satisfy the env-schema validation on startup.
       SUPABASE_ANON_KEY: 'test-anon-key-placeholder',
+      SUPABASE_URL: 'https://test-project.example.invalid',
+      SUPABASE_SERVICE_ROLE_KEY: 'test-service-key-placeholder',
+      NODE_ENV: 'test',
     },
   },
   resolve: {
