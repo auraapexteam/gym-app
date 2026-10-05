@@ -12,6 +12,4 @@ export interface SignedUploadUrlDto {
   token: string;
   bucket: string;
   path: string;
-  /** Public URL the client should submit back once the upload completes. */
-  publicUrl: string;
 }

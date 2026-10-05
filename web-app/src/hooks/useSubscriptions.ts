@@ -1,3 +1,4 @@
+import { accountQueryKey } from '@/store/auth.store';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { subscriptionsApi, CreateManualSubscriptionPayload } from '@/api/subscriptions';
 import { toast } from 'sonner';
@@ -22,7 +23,7 @@ export function useCreateManualSubscription() {
 
 export function useMySubscriptions() {
   return useQuery({
-    queryKey: ['subscriptions', 'me'],
+    queryKey: accountQueryKey(['subscriptions', 'me']),
     queryFn: async () => {
       const res = await subscriptionsApi.getMine();
       return res.data.data || [];

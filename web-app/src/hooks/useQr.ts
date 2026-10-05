@@ -1,10 +1,11 @@
+import { accountQueryKey } from '@/store/auth.store';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { qrApi } from '@/api/qr';
 import { toast } from 'sonner';
 
 export function useActiveQr() {
   return useQuery({
-    queryKey: ['active-qr'],
+    queryKey: accountQueryKey(['active-qr']),
     queryFn: async () => {
       try {
         const res = await qrApi.getActive();

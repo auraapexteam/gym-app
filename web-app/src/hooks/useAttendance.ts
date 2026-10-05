@@ -1,3 +1,4 @@
+import { accountQueryKey } from '@/store/auth.store';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { attendanceApi } from '@/api';
 import { toast } from 'sonner';
@@ -5,7 +6,7 @@ import type { CheckIn } from '@/types';
 
 export function useAttendance(params?: { page?: number; limit?: number; memberId?: string }) {
   return useQuery({
-    queryKey: ['attendance', params],
+    queryKey: accountQueryKey(['attendance', params]),
     queryFn: async () => {
       const res = await attendanceApi.getAll(params);
       return res.data.data || [];
@@ -15,7 +16,7 @@ export function useAttendance(params?: { page?: number; limit?: number; memberId
 
 export function useAttendanceStats() {
   return useQuery({
-    queryKey: ['attendance-stats'],
+    queryKey: accountQueryKey(['attendance-stats']),
     queryFn: async () => {
       const res = await attendanceApi.stats();
       return res.data.data;

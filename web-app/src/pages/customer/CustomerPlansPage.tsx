@@ -3,7 +3,10 @@ import { useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Modal } from '@/components/ui';
 import { usePlans } from '@/hooks/usePlans';
-import { useCreateManualSubscription, useMySubscriptions } from '@/hooks/useSubscriptions';
+import { useMySubscriptions } from '@/hooks/useSubscriptions';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { payForPhysicalMembership } from '@/api/physicalMembershipCheckout';
+import { toast } from 'sonner';
 import { useJoinRequestStatus, useGymDirectory } from '@/hooks/useGyms';
 import { useAuthStore } from '@/store';
 import { formatDate } from '@/utils';
@@ -18,7 +21,12 @@ export default function CustomerPlansPage() {
   const { data: joinStatus } = useJoinRequestStatus();
   const { data: gyms = [] } = useGymDirectory();
   const { data: mySubscriptions = [] } = useMySubscriptions();
-  const createSubscriptionMutation = useCreateManualSubscription();
+  const qc = useQueryClient();
+  const createSubscriptionMutation = useMutation({
+    mutationFn: (planId: string) => payForPhysicalMembership(planId),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['subscriptions'] }); toast.success('Payment verified. Your gym membership is active.'); },
+    onError: (error: any) => toast.error(error.response?.data?.message || error.message || 'Payment could not be confirmed. Check status before paying again.'),
+  });
 
   const selectedGym = urlGymId ? gyms.find((g) => g.id === urlGymId) : null;
   const isApproved = joinStatus?.status === 'approved';
@@ -32,11 +40,7 @@ export default function CustomerPlansPage() {
 
   const handleSubscribe = (planId: string) => {
     if (!user?.id) return;
-    createSubscriptionMutation.mutate({
-      memberId: user.id,
-      planId,
-      method: 'upi',
-    });
+    createSubscriptionMutation.mutate(planId);
   };
 
   return (
@@ -47,7 +51,7 @@ export default function CustomerPlansPage() {
           <div>
             <h1 className="text-2xl font-bold text-aura-text">Membership Plans & Packages</h1>
             <p className="text-sm text-aura-muted mt-1">
-              Select and activate a membership plan for <span className="text-aura-text font-semibold">{activeGym?.name || joinStatus?.gymName || 'your gym'}</span>
+              Physical gym access for <span className="text-aura-text font-semibold">{activeGym?.name || joinStatus?.gymName || 'your gym'}</span>. Payment is verified before membership activation.
             </p>
           </div>
           <Badge variant="success" className="gap-1 text-xs">
@@ -136,12 +140,12 @@ export default function CustomerPlansPage() {
                       ) : (
                         <Button
                           variant="primary"
-                          disabled={createSubscriptionMutation.isPending}
+                          disabled={createSubscriptionMutation.isPending || !isApproved || joinStatus?.gymId !== targetGymId || Number(plan.price) <= 0}
                           onClick={() => handleSubscribe(plan.id)}
                           className="w-full gap-2 text-xs font-semibold py-2.5"
                         >
                           <CreditCard className="h-4 w-4" />
-                          {createSubscriptionMutation.isPending ? 'Activating Package...' : 'Subscribe / Buy Package'}
+                          {createSubscriptionMutation.isPending ? 'Confirming payment...' : Number(plan.price) <= 0 ? 'Contact gym to activate' : !isApproved || joinStatus?.gymId !== targetGymId ? 'Gym approval required' : 'Pay for gym membership'}
                         </Button>
                       )}
                     </div>

@@ -621,7 +621,7 @@ Security Guarantees:
 
 # 124. Account Deletion (GDPR & App Store Compliance)
 
-Purpose: Allows authenticated customers and users to self-delete their account and permanently purge their personal data, meeting Apple App Store & Google Play privacy requirements.
+Purpose: Allows an authenticated user to request self-service Auth account deletion. This implementation alone does not establish complete personal-data cleanup or store compliance.
 
 Endpoints:
 - `DELETE /api/v1/auth/account`
@@ -634,7 +634,7 @@ Behavior:
 1. Validates the caller's JWT and resolves their profile.
 2. Forbids `super_admin` self-deletion to prevent platform lockout.
 3. Invokes Supabase Auth Admin deletion (`supabase.auth.admin.deleteUser(userId)`).
-4. Cascades delete through `public.profiles` (`ON DELETE CASCADE`), which immediately purges all associated member rows, progress logs (`notes_logs`, `sleep_logs`, `progress_logs`, `water_logs`, `protein_logs`, `steps_logs`), workout history, saved gym bookmarks, and gym join requests.
+4. Cascades through `public.profiles` and profile-owned progress logs, workout history, bookmarks and gym join requests. Member rows use a `SET NULL` relationship and remain with membership/financial records. Storage objects, retained member/trainer fields, provider authorization, backups and audit/payment payloads require separate cleanup and retention handling; do not describe them as purged by this call.
 5. Records an audit event (`auth.delete_account`).
 
 Response:

@@ -1,3 +1,4 @@
+import { accountQueryKey } from '@/store/auth.store';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { equipmentApi } from '@/api';
 import { toast } from 'sonner';
@@ -5,7 +6,7 @@ import type { Equipment } from '@/types';
 
 export function useEquipment() {
   return useQuery({
-    queryKey: ['equipment'],
+    queryKey: accountQueryKey(['equipment']),
     queryFn: async () => {
       const res = await equipmentApi.getAll();
       const raw = res.data.data || [];

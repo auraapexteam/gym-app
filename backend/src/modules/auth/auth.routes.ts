@@ -8,14 +8,18 @@ import {
   updateProfileSchema,
   phoneOtpSchema,
   verifyOtpSchema,
+  refreshSchema,
 } from '@/modules/auth/auth.validation';
 import { authenticate, authRateLimiter, validate, asyncHandler } from '@/shared/middleware';
 
 const router = Router();
+// Auth responses contain session credentials and personal profile fields.
+router.use((_req, res, next) => { res.setHeader('Cache-Control', 'private, no-store'); next(); });
 
 // Public endpoints — strictly rate limited to deter brute force / abuse.
 router.post('/register', authRateLimiter, validate(registerSchema), asyncHandler(AuthController.register));
 router.post('/login', authRateLimiter, validate(loginSchema), asyncHandler(AuthController.login));
+router.post('/refresh', authRateLimiter, validate(refreshSchema), asyncHandler(AuthController.refresh));
 router.post('/phone-otp', authRateLimiter, validate(phoneOtpSchema), asyncHandler(AuthController.phoneOtp));
 router.post('/verify-otp', authRateLimiter, validate(verifyOtpSchema), asyncHandler(AuthController.verifyOtp));
 router.post(

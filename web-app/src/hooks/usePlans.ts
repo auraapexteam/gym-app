@@ -1,3 +1,4 @@
+import { accountQueryKey } from '@/store/auth.store';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { plansApi } from '@/api';
 import { toast } from 'sonner';
@@ -5,7 +6,7 @@ import type { MembershipPlan } from '@/types';
 
 export function usePlans(gymId?: string) {
   return useQuery({
-    queryKey: ['plans', gymId],
+    queryKey: accountQueryKey(['plans', gymId]),
     queryFn: async () => {
       const res = await plansApi.getAll(gymId ? { gymId } : undefined);
       return res.data.data;

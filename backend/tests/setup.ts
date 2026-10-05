@@ -225,9 +225,11 @@ vi.mock('@/config/supabase', () => {
   const mockSupabaseAnon = createMockChain();
 
   const storageMock = {
+    getBucket: vi.fn(async (id: string) => ({ data: { id, public: false, file_size_limit: 5242880, allowed_mime_types: ['image/jpeg','image/png','image/webp'] }, error: null })),
     from: vi.fn(() => ({
       getPublicUrl: vi.fn((path: string) => ({ data: { publicUrl: `https://mock.supabase.co/storage/v1/object/public/${path}` } })),
       createSignedUploadUrl: vi.fn(async (path: string) => ({ data: { signedUrl: `https://mock.supabase.co/upload/${path}`, token: 'mock-token' }, error: null })),
+      createSignedUrl: vi.fn(async (path: string, expiresIn: number) => ({ data: { signedUrl: `https://mock.supabase.co/private/${path}?expires=${expiresIn}` }, error: null })),
     }))
   };
   mockSupabase.storage = storageMock;
@@ -258,6 +260,11 @@ vi.mock('@/config/supabase', () => {
       };
     }),
     signOut: vi.fn(async () => ({ error: null })),
+    refreshSession: vi.fn(async () => ({
+      data: { user: { id: '47d7dfca-8857-48f8-b3ab-5c30fbdb7ba1' },
+        session: { access_token: 'renewed-token', refresh_token: 'rotated-refresh-token', expires_at: Math.floor(Date.now()/1000)+3600 } },
+      error: null,
+    })),
     resetPasswordForEmail: vi.fn(async () => ({ data: {}, error: null })),
     signInWithOtp: vi.fn(async (_payload: any) => {
       if (testDbRegistry.mocks['otp:error']) {
@@ -314,6 +321,7 @@ vi.mock('@/config/supabase', () => {
   return {
     supabase: mockSupabase,
     supabaseAnon: mockSupabaseAnon,
+    createAuthClient: vi.fn(() => mockSupabaseAnon),
   };
 });
 

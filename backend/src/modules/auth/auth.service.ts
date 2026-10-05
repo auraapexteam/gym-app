@@ -1,4 +1,4 @@
-import { supabase, supabaseAnon } from '@/config/supabase';
+import { supabase, createAuthClient } from '@/config/supabase';
 import { profileRepository } from '@/modules/auth/auth.repository';
 import { toProfileDto, toSessionDto } from '@/modules/auth/auth.dto';
 import {
@@ -12,6 +12,8 @@ import {
 import { AccountStatus } from '@/shared/types';
 import { Role } from '@/shared/rbac';
 import { normalizeEmail } from '@/shared/utils';
+import { PrivateMediaService } from '@/shared/services/private-media.service';
+import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import {
   BadRequestError,
   ConflictError,
@@ -62,7 +64,7 @@ export class AuthService {
       throw new UnauthorizedError('Account does not exist. Please contact your administrator.', 'ACCOUNT_NOT_FOUND');
     }
 
-    const { data, error } = await supabaseAnon.auth.signInWithPassword({
+    const { data, error } = await createAuthClient().auth.signInWithPassword({
       email,
       password: input.password,
     });
@@ -77,7 +79,29 @@ export class AuthService {
       throw new ForbiddenError('Account is not active', 'ACCOUNT_INACTIVE');
     }
 
-    return { session: toSessionDto(data.session), profile: toProfileDto(profile) };
+    return { session: toSessionDto(data.session), profile: await this.presentProfile(profile) };
+  }
+
+  static async refresh(refreshToken: string): Promise<AuthResult> {
+    let result;
+    try {
+      result = await createAuthClient().auth.refreshSession({ refresh_token: refreshToken });
+    } catch {
+      throw new ServiceUnavailableError('Session refresh is temporarily unavailable. Please retry.', 'AUTH_PROVIDER_UNAVAILABLE');
+    }
+    const { data, error } = result;
+    if (error && (isAuthRetryableFetchError(error) || error.status === 429 || (error.status ?? 0) >= 500)) {
+      throw new ServiceUnavailableError('Session refresh is temporarily unavailable. Please retry.', 'AUTH_PROVIDER_UNAVAILABLE');
+    }
+    if (error || !data.user || !data.session?.access_token || !data.session.refresh_token) {
+      throw new UnauthorizedError('Your session has expired. Please sign in again.', 'SESSION_EXPIRED');
+    }
+    const profile = await profileRepository.findById(data.user.id);
+    if (!profile) throw new UnauthorizedError('Your session has expired. Please sign in again.', 'SESSION_EXPIRED');
+    if (profile.status !== AccountStatus.ACTIVE) {
+      throw new ForbiddenError('Account is not active', 'ACCOUNT_INACTIVE');
+    }
+    return { session: toSessionDto(data.session), profile: await this.presentProfile(profile) };
   }
 
   /** Best-effort session revocation. The client must also discard its tokens. */
@@ -91,7 +115,7 @@ export class AuthService {
 
   /** Trigger a password-reset email. Always succeeds to avoid user enumeration. */
   static async forgotPassword(email: string): Promise<void> {
-    await supabaseAnon.auth.resetPasswordForEmail(normalizeEmail(email));
+    await createAuthClient().auth.resetPasswordForEmail(normalizeEmail(email));
   }
 
   /** Complete a password reset using the recovery access token. */
@@ -147,7 +171,18 @@ export class AuthService {
   static async getProfile(userId: string): Promise<ProfileDto> {
     const profile = await profileRepository.findById(userId);
     if (!profile) throw new NotFoundError('Profile not found', 'PROFILE_NOT_FOUND');
-    return toProfileDto(profile);
+    return this.presentProfile(profile);
+  }
+
+  private static async presentProfile(profile: ProfileRow): Promise<ProfileDto> {
+    const dto = toProfileDto(profile);
+    if (!dto.avatarPath) return { ...dto, avatarUrl: null, avatarUnavailable: Boolean(profile.avatar_url) };
+    try {
+      return { ...dto, avatarUrl: await PrivateMediaService.signedReadUrl(profile.id, dto.avatarPath, 'avatar') };
+    } catch {
+      // A private-media outage must not expose an object or prevent sign-in.
+      return { ...dto, avatarUrl: null, avatarUnavailable: true };
+    }
   }
 
   static async updateProfile(userId: string, input: UpdateProfileInput): Promise<ProfileDto> {
@@ -155,10 +190,37 @@ export class AuthService {
     if (input.fullName !== undefined) patch.full_name = input.fullName;
     if (input.phone !== undefined) patch.phone = input.phone;
     if (input.avatarUrl !== undefined) patch.avatar_url = input.avatarUrl;
+    if (input.avatarPath !== undefined) {
+      if (input.avatarPath !== null) {
+        await PrivateMediaService.signedReadUrl(userId, input.avatarPath, 'avatar');
+      }
+      patch.avatar_url = input.avatarPath;
+    }
+    const fields = {
+      dateOfBirth: 'date_of_birth', gender: 'gender', weightKg: 'weight_kg', heightCm: 'height_cm',
+      fitnessLevel: 'fitness_level', fitnessGoal: 'fitness_goal', trainingFrequency: 'training_frequency',
+      locationAddress: 'location_address', gymPreference: 'gym_preference', hasHealthCondition: 'has_health_condition',
+      healthConditions: 'health_conditions', dietaryPreference: 'dietary_preference', onboardingCompleted: 'onboarding_completed',
+    } as const;
+    for (const [inputKey, column] of Object.entries(fields)) {
+      const value = input[inputKey as keyof typeof fields];
+      if (value !== undefined) (patch as Record<string, unknown>)[column] = value;
+    }
+    if (input.healthDataConsent === true) {
+      patch.health_data_consent_at = new Date().toISOString();
+      patch.health_data_notice_version = 'fitness-profile-2026-10-04';
+    } else if (input.healthDataConsent === false) {
+      for (const column of ['weight_kg', 'height_cm', 'fitness_level', 'fitness_goal', 'training_frequency', 'has_health_condition', 'dietary_preference']) {
+        (patch as Record<string, unknown>)[column] = null;
+      }
+      patch.health_conditions = [];
+      patch.health_data_consent_at = null;
+      patch.health_data_notice_version = null;
+    }
 
     const updated = await profileRepository.update(userId, patch);
     if (!updated) throw new NotFoundError('Profile not found', 'PROFILE_NOT_FOUND');
-    return toProfileDto(updated);
+    return this.presentProfile(updated);
   }
 
   /**
@@ -196,7 +258,7 @@ export class AuthService {
 
   /** Trigger SMS OTP code generation via Supabase Auth OTP. */
   static async sendPhoneOtp(phone: string): Promise<{ message: string }> {
-    const { error } = await supabaseAnon.auth.signInWithOtp({
+    const { error } = await createAuthClient().auth.signInWithOtp({
       phone,
     });
 
@@ -209,7 +271,7 @@ export class AuthService {
 
   /** Verify 6-digit OTP code and return session tokens + profile. */
   static async verifyPhoneOtp(phone: string, code: string): Promise<AuthResult> {
-    const { data, error } = await supabaseAnon.auth.verifyOtp({
+    const { data, error } = await createAuthClient().auth.verifyOtp({
       phone,
       token: code,
       type: 'sms',
@@ -221,7 +283,7 @@ export class AuthService {
 
     let profile = await profileRepository.findById(data.user.id);
     if (!profile) {
-      const email = data.user.email || `${phone.replace(/[^0-9]/g, '')}@phone.auraapex.internal`;
+      const email = data.user.email || `${data.user.id}@phone.auraapex.invalid`;
       profile = await profileRepository.create({
         id: data.user.id,
         email,
@@ -236,7 +298,7 @@ export class AuthService {
       throw new ForbiddenError('Account is not active', 'ACCOUNT_INACTIVE');
     }
 
-    return { session: toSessionDto(data.session), profile: toProfileDto(profile) };
+    return { session: toSessionDto(data.session), profile: await this.presentProfile(profile) };
   }
 }
 

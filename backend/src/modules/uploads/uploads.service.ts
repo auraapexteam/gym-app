@@ -1,4 +1,4 @@
-import { StorageService } from '@/shared/services';
+import { StorageService, PrivateMediaService } from '@/shared/services';
 import { generateOpaqueToken } from '@/shared/utils';
 import { CreateSignedUploadUrlInput, SignedUploadUrlDto } from '@/modules/uploads/uploads.types';
 
@@ -16,14 +16,13 @@ export class UploadsService {
     StorageService.assertValidImage(input.mimeType, input.size);
 
     const path = `personal/${profileId}/${input.purpose}/${generateOpaqueToken(8)}-${sanitizeFileName(input.fileName)}`;
-    const target = await StorageService.createSignedUploadUrl(path);
+    const target = await PrivateMediaService.createSignedUploadUrl(profileId, path);
 
     return {
       uploadUrl: target.signedUrl,
       token: target.token,
       bucket: target.bucket,
       path: target.path,
-      publicUrl: StorageService.getPublicUrl(target.path),
     };
   }
 }

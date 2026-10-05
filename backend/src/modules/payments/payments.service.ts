@@ -26,6 +26,8 @@ import {
   BusinessRuleError,
   NotFoundError,
   PaymentError,
+  ConflictError,
+  ServiceUnavailableError,
 } from '@/shared/errors';
 import { generateOpaqueToken } from '@/shared/utils';
 
@@ -146,19 +148,31 @@ export class PaymentService {
    * authoritative source of truth for payment state; processing is idempotent so
    * replayed events never double-apply.
    */
-  static async handleWebhookEvent(event: RazorpayWebhookEvent): Promise<void> {
-    const eventId = event.id ?? (event as any).event_id;
-    if (!eventId) {
-      logger.warn('Webhook event missing id');
-      return;
+  static async handleWebhookEvent(event: RazorpayWebhookEvent, eventId: string): Promise<void> {
+    if (typeof eventId !== 'string' || !/^[A-Za-z0-9_-]{1,255}$/.test(eventId)) {
+      throw new BadRequestError('A valid webhook event ID is required', 'INVALID_WEBHOOK_EVENT_ID');
     }
 
     // 1. Idempotency Check: check if event already processed
-    const { data: existingEvent } = await supabase
+    const { data: existingEvent, error: lookupError } = await supabase
       .from('payment_events')
-      .select('status')
+      .select('status, event_type, payload')
       .eq('event_id', eventId)
       .maybeSingle();
+
+    if (lookupError) {
+      throw new ServiceUnavailableError('Unable to load webhook event', 'WEBHOOK_EVENT_LOOKUP_FAILED');
+    }
+
+    // A delivery ID must not be reused for a different payment or event type.
+    if (existingEvent && (
+      existingEvent.event_type !== event.event
+      || existingEvent.payload?.payload?.payment?.entity?.id !== event.payload?.payment?.entity?.id
+      || existingEvent.payload?.payload?.payment?.entity?.order_id !== event.payload?.payment?.entity?.order_id
+      || existingEvent.payload?.payload?.order?.entity?.id !== event.payload?.order?.entity?.id
+    )) {
+      throw new ConflictError('Webhook event ID was reused for a different event', 'CONFLICTING_WEBHOOK_EVENT_ID');
+    }
 
     if (existingEvent?.status === 'processed') {
       logger.info({ eventId }, 'Payment webhook event already processed (idempotent skip)');
@@ -166,14 +180,21 @@ export class PaymentService {
     }
 
     if (!existingEvent) {
-      await supabase
+      const { data: savedEvent, error: insertError } = await supabase
         .from('payment_events')
         .insert({
           event_id: eventId,
           event_type: event.event,
           payload: event,
           status: 'pending',
-        });
+        })
+        .select('event_id')
+        .single();
+      if (insertError || !savedEvent) {
+        // A concurrent insert can be retried safely after the other receiver
+        // completes. Do not activate anything without a persisted event record.
+        throw new ServiceUnavailableError('Unable to persist webhook event', 'WEBHOOK_EVENT_SAVE_FAILED');
+      }
     }
 
     const payment = event.payload?.payment?.entity;
@@ -182,19 +203,23 @@ export class PaymentService {
         case 'order.paid':
         case 'payment.captured': {
           const orderId = payment?.order_id ?? event.payload?.order?.entity?.id;
-          if (orderId && payment?.id) {
-            // Verify status directly from Razorpay API before activating subscription
-            const rpPayment = await RazorpayService.fetchPayment(payment.id);
-            if (rpPayment.status !== 'captured') {
-              throw new BusinessRuleError('Payment status is not captured', 'PAYMENT_NOT_CAPTURED');
-            }
-
-            await this.confirmFromWebhook(orderId, payment.id, mapRazorpayMethod(payment.method));
+          if (!orderId || !payment?.id) {
+            throw new BadRequestError('Webhook payment and order IDs are required', 'INVALID_WEBHOOK_PAYLOAD');
           }
+          // Verify status directly from Razorpay API before activating subscription.
+          const rpPayment = await RazorpayService.fetchPayment(payment.id);
+          if (rpPayment.status !== 'captured') {
+            throw new BusinessRuleError('Payment status is not captured', 'PAYMENT_NOT_CAPTURED');
+          }
+
+          await this.confirmFromWebhook(orderId, payment.id, mapRazorpayMethod(payment.method));
           break;
         }
         case 'payment.failed': {
-          if (payment?.order_id) await this.markFailed(payment.order_id);
+          if (!payment?.order_id) {
+            throw new BadRequestError('Webhook order ID is required', 'INVALID_WEBHOOK_PAYLOAD');
+          }
+          await this.markFailed(payment.order_id);
           break;
         }
         default:
@@ -202,16 +227,22 @@ export class PaymentService {
       }
 
       // Mark event as processed
-      await supabase
+      const { data: processedEvent, error: updateError } = await supabase
         .from('payment_events')
         .update({ status: 'processed', processed_at: new Date().toISOString() })
-        .eq('event_id', eventId);
+        .eq('event_id', eventId)
+        .select('event_id')
+        .single();
+      if (updateError || !processedEvent) {
+        throw new ServiceUnavailableError('Unable to record webhook completion', 'WEBHOOK_EVENT_SAVE_FAILED');
+      }
     } catch (err: any) {
       // Mark event as failed
-      await supabase
+      const { error: failureError } = await supabase
         .from('payment_events')
         .update({ status: 'failed', error_msg: err.message || 'Unknown error' })
         .eq('event_id', eventId);
+      if (failureError) logger.error({ eventId }, 'Unable to record failed webhook event');
       throw err;
     }
   }

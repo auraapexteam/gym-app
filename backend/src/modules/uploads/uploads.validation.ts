@@ -8,3 +8,7 @@ export const createSignedUploadUrlSchema = z.object({
     purpose: z.enum(['avatar', 'progress-photo']),
   }),
 });
+
+export const signedReadSchema = z.object({
+  body: z.object({ path: z.string().min(1).max(500) }).strict(),
+});

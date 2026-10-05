@@ -42,6 +42,7 @@ const envSchema = z.object({
     .string()
     .min(1, 'SUPABASE_SERVICE_ROLE_KEY is required'),
   SUPABASE_STORAGE_BUCKET: z.string().default('gym-media'),
+  SUPABASE_PERSONAL_STORAGE_BUCKET: z.string().min(1).default('gym-personal'),
 
   // Razorpay (optional — payment endpoints degrade gracefully when unset)
   RAZORPAY_KEY_ID: z.string().optional(),

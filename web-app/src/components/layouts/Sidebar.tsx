@@ -11,6 +11,8 @@ import {
   Activity, BarChart3, FileText, Building2, Crown, Bell, ChevronDown
 } from 'lucide-react';
 import type { UserRole } from '@/types';
+import { authApi } from '@/api/auth';
+import { toast } from 'sonner';
 
 interface NavItem {
   label: string;
@@ -90,7 +92,8 @@ const navConfig: NavGroup[] = [
 
 export function Sidebar() {
   const { sidebarCollapsed, toggleSidebar, mobileMenuOpen, setMobileMenuOpen } = useUIStore();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
+  const logout = () => { void authApi.logout().catch(() => toast.error('Signed out on this device. Server session revocation could not be confirmed.')); };
   const location = useLocation();
   const { data: joinStatus } = useJoinRequestStatus();
 

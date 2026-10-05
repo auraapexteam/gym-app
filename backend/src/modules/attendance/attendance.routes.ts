@@ -8,12 +8,13 @@ import {
 import {
   authenticate,
   requireGym,
+  requireRole,
   requirePermission,
   validate,
   asyncHandler,
   attendanceRateLimiter,
 } from '@/shared/middleware';
-import { Permission } from '@/shared/rbac';
+import { Permission, Role, STAFF_ROLES } from '@/shared/rbac';
 
 const router = Router();
 
@@ -23,6 +24,7 @@ router.use(authenticate);
 router.post(
   '/check-in',
   attendanceRateLimiter,
+  requireRole(Role.CUSTOMER),
   requirePermission(Permission.ATTENDANCE_CREATE),
   validate(checkInSchema),
   asyncHandler(AttendanceController.checkIn),
@@ -31,6 +33,7 @@ router.post(
 // Customer's own history.
 router.get(
   '/me',
+  requireRole(Role.CUSTOMER),
   requirePermission(Permission.ATTENDANCE_READ),
   asyncHandler(AttendanceController.me),
 );
@@ -38,6 +41,7 @@ router.get(
 // Staff manual check-in.
 router.post(
   '/manual',
+  requireRole(...STAFF_ROLES, Role.SUPER_ADMIN),
   requireGym,
   requirePermission(Permission.ATTENDANCE_CREATE),
   validate(manualCheckInSchema),
@@ -47,6 +51,7 @@ router.post(
 // Owner/staff gym-wide reads.
 router.get(
   '/',
+  requireRole(...STAFF_ROLES, Role.SUPER_ADMIN),
   requireGym,
   requirePermission(Permission.ATTENDANCE_READ),
   validate(listAttendanceSchema),
@@ -55,6 +60,7 @@ router.get(
 
 router.get(
   '/stats',
+  requireRole(...STAFF_ROLES, Role.SUPER_ADMIN),
   requireGym,
   requirePermission(Permission.ATTENDANCE_READ),
   asyncHandler(AttendanceController.stats),

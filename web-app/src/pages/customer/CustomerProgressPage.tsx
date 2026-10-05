@@ -1,3 +1,4 @@
+import { accountQueryKey } from '@/store/auth.store';
 import { useState } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from '@/components/ui';
@@ -11,10 +12,11 @@ export default function CustomerProgressPage() {
   const [weightKg, setWeightKg] = useState('');
   const [waterLiters, setWaterLiters] = useState('');
   const [proteinGrams, setProteinGrams] = useState('');
-  const todayStr = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   const { data: monthSummary = [], isLoading } = useQuery({
-    queryKey: ['progress-month'],
+    queryKey: accountQueryKey(['progress-month', now.getFullYear(), now.getMonth() + 1]),
     queryFn: async () => {
       const res = await progressApi.getMonthSummary();
       return Array.isArray(res.data.data) ? res.data.data : [];
@@ -178,9 +180,9 @@ export default function CustomerProgressPage() {
                     {monthSummary.map((item) => (
                       <tr key={item.date} className="hover:bg-white/3">
                         <td className="py-3 font-semibold text-aura-text">{item.date}</td>
-                        <td className="py-3 text-aura-primary font-bold">{item.weightKg ? `${item.weightKg} kg` : '—'}</td>
-                        <td className="py-3 text-blue-400 font-bold">{item.waterLiters ? `${item.waterLiters} L` : '—'}</td>
-                        <td className="py-3 text-amber-400 font-bold">{item.proteinGrams ? `${item.proteinGrams} g` : '—'}</td>
+                        <td className="py-3 text-aura-primary font-bold">{item.weightKg != null ? `${item.weightKg} kg` : '—'}</td>
+                        <td className="py-3 text-blue-400 font-bold">{item.waterLiters != null ? `${item.waterLiters} L` : '—'}</td>
+                        <td className="py-3 text-amber-400 font-bold">{item.proteinGrams != null ? `${item.proteinGrams} g` : '—'}</td>
                         <td className="py-3">
                           <Badge variant="success" className="gap-1">
                             <CheckCircle2 className="h-3 w-3" /> Logged

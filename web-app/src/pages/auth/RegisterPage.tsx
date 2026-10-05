@@ -59,8 +59,8 @@ export default function RegisterPage() {
       const res = await authApi.register(data);
       return res.data.data;
     },
-    onSuccess: ({ user, token }) => {
-      setAuth(user, token);
+    onSuccess: ({ user, token, refreshToken, expiresAt }) => {
+      setAuth(user, token, { refreshToken, expiresAt });
       toast.success('Account created successfully!');
       if (user.role === 'customer') {
         navigate('/browse-gyms', { replace: true });

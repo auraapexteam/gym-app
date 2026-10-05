@@ -1,5 +1,6 @@
 import { supabase } from '@/config/supabase';
-import { BadRequestError } from '@/shared/errors';
+import { ServiceUnavailableError } from '@/shared/errors';
+import { PrivateMediaService } from '@/shared/services/private-media.service';
 
 export class ProgressService {
   /** Upsert weight log for a specific date. */
@@ -13,7 +14,7 @@ export class ProgressService {
       .select()
       .single();
 
-    if (error) throw new BadRequestError(error.message, 'WEIGHT_LOG_FAILED');
+    if (error || !data) throw new ServiceUnavailableError('Unable to save weight log. Please try again.', 'WEIGHT_LOG_FAILED');
     return data;
   }
 
@@ -28,7 +29,7 @@ export class ProgressService {
       .select()
       .single();
 
-    if (error) throw new BadRequestError(error.message, 'WATER_LOG_FAILED');
+    if (error || !data) throw new ServiceUnavailableError('Unable to save water log. Please try again.', 'WATER_LOG_FAILED');
     return data;
   }
 
@@ -43,7 +44,7 @@ export class ProgressService {
       .select()
       .single();
 
-    if (error) throw new BadRequestError(error.message, 'PROTEIN_LOG_FAILED');
+    if (error || !data) throw new ServiceUnavailableError('Unable to save protein log. Please try again.', 'PROTEIN_LOG_FAILED');
     return data;
   }
 
@@ -58,10 +59,7 @@ export class ProgressService {
       .select()
       .single();
 
-    if (error) {
-      // Graceful fallback if steps_logs table is missing from schema cache
-      return { profile_id: profileId, steps, log_date: logDate };
-    }
+    if (error || !data) throw new ServiceUnavailableError('Unable to save steps log. Please try again.', 'STEPS_LOG_FAILED');
     return data;
   }
 
@@ -76,7 +74,7 @@ export class ProgressService {
       .select()
       .single();
 
-    if (error) throw new BadRequestError(error.message, 'NOTE_LOG_FAILED');
+    if (error || !data) throw new ServiceUnavailableError('Unable to save daily note. Please try again.', 'NOTE_LOG_FAILED');
     return data;
   }
 
@@ -91,12 +89,14 @@ export class ProgressService {
       .select()
       .single();
 
-    if (error) throw new BadRequestError(error.message, 'SLEEP_LOG_FAILED');
+    if (error || !data) throw new ServiceUnavailableError('Unable to save sleep log. Please try again.', 'SLEEP_LOG_FAILED');
     return data;
   }
 
   /** Upsert progress photo log for a specific date. */
   static async logImage(profileId: string, imageUrl: string, logDate: string): Promise<any> {
+    PrivateMediaService.assertOwnedPath(profileId, imageUrl, 'progress-photo');
+    const signedUrl = await PrivateMediaService.signedReadUrl(profileId, imageUrl, 'progress-photo');
     const { data, error } = await supabase
       .from('progress_images')
       .upsert(
@@ -106,8 +106,8 @@ export class ProgressService {
       .select()
       .single();
 
-    if (error) throw new BadRequestError(error.message, 'IMAGE_LOG_FAILED');
-    return data;
+    if (error || !data) throw new ServiceUnavailableError('Unable to save progress image. Please try again.', 'IMAGE_LOG_FAILED');
+    return { ...data, image_path: imageUrl, image_url: signedUrl };
   }
 
   /** Fetch all progress logs aggregated for a given calendar month. */
@@ -120,7 +120,7 @@ export class ProgressService {
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${year}-${monthPad}-${String(lastDay).padStart(2, '0')}`;
 
-    // Parallel fetch logs from all tables with individual error isolation
+    // A failed read must not look like an empty logbook; callers can retry.
     const [weightRes, waterRes, proteinRes, stepsRes, imageRes, notesRes, sleepRes] = await Promise.all([
       supabase.from('progress_logs').select('id, weight, log_date').eq('profile_id', profileId).gte('log_date', startDate).lte('log_date', endDate),
       supabase.from('water_logs').select('id, amount_ml, log_date').eq('profile_id', profileId).gte('log_date', startDate).lte('log_date', endDate),
@@ -131,12 +131,27 @@ export class ProgressService {
       supabase.from('sleep_logs').select('id, duration_minutes, quality, log_date').eq('profile_id', profileId).gte('log_date', startDate).lte('log_date', endDate),
     ]);
 
+    if ([weightRes, waterRes, proteinRes, stepsRes, imageRes, notesRes, sleepRes].some((result) => result.error)) {
+      throw new ServiceUnavailableError('Unable to load progress logs. Please try again.', 'PROGRESS_SUMMARY_FAILED');
+    }
+
     return {
       weightLogs: weightRes.data || [],
       waterLogs: waterRes.data || [],
       proteinLogs: proteinRes.data || [],
       stepsLogs: stepsRes.data || [],
-      imageLogs: imageRes.data || [],
+      imageLogs: await Promise.all((imageRes.data || []).map(async (row: any) => {
+        // Legacy public references require an explicit object migration. Do not
+        // advertise them as private or mint access to an arbitrary foreign URL.
+        if (typeof row.image_url !== 'string' || !row.image_url.startsWith(`personal/${profileId}/progress-photo/`)) {
+          return { id: row.id, log_date: row.log_date, image_url: null, unavailable: true };
+        }
+        try {
+          return { ...row, image_path: row.image_url, image_url: await PrivateMediaService.signedReadUrl(profileId, row.image_url, 'progress-photo') };
+        } catch {
+          return { id: row.id, log_date: row.log_date, image_path: row.image_url, image_url: null, unavailable: true };
+        }
+      })),
       notesLogs: notesRes.data || [],
       sleepLogs: sleepRes.data || [],
     };

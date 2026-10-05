@@ -1,3 +1,4 @@
+import { accountQueryKey } from '@/store/auth.store';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { trainersApi } from '@/api';
 import { toast } from 'sonner';
@@ -5,7 +6,7 @@ import type { Trainer } from '@/types';
 
 export function useTrainers() {
   return useQuery({
-    queryKey: ['trainers'],
+    queryKey: accountQueryKey(['trainers']),
     queryFn: async () => {
       const res = await trainersApi.getAll();
       const raw = res.data.data || [];

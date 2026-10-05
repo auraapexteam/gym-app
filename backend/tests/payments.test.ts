@@ -55,6 +55,7 @@ describe('Payments Module', () => {
     it('should process webhook event successfully with valid signature', async () => {
       // Mock signature verification to return true
       const verifyWebhookSpy = vi.spyOn(RazorpayService, 'verifyWebhookSignature').mockReturnValue(true);
+      vi.spyOn(RazorpayService, 'fetchPayment').mockResolvedValue({ id: 'pay_test_123', status: 'captured' });
 
       const mockPayload = {
         event: 'order.paid',
@@ -71,11 +72,12 @@ describe('Payments Module', () => {
       };
 
       // Mock DB table insert to avoid calling true DB
-      mockTable('payment_events', {});
+      mockTable('payment_events', []);
 
       const res = await request(app)
         .post('/webhooks/razorpay')
         .set('x-razorpay-signature', 'mock-signature')
+        .set('x-razorpay-event-id', 'evt_test_123')
         .send(mockPayload);
 
       expect(res.status).toBe(200);

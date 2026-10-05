@@ -1,3 +1,4 @@
+import { accountQueryKey } from '@/store/auth.store';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi, OnboardGymPayload } from '@/api/admin';
 import { toast } from 'sonner';
@@ -33,7 +34,7 @@ export interface AdminOwner {
 
 export function useAdminGyms() {
   return useQuery({
-    queryKey: ['admin-gyms'],
+    queryKey: accountQueryKey(['admin-gyms']),
     queryFn: async () => {
       const res = await adminApi.listGyms();
       const rawGyms = Array.isArray(res.data.data) ? res.data.data : [];
@@ -64,7 +65,7 @@ export function useAdminGyms() {
 
 export function useAdminOwners() {
   return useQuery({
-    queryKey: ['admin-owners'],
+    queryKey: accountQueryKey(['admin-owners']),
     queryFn: async () => {
       const res = await adminApi.listGyms();
       const rawGyms = Array.isArray(res.data.data) ? res.data.data : [];

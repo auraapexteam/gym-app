@@ -12,5 +12,5 @@ export const attendanceApi = {
     axiosInstance.post<ApiResponse<CheckIn>>('/attendance/manual', data),
 
   checkIn: (data: { qrCode: string }) =>
-    axiosInstance.post<ApiResponse<CheckIn>>('/attendance/check-in', data),
+    axiosInstance.post<ApiResponse<CheckIn>>('/attendance/check-in', { token: data.qrCode }),
 };

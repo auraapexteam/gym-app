@@ -1,3 +1,4 @@
+import { accountQueryKey } from '@/store/auth.store';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts';
@@ -55,7 +56,7 @@ export default function MemberProfilePage() {
   
   // Live member payments
   const { data: paymentsData = [], isLoading: paymentsLoading } = useQuery({
-    queryKey: ['member-payments', id],
+    queryKey: accountQueryKey(['member-payments', id]),
     queryFn: async () => {
       if (!id) return [];
       const res = await paymentsApi.getAll({ memberId: id });
@@ -66,7 +67,7 @@ export default function MemberProfilePage() {
 
   // Live member subscriptions
   const { data: subscriptionsData = [] } = useQuery({
-    queryKey: ['member-subscriptions', id],
+    queryKey: accountQueryKey(['member-subscriptions', id]),
     queryFn: async () => {
       if (!id) return [];
       const res = await subscriptionsApi.list({ memberId: id });

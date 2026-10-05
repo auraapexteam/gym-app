@@ -1,3 +1,4 @@
+import { accountQueryKey } from '@/store/auth.store';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { paymentsApi } from '@/api';
 import { toast } from 'sonner';
@@ -5,7 +6,7 @@ import type { Payment } from '@/types';
 
 export function usePayments(params?: { page?: number; limit?: number }) {
   return useQuery({
-    queryKey: ['payments', params],
+    queryKey: accountQueryKey(['payments', params]),
     queryFn: async () => {
       const res = await paymentsApi.getAll(params);
       const raw = res.data.data || [];

@@ -1,3 +1,4 @@
+import { accountQueryKey } from '@/store/auth.store';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { membersApi } from '@/api';
 import { formatDate, isExpiringSoon, safeNewDate } from '@/utils';
@@ -6,7 +7,7 @@ import type { Member } from '@/types';
 
 export function useMembers(params?: { page?: number; limit?: number; search?: string; status?: string }) {
   return useQuery({
-    queryKey: ['members', params],
+    queryKey: accountQueryKey(['members', params]),
     queryFn: async () => {
       const res = await membersApi.getAll(params);
       const rawItems = Array.isArray(res.data.data) ? res.data.data : [];
@@ -45,7 +46,7 @@ export function useMembers(params?: { page?: number; limit?: number; search?: st
 
 export function useMember(id: string) {
   return useQuery({
-    queryKey: ['member', id],
+    queryKey: accountQueryKey(['member', id]),
     queryFn: async () => {
       const res = await membersApi.getById(id);
       const m = res.data?.data as any;
@@ -79,7 +80,7 @@ export function useMember(id: string) {
 
 export function useMemberProfile(id: string) {
   return useQuery({
-    queryKey: ['members', id],
+    queryKey: accountQueryKey(['members', id]),
     queryFn: async () => {
       const res = await membersApi.getById(id);
       const m = res.data?.data as any;
