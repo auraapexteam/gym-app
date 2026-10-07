@@ -5,6 +5,13 @@ import Renderer, { act } from 'react-test-renderer';
 import { AppleSignInButton } from '../src/components/AppleSignInButton';
 import { completeOAuthCallback } from '../src/api/oauthCallback';
 import { supabase } from '../src/api/supabase';
+import { useAuthStore } from '../src/store/useAuthStore';
+
+jest.mock('../src/store/useAuthStore', () => ({ useAuthStore: { getState: () => ({
+  beginOAuthSignIn: mockBeginOAuthSignIn, cancelOAuthSignIn: mockCancelOAuthSignIn,
+}) } }));
+const mockBeginOAuthSignIn = jest.fn(() => 123);
+const mockCancelOAuthSignIn = jest.fn();
 
 jest.mock('../src/api/supabase', () => ({ supabase: { auth: {
   signInWithOAuth: jest.fn(), setSession: jest.fn(), exchangeCodeForSession: jest.fn(),
@@ -31,6 +38,8 @@ test('starts Apple OAuth through Supabase and opens its HTTPS URL', async () => 
     redirectTo: 'auraapex://login-callback', skipBrowserRedirect: true,
   } });
   expect(Linking.openURL).toHaveBeenCalledWith('https://example.test/auth');
+  expect(useAuthStore.getState().beginOAuthSignIn).toHaveBeenCalledTimes(1);
+  expect(useAuthStore.getState().cancelOAuthSignIn).not.toHaveBeenCalled();
 });
 
 test.each([
@@ -42,6 +51,7 @@ test.each([
   await act(async () => { await tree!.root.findByType(TouchableOpacity).props.onPress(); });
   expect(Linking.openURL).not.toHaveBeenCalled();
   expect(Alert.alert).toHaveBeenCalledWith('Apple Sign-In unavailable', expect.any(String));
+  expect(useAuthStore.getState().cancelOAuthSignIn).toHaveBeenCalledWith(123);
 });
 
 test.each(['https://login-callback#access_token=a&refresh_token=b', 'auraapex://other#access_token=a&refresh_token=b', 'auraapex://login-callback/other?code=x'])('ignores unrelated callback %s', async (url) => {

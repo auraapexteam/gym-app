@@ -60,9 +60,9 @@ test('account summary does not claim to generate an export', async () => {
 
 test('deletion requires explicit confirmation', async () => {
   await act(async () => { tree = Renderer.create(<PrivacySettingsScreen />); });
-  press('Delete account permanently');
+  press('Request account deletion');
   expect(Alert.alert).toHaveBeenCalledWith(
-    'Permanently delete your account?', expect.stringContaining('cannot be undone'),
+    'Request permanent account deletion?', expect.stringContaining('cannot be undone'),
     expect.arrayContaining([expect.objectContaining({ text: 'Cancel', style: 'cancel' })]),
     expect.any(Object)
   );
