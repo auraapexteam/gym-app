@@ -1,49 +1,72 @@
 # Mobile account deletion
 
-Added on 2026-09-28 for `ios-ipa` (iOS) and `frontend-app` (Android).
+Introduced on 2026-09-28. Updated on 2026-10-05 for the mobile client paired with
+the durable backend deletion queue. Existing native binaries require a rebuild.
 
 ## User flow
 
-Profile -> Settings -> Privacy -> Delete account permanently. The native confirmation
-warns that deletion cannot be undone and removes app access. It explains that
-deletion does not issue a refund, directs membership/payment disputes to the gym
-owner without requiring gym approval, and warns that necessary payment/accounting
-records and identifying details may remain for legal obligations or disputes.
-It does not promise that every gym record disappears or waive statutory rights.
+Profile -> Settings -> Privacy & account deletion -> Request account deletion.
+The native confirmation explains that acceptance signs the user out and makes
+the account unavailable while cleanup continues in the background. The process
+deletes the app profile, personal fitness history and private profile and progress
+photos. Necessary gym membership, payment, attendance and accounting records,
+including identifying details needed for those records, are retained for legal
+obligations or resolving payment disputes. No retention period is asserted here;
+the operator must define and enforce the applicable retention schedule.
+
+Deletion does not issue a refund. Membership/payment disputes are directed to
+the gym owner without requiring gym approval. Gym ownership, Apple sign-in access
+and recurring payment mandates may require resolution before acceptance.
+The confirmation preserves statutory rights and does not promise that every gym
+record disappears. The in-app button is the primary deletion route; the support
+inbox provides help and status updates.
 Cancel/dismiss does not send a request. Confirmation sends authenticated
 `DELETE /api/v1/auth/account` using the existing API client and current Bearer token.
 Repeated submissions are blocked while pending.
 
-Only a response with `success: true` triggers success and local cleanup. HTTP errors
-keep the session and permit retry; a timeout is reported as unconfirmed, not proof
-that the account was preserved. Backend enforcement protects super admins, with an
-additional frontend guard. No privileged key is added to the app.
+An HTTP 202 response must include `success: true` and a valid UUID `requestId`
+with `status: 'pending'`. The app shows that cleanup is pending, displays the
+reference and support contact, and repeats the distinction between personal data
+cleanup and retained gym records. It does not claim deletion is complete.
+The previous HTTP 200 `success: true` response without a data payload remains
+supported as completed account deletion, without promising that all data or photos
+were purged. Malformed responses and HTTP errors keep the session; a timeout is
+reported as unconfirmed, not proof that the account survived.
 
-Successful deletion clears profile, membership and gym state, ignores stale queued
-responses, removes only Supabase session/PKCE/user storage keys, and signs out locally.
-Theme preferences are preserved. A local cleanup failure is reported separately
-from server deletion. The login screen is withheld until cleanup finishes.
+Ownership handoff, Apple revocation and recurring payment cancellation errors show
+actionable instructions. Cancelling a membership in the app alone is not presented
+as cancelling a provider mandate. Backend enforcement protects super admins, with
+an additional frontend guard. No privileged key is added to the app.
 
-## Release gates (backend unchanged)
+Confirmed acceptance or legacy completion clears local profile, membership and gym
+state, ignores stale queued responses, removes Supabase session/PKCE/user storage
+keys from secure and legacy storage, and signs out locally. Clearing local
+membership state does not delete the retained server records. Theme preferences
+are preserved. A local cleanup failure is reported separately without losing the
+accepted request reference or repeating DELETE. The login screen is withheld and
+new sign-in is blocked until credential cleanup finishes.
 
-Read-only inspection of `origin/main` at `5e979ce` found the new endpoints and the
-web client method. `AuthService.deleteAccount` currently falls back to deleting
-only the profile if Supabase Auth user deletion returns an error. The route then
-reports success. This must be corrected/verified by the backend owner before
-claiming guaranteed permanent account deletion: an Auth account could survive.
-The frontend cannot detect that partial success from the current response.
+## Release gates
 
-Also verify Apple credential revocation, intended cascade/storage cleanup and
-existing-token handling on the server. No backend or database changes were made.
-The operator now wants necessary gym financial records retained. Reconcile that
-requirement with the cascade-delete implementation and define retained fields,
-purposes and expiry before release. Personal fitness logs are not financial
-records. A frontend warning does not enforce retention or owner access limits.
+Deploy and verify the durable backend queue and its database migration together
+with this mobile contract. The historical deletion endpoint reported HTTP 200
+without providing durable cleanup evidence; compatibility with that response is
+not proof that the new cleanup process is deployed or that every object is gone.
+
+Verify rejection of login/refresh/upload while a request is pending, Auth/profile
+deletion, personal fitness cleanup, private and legacy personal-photo cleanup,
+background retry and the final sweep for outstanding upload URLs. Acceptance alone
+does not establish completion. Apple credential revocation and provider-confirmed
+recurring cancellation must be implemented or completed before their guards can
+permit deletion. Define retained fields, purposes, access controls and expiry
+before release. Personal fitness logs are not financial records. A frontend
+warning does not enforce retention or owner access limits.
 
 ## Basic verification
 
-- TypeScript checks and focused Jest tests (confirmation/cancel, success, 401/403/500,
-  timeout, unexpected body, duplicate request, cleanup failure, super-admin guard,
+- TypeScript checks and focused Jest tests (confirmation/cancel, pending receipts,
+  legacy completion, retained-record disclosures, malformed receipts, guard errors,
+  401/403/500, timeout, duplicate request, cleanup failure, super-admin guard,
   stale profile/membership/gym responses and persisted credential cleanup).
 - iOS regression tests for Apple/Google/email login options.
 - No real accounts were deleted. End-to-end deletion requires an explicitly
