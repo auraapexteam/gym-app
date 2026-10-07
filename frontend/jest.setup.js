@@ -7,6 +7,17 @@
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest'),
 );
+jest.mock('react-native-keychain', () => {
+  const saved = new Map();
+  return {
+    ACCESSIBLE: { WHEN_UNLOCKED_THIS_DEVICE_ONLY: 'WhenUnlockedThisDeviceOnly' },
+    setGenericPassword: jest.fn(async (username, password, { service }) => {
+      saved.set(service, { username, password }); return { service };
+    }),
+    getGenericPassword: jest.fn(async ({ service }) => saved.get(service) || false),
+    resetGenericPassword: jest.fn(async ({ service }) => { saved.delete(service); return true; }),
+  };
+});
 
 // Reanimated v4's bundled mock still imports the native worklets runtime,
 // which cannot load under Jest — a minimal manual mock covers what the
