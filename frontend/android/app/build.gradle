@@ -72,6 +72,29 @@ def enableProguardInReleaseBuilds = true
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+// Release credentials stay in environment variables or private Gradle properties.
+def releaseSetting = { String name -> providers.environmentVariable(name).orElse(providers.gradleProperty(name)).orNull }
+def uploadStoreFile = releaseSetting('AURA_APEX_UPLOAD_STORE_FILE')
+def uploadStorePassword = releaseSetting('AURA_APEX_UPLOAD_STORE_PASSWORD')
+def uploadKeyAlias = releaseSetting('AURA_APEX_UPLOAD_KEY_ALIAS')
+def uploadKeyPassword = releaseSetting('AURA_APEX_UPLOAD_KEY_PASSWORD')
+def releaseVersionCode = releaseSetting('AURA_APEX_VERSION_CODE') ?: '1'
+if (!(releaseVersionCode ==~ /[1-9][0-9]*/) || releaseVersionCode.toBigInteger() > 2100000000) {
+    throw new GradleException('AURA_APEX_VERSION_CODE must be a positive integer no greater than 2100000000')
+}
+def hasUploadSigning = [uploadStoreFile, uploadStorePassword, uploadKeyAlias, uploadKeyPassword].every { it }
+
+gradle.taskGraph.whenReady { graph ->
+    if (graph.allTasks.any { it.project == project && it.name.toLowerCase().contains('release') }) {
+        if (!hasUploadSigning || !file(uploadStoreFile).isFile()) {
+            throw new GradleException('Release signing requires a private upload keystore and all AURA_APEX_UPLOAD_* settings. See docs/ANDROID_RELEASE.md.')
+        }
+        if (file(uploadStoreFile).canonicalPath == file('debug.keystore').canonicalPath || uploadKeyAlias == 'androiddebugkey') {
+            throw new GradleException('A release must not use the Android debug keystore or alias')
+        }
+    }
+}
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -79,11 +102,11 @@ android {
 
     namespace "com.subscriptionmanagement"
     defaultConfig {
-        applicationId "com.subscriptionmanagement"
+        applicationId "in.auraapex.userapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode releaseVersionCode.toInteger()
+        versionName (releaseSetting('AURA_APEX_VERSION_NAME') ?: '1.0.0')
     }
     splits {
         abi {
@@ -100,13 +123,21 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            if (hasUploadSigning) {
+                storeFile file(uploadStoreFile)
+                storePassword uploadStorePassword
+                keyAlias uploadKeyAlias
+                keyPassword uploadKeyPassword
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             shrinkResources true
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
