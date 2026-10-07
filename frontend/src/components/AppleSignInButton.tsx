@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Platform, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { supabase } from '../api/supabase';
+import { useAuthStore } from '../store/useAuthStore';
 
 /** Uses the configured Supabase Apple provider; no credentials belong in the app. */
 export function AppleSignInButton({ disabled = false }: { disabled?: boolean }) {
@@ -10,7 +11,9 @@ export function AppleSignInButton({ disabled = false }: { disabled?: boolean }) 
   const signIn = async () => {
     if (loading || disabled) return;
     setLoading(true);
+    let intent: number | undefined;
     try {
+      intent = useAuthStore.getState().beginOAuthSignIn();
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: { redirectTo: 'auraapex://login-callback', skipBrowserRedirect: true },
@@ -21,6 +24,7 @@ export function AppleSignInButton({ disabled = false }: { disabled?: boolean }) 
       }
       await Linking.openURL(data.url);
     } catch {
+      if (intent !== undefined) useAuthStore.getState().cancelOAuthSignIn(intent);
       // Never display or log OAuth URLs, tokens, or provider configuration details.
       Alert.alert('Apple Sign-In unavailable', 'Please try again later or contact contact@auraapex.in.');
     } finally {

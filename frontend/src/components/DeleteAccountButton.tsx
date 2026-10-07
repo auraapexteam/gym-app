@@ -2,6 +2,10 @@ import React, { useRef } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { Trash2 } from 'lucide-react-native';
 import { useAuthStore } from '../store/useAuthStore';
+import { accountDeletionFailureMessage } from '../api/accountDeletion';
+
+const RETAINED_RECORDS_NOTICE = 'Necessary gym membership, payment, attendance and accounting records, including identifying details needed for those records, are retained for legal obligations or resolving payment disputes.';
+const LOCAL_CLEANUP_NOTICE = 'This device could not clear all saved sign-in data. Please clear the app storage before sharing the device, and contact support if cleanup remains unavailable.';
 
 export function DeleteAccountButton() {
   const { deleteAccount, deletingAccount } = useAuthStore();
@@ -12,33 +16,34 @@ export function DeleteAccountButton() {
     confirmationOpen.current = true;
     const closeConfirmation = () => { confirmationOpen.current = false; };
     Alert.alert(
-      'Permanently delete your account?',
-      'This cannot be undone. You will lose access to your Aura Apex account, memberships and personal fitness history.\n\nDeleting your account does not issue a refund. Contact your gym owner about unused membership fees or payment disputes. You can still delete your account now; gym approval is not required. This does not affect any rights you have under applicable law.\n\nCertain gym payment and accounting records, including identifying details needed for those records, may be retained for legal obligations or resolving payment disputes.',
+      'Request permanent account deletion?',
+      'Once accepted, your account will be signed out and become unavailable while permanent deletion continues in the background. This cannot be undone. Your app profile, personal fitness history and private profile and progress photos will be deleted through this process.\n\n' +
+        RETAINED_RECORDS_NOTICE + '\n\n' +
+        'Deleting your account does not issue a refund. Contact your gym owner about unused membership fees or payment disputes. Gym ownership, Apple sign-in access, or recurring payment mandates may need to be resolved before the request can be accepted. This does not affect any rights you have under applicable law.',
       [
         { text: 'Cancel', style: 'cancel', onPress: closeConfirmation },
         {
-          text: 'Delete permanently',
+          text: 'Request deletion',
           style: 'destructive',
           onPress: async () => {
             closeConfirmation();
             try {
-              const { localCleanupFailed } = await deleteAccount();
+              const result = await deleteAccount();
+              if (result.status === 'pending') {
+                Alert.alert(
+                  'Deletion requested',
+                  `Your request has been accepted. Permanent cleanup is pending for your app profile, personal fitness history and private profile and progress photos.\n\n${RETAINED_RECORDS_NOTICE}\n\nRequest reference: ${result.requestId}\n\nKeep this reference and contact contact@auraapex.in for updates. You have been signed out.` +
+                    (result.localCleanupFailed ? `\n\n${LOCAL_CLEANUP_NOTICE}` : '')
+                );
+                return;
+              }
               Alert.alert(
                 'Account deleted',
-                localCleanupFailed
-                  ? 'Your account was deleted, but this device could not clear all saved sign-in data. Please clear the app storage or reinstall the app before using it again.'
-                  : 'Your account has been permanently deleted. You have been signed out.'
+                `Your app account has been deleted. You have been signed out.\n\n${RETAINED_RECORDS_NOTICE}` +
+                  (result.localCleanupFailed ? `\n\n${LOCAL_CLEANUP_NOTICE}` : '')
               );
             } catch (error: any) {
-              const status = error?.response?.status;
-              const message = status === 401
-                ? 'Your session has expired. Please sign in again, then retry account deletion.'
-                : status === 403
-                  ? 'This account cannot be self-deleted. Please contact support.'
-                  : !error?.response && (error?.isAxiosError || error?.code === 'ECONNABORTED')
-                    ? 'We could not confirm deletion because the connection failed. Check your connection and try again. If you can no longer sign in, contact support to confirm your account status.'
-                    : 'Account deletion was not confirmed. Please try again or contact support.';
-              Alert.alert('Deletion not confirmed', message);
+              Alert.alert('Deletion request not confirmed', accountDeletionFailureMessage(error));
             }
           },
         },
@@ -50,7 +55,7 @@ export function DeleteAccountButton() {
   return (
     <TouchableOpacity
       accessibilityRole="button"
-      accessibilityLabel="Delete account permanently"
+      accessibilityLabel="Request permanent account deletion"
       accessibilityState={{ disabled: deletingAccount, busy: deletingAccount }}
       disabled={deletingAccount}
       activeOpacity={0.8}
@@ -58,7 +63,7 @@ export function DeleteAccountButton() {
       onPress={confirmDeletion}
     >
       {deletingAccount ? <ActivityIndicator color="#f87171" /> : <Trash2 size={16} color="#f87171" />}
-      <Text style={styles.label}>{deletingAccount ? 'Deleting account…' : 'Delete account permanently'}</Text>
+      <Text style={styles.label}>{deletingAccount ? 'Requesting deletion…' : 'Request account deletion'}</Text>
     </TouchableOpacity>
   );
 }
